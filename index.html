@@ -1,12 +1,181 @@
-
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <title>剪辑ERP管理</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>剪辑师 ERP 管理系统</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://esm.sh/@supabase/supabase-js@2" type="module"></script>
 </head>
 <body>
-  <h1>剪辑ERP管理</h1>
-  <p>这是一个飞书多维表格插件示例。</p>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🎬</span>
+      <span>剪辑师 ERP 管理系统</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn" data-tab="dashboard">首页</button>
+      <button class="nav-btn" data-tab="projects">项目</button>
+      <button class="nav-btn" data-tab="calendar">档期</button>
+      <button class="nav-btn" data-tab="gallery">成片</button>
+    </nav>
+    <div class="auth">
+      <span id="authUser"></span>
+      <button id="btnLogin" class="ghost">登录</button>
+      <button id="btnLogout" class="ghost danger" hidden>退出</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 首页 -->
+    <section id="tab-dashboard" class="tab active">
+      <div class="grid 3">
+        <div class="card kpi">
+          <div class="kpi-label">项目总数</div>
+          <div id="kpiTotal" class="kpi-value">0</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-label">未完成</div>
+          <div id="kpiOpen" class="kpi-value link">0</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-label">已完成</div>
+          <div id="kpiDone" class="kpi-value link">0</div>
+        </div>
+      </div>
+
+      <div class="grid 2">
+        <div class="card">
+          <div class="card-title">报价计算器</div>
+          <form id="quoteForm" class="quote">
+            <div class="row"><label>剪辑</label><input type="number" min="0" id="qEdit" placeholder="小时"></div>
+            <div class="row"><label>调色</label><input type="number" min="0" id="qGrade" placeholder="小时"></div>
+            <div class="row"><label>混音</label><input type="number" min="0" id="qMix" placeholder="小时"></div>
+            <div class="row"><label>合成</label><input type="number" min="0" id="qComp" placeholder="小时"></div>
+            <div class="row"><label>修改轮次</label><input type="number" min="0" id="qRounds" placeholder="次"></div>
+            <div class="row">
+              <label>难度</label>
+              <select id="qLevel">
+                <option value="1">常规</option>
+                <option value="1.2">进阶</option>
+                <option value="1.5">高难</option>
+              </select>
+            </div>
+            <div class="row">
+              <button type="button" id="btnQuote">计算</button>
+              <div class="quote-result"><span>¥</span><strong id="quotePrice">0</strong></div>
+            </div>
+          </form>
+          <div class="hint">（小时费率与加价系数后续可改为可配置）</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">近期进度</div>
+          <ul id="recentList" class="list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 项目 -->
+    <section id="tab-projects" class="tab">
+      <div class="toolbar">
+        <button id="btnAdd">新建项目</button>
+        <div class="spacer"></div>
+        <input id="search" class="input" placeholder="搜索项目 / 品牌 / 关键字">
+        <select id="viewMode" class="input">
+          <option value="list">列表</option>
+          <option value="card">卡片</option>
+        </select>
+      </div>
+      <div id="projectsContainer" class="table"></div>
+    </section>
+
+    <!-- 档期 -->
+    <section id="tab-calendar" class="tab">
+      <div class="card">
+        <div class="card-title">档期（A/B/Final）</div>
+        <div id="calendar" class="calendar"></div>
+      </div>
+    </section>
+
+    <!-- 成片 -->
+    <section id="tab-gallery" class="tab">
+      <div class="card">
+        <div class="card-title">成片合集</div>
+        <div id="gallery" class="masonry"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 登录弹窗 -->
+  <dialog id="loginDialog">
+    <form method="dialog" class="dialog">
+      <h3>登录</h3>
+      <input id="loginEmail" type="email" placeholder="邮箱" required />
+      <input id="loginPwd" type="password" placeholder="密码" required />
+      <div class="row">
+        <button id="doLogin" type="button">登录</button>
+        <button id="openSignup" type="button" class="ghost">去注册</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 注册弹窗 -->
+  <dialog id="signupDialog">
+    <form method="dialog" class="dialog">
+      <h3>注册</h3>
+      <input id="signupEmail" type="email" placeholder="邮箱" required />
+      <input id="signupPwd" type="password" placeholder="密码（至少 6 位）" required />
+      <button id="doSignup" type="button">创建账号</button>
+    </form>
+  </dialog>
+
+  <!-- 新建/编辑项目弹窗 -->
+  <dialog id="editDialog">
+    <form method="dialog" class="dialog">
+      <h3 id="editTitle">新建项目</h3>
+      <input id="pTitle" placeholder="项目名称（必填）" required />
+      <input id="pBrand" placeholder="品牌/客户" />
+      <select id="pType">
+        <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
+        <option>宣传片</option><option>纪录片</option><option>花絮</option>
+      </select>
+      <div class="row">
+        <select id="pSpec"><option>1080p</option><option>4K</option></select>
+        <select id="pRatio">
+          <option>16:9</option><option>9:16</option><option>1:1</option>
+          <option>3:4</option><option>4:3</option>
+        </select>
+        <input id="pDuration" placeholder="时长（s/min）">
+      </div>
+      <div class="row">
+        <input id="pACopy" type="date" />
+        <input id="pBCopy" type="date" />
+        <input id="pFinal" type="date" />
+      </div>
+      <div class="row">
+        <select id="pStatus">
+          <option value="open">未完成</option>
+          <option value="done">已完成</option>
+        </select>
+        <select id="pPay">
+          <option value="unpaid">未收款</option>
+          <option value="deposit">已收定金</option>
+          <option value="paid">已收款</option>
+        </select>
+      </div>
+      <input id="pFinalLink" placeholder="成片链接（可选）" />
+      <textarea id="pNotes" rows="3" placeholder="备注/修改意见概述"></textarea>
+      <div class="row">
+        <button id="saveProject" type="button">保存</button>
+        <button id="deleteProject" type="button" class="ghost danger" hidden>删除</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
