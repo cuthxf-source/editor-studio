@@ -1,52 +1,78 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>剪辑 ERP 管理 · Projects</title>
-  <link rel="stylesheet" href="./style.css" />
-  <!-- Supabase JS v2 CDN -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>剪辑 ERP 管理</title>
+  <meta name="description" content="剪辑项目管理系统 - Supabase + GitHub Pages" />
+  <style>
+    body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
+  </style>
+  <!-- 引入 Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="dot"></div>
-      <strong>剪辑 ERP 管理</strong>
-    </div>
+  <!-- 主要应用容器 -->
+  <div id="app"></div>
 
-    <div class="auth">
-      <div id="authed" class="hidden">
-        <span id="user-email" class="muted"></span>
-        <button id="btn-logout" class="btn ghost">退出登录</button>
-      </div>
+  <!-- 应用逻辑脚本 -->
+  <script type="module">
+    // =========================
+    // Supabase 连接配置
+    // =========================
+    const SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
 
-      <div id="anon">
-        <input id="login-email" type="email" placeholder="你的邮箱" />
-        <button id="btn-login" class="btn">登录 / 获取验证码</button>
-      </div>
-    </div>
-  </header>
+    const { createClient } = window.supabase;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  <main class="container">
-    <section class="card">
-      <h2>新建 / 编辑项目</h2>
-      <form id="project-form" autocomplete="off">
-        <input type="hidden" id="project-id" />
+    // =========================
+    // UI 样式
+    // =========================
+    const mount = document.getElementById("app");
+    const css = `
+      .wrap{max-width:1080px;margin:32px auto;padding:16px}
+      .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+      h1{font-size:28px;margin:0 0 8px}
+      .muted{color:#666;font-size:13px}
+      .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+      input,select,textarea{padding:10px;border:1px solid #ddd;border-radius:10px;outline:none;font-size:14px}
+      input:focus,select:focus,textarea:focus{border-color:#222}
+      button{padding:10px 14px;border:1px solid #222;background:#222;color:#fff;border-radius:10px;font-size:14px;cursor:pointer}
+      button.ghost{background:#fff;color:#222}
+      table{width:100%;border-collapse:collapse;margin-top:12px}
+      th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:14px;vertical-align:top}
+      .right{display:flex;gap:8px;align-items:center}
+      .badge{padding:3px 8px;border-radius:999px;background:#f6f7f8;border:1px solid #eee;font-size:12px}
+    `;
+    const style = document.createElement("style");
+    style.textContent = css;
+    document.head.appendChild(style);
 
-        <div class="grid">
-          <label>
-            标题（必填）
-            <input id="title" required />
-          </label>
-          <label>
-            品牌
-            <input id="brand" />
-          </label>
-          <label>
-            类型
+    // =========================
+    // UI 结构
+    // =========================
+    mount.innerHTML = `
+      <div class="wrap">
+        <div class="card">
+          <h1>剪辑 ERP 管理</h1>
+          <div class="muted">登录后可管理项目：新建 / 编辑 / 删除 / 搜索。</div>
+          <div class="row" id="authRow">
+            <input id="email" type="email" placeholder="邮箱">
+            <input id="password" type="password" placeholder="密码（至少6位）">
+            <button id="btnSignUp">注册</button>
+            <button id="btnSignIn">登录</button>
+            <button id="btnSignOut" class="ghost" style="display:none">退出</button>
+          </div>
+          <div class="muted" id="me"></div>
+        </div>
+
+        <div class="card" id="projectFormCard" style="display:none">
+          <div class="row">
+            <input id="title" placeholder="项目标题 *" style="flex:1">
+            <input id="brand" placeholder="品牌">
             <select id="type">
-              <option value="">—</option>
+              <option value="">影片类型</option>
               <option>LOOKBOOK</option>
               <option>形象片</option>
               <option>TVC</option>
@@ -54,133 +80,219 @@
               <option>纪录片</option>
               <option>花絮</option>
             </select>
-          </label>
-          <label>
-            输出规格
-            <select id="spec">
-              <option value="">—</option>
-              <option>1080p</option>
-              <option>4K</option>
-            </select>
-          </label>
-          <label>
-            输出比例
+            <input id="spec" placeholder="输出规格，如 1080p/4K">
             <select id="ratio">
-              <option value="">—</option>
+              <option value="">输出比例</option>
               <option>16:9</option>
               <option>9:16</option>
               <option>1:1</option>
               <option>3:4</option>
               <option>4:3</option>
             </select>
-          </label>
-          <label>
-            时长（如 30s / 2min）
-            <input id="duration" placeholder="例如：30s 或 2min" />
-          </label>
-
-          <label>
-            A copy 时间
-            <input id="a_copy_date" type="date" />
-          </label>
-          <label>
-            B copy 时间
-            <input id="b_copy_date" type="date" />
-          </label>
-          <label>
-            Final 时间
-            <input id="final_date" type="date" />
-          </label>
-
-          <label>
-            收款状态
+            <input id="duration" placeholder="时长（如 30s / 2min）">
+          </div>
+          <div class="row">
+            <input id="a_copy" type="date">
+            <input id="b_copy" type="date">
+            <input id="final_date" type="date">
             <select id="pay_status">
-              <option>unpaid</option>
-              <option>deposit</option>
-              <option>paid</option>
+              <option value="unpaid">未收款</option>
+              <option value="deposit">已收定金</option>
+              <option value="paid">已收款</option>
             </select>
-          </label>
-          <label>
-            项目状态
             <select id="status">
-              <option>open</option>
-              <option>in_progress</option>
-              <option>done</option>
-              <option>archived</option>
+              <option value="open">未完成</option>
+              <option value="closed">已完成</option>
             </select>
-          </label>
-
-          <label class="col-2">
-            成片链接
-            <input id="final_link" placeholder="https://…" />
-          </label>
-
-          <label class="col-2">
-            备注
-            <textarea id="notes" rows="3" placeholder="补充说明…"></textarea>
-          </label>
+          </div>
+          <div class="row">
+            <input id="final_link" placeholder="成片链接">
+            <textarea id="notes" placeholder="备注" style="flex:1;min-height:48px"></textarea>
+          </div>
+          <div class="right">
+            <button id="btnSave">保存/更新</button>
+            <button id="btnReset" class="ghost">重置表单</button>
+            <span class="badge" id="editingFlag" style="display:none">正在编辑</span>
+          </div>
         </div>
 
-        <div class="actions">
-          <button type="submit" class="btn" id="btn-save">保存</button>
-          <button type="button" class="btn ghost" id="btn-reset">清空表单</button>
-          <button type="button" class="btn danger hidden" id="btn-delete">删除</button>
+        <div class="card" id="projectListCard" style="display:none">
+          <div class="row">
+            <input id="q" style="flex:1" placeholder="搜索：标题 / 品牌 / 备注">
+            <button id="btnRefresh" class="ghost">刷新列表</button>
+          </div>
+          <table id="tbl">
+            <thead>
+              <tr>
+                <th style="width:22%">标题 / 品牌</th>
+                <th>类型 / 规格 / 比例 / 时长</th>
+                <th>A/B/Final</th>
+                <th>收款 / 状态</th>
+                <th>成片链接</th>
+                <th style="width:140px">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="muted" id="emptyHint" style="display:none">暂无数据，点击上方保存添加一个项目。</div>
         </div>
-      </form>
-    </section>
-
-    <section class="card">
-      <h2>项目列表</h2>
-
-      <div class="toolbar">
-        <input id="search" placeholder="搜索标题 / 品牌…" />
-        <select id="filter-status" title="按状态">
-          <option value="">全部状态</option>
-          <option>open</option>
-          <option>in_progress</option>
-          <option>done</option>
-          <option>archived</option>
-        </select>
-        <select id="filter-pay" title="按收款">
-          <option value="">全部收款</option>
-          <option>unpaid</option>
-          <option>deposit</option>
-          <option>paid</option>
-        </select>
-        <button id="btn-refresh" class="btn ghost">刷新</button>
       </div>
+    `;
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>标题</th>
-              <th>品牌</th>
-              <th>类型</th>
-              <th>规格</th>
-              <th>比例</th>
-              <th>时长</th>
-              <th>A</th>
-              <th>B</th>
-              <th>Final</th>
-              <th>收款</th>
-              <th>状态</th>
-              <th>成片</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+    // ============ 工具函数 ============
+    const $ = (id) => document.getElementById(id);
+    const toast = (msg) => alert(msg);
 
-      <p id="empty" class="muted hidden">暂无数据。</p>
-    </section>
-  </main>
+    // ============ 认证 ============
+    async function signUp() {
+      const email = $("email").value.trim();
+      const password = $("password").value.trim();
+      if (!email || password.length < 6) return toast("请输入邮箱，密码至少 6 位");
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return toast("注册失败：" + error.message);
+      toast("注册成功，已登录。");
+      await syncUI();
+    }
 
-  <footer class="foot">
-    <span class="muted">© Editor Studio</span>
-  </footer>
+    async function signIn() {
+      const email = $("email").value.trim();
+      const password = $("password").value.trim();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return toast("登录失败：" + error.message);
+      await syncUI();
+    }
 
-  <script src="./app.js"></script>
+    async function signOut() {
+      await supabase.auth.signOut();
+      await syncUI();
+    }
+
+    supabase.auth.onAuthStateChange(async () => {
+      await syncUI();
+    });
+
+    async function syncUI() {
+      const { data: { user } } = await supabase.auth.getUser();
+      $("btnSignOut").style.display = user ? "" : "none";
+      $("projectFormCard").style.display = user ? "" : "none";
+      $("projectListCard").style.display = user ? "" : "none";
+      $("me").textContent = user ? `当前登录：${user.email}` : "未登录";
+      if (user) {
+        resetForm();
+        await loadList();
+      } else {
+        $("tbl").querySelector("tbody").innerHTML = "";
+      }
+    }
+
+    // ============ 表单 ============
+    let editingId = null;
+    function getFormData() {
+      return {
+        title: $("title").value.trim(),
+        brand: $("brand").value.trim(),
+        type: $("type").value || null,
+        spec: $("spec").value.trim(),
+        ratio: $("ratio").value || null,
+        duration: $("duration").value.trim(),
+        a_copy: $("a_copy").value || null,
+        b_copy: $("b_copy").value || null,
+        final_date: $("final_date").value || null,
+        pay_status: $("pay_status").value,
+        status: $("status").value,
+        final_link: $("final_link").value.trim(),
+        notes: $("notes").value.trim()
+      };
+    }
+    function setFormData(row) {
+      $("title").value = row.title || "";
+      $("brand").value = row.brand || "";
+      $("type").value = row.type || "";
+      $("spec").value = row.spec || "";
+      $("ratio").value = row.ratio || "";
+      $("duration").value = row.duration || "";
+      $("a_copy").value = row.a_copy || "";
+      $("b_copy").value = row.b_copy || "";
+      $("final_date").value = row.final_date || "";
+      $("pay_status").value = row.pay_status || "unpaid";
+      $("status").value = row.status || "open";
+      $("final_link").value = row.final_link || "";
+      $("notes").value = row.notes || "";
+    }
+    function resetForm() {
+      editingId = null;
+      setFormData({ pay_status: "unpaid", status: "open" });
+      $("editingFlag").style.display = "none";
+    }
+
+    async function saveOrUpdate() {
+      const payload = getFormData();
+      if (!payload.title) return toast("项目标题为必填");
+      if (editingId) {
+        await supabase.from("projects").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", editingId);
+        toast("已更新");
+      } else {
+        await supabase.from("projects").insert([{ ...payload }]);
+        toast("已保存");
+      }
+      resetForm();
+      await loadList();
+    }
+
+    async function loadList() {
+      const q = $("q").value.trim();
+      let query = supabase.from("projects").select("*").order("updated_at", { ascending: false });
+      if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,notes.ilike.%${q}%`);
+      const { data } = await query;
+      const tbody = $("tbl").querySelector("tbody");
+      tbody.innerHTML = "";
+      if (!data || data.length === 0) {
+        $("emptyHint").style.display = "";
+        return;
+      }
+      $("emptyHint").style.display = "none";
+      for (const row of data) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><b>${row.title}</b><div class="muted">${row.brand || ""}</div></td>
+          <td class="muted">${row.type || "-"} / ${row.spec || "-"} / ${row.ratio || "-"} / ${row.duration || "-"}</td>
+          <td class="muted">A: ${row.a_copy || "-"} / B: ${row.b_copy || "-"} / Final: ${row.final_date || "-"}</td>
+          <td><span class="badge">${row.pay_status}</span> <span class="badge">${row.status}</span></td>
+          <td>${row.final_link ? `<a target="_blank" href="${row.final_link}">打开</a>` : "-"}</td>
+          <td>
+            <button data-edit="${row.id}" class="ghost">编辑</button>
+            <button data-del="${row.id}">删除</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+      tbody.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.onclick = async () => {
+          const { data } = await supabase.from("projects").select("*").eq("id", btn.dataset.edit).single();
+          editingId = btn.dataset.edit;
+          setFormData(data);
+          $("editingFlag").style.display = "";
+        };
+      });
+      tbody.querySelectorAll("[data-del]").forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm("确认删除该项目？")) return;
+          await supabase.from("projects").delete().eq("id", btn.dataset.del);
+          await loadList();
+        };
+      });
+    }
+
+    // 绑定事件
+    $("btnSignUp").onclick = signUp;
+    $("btnSignIn").onclick = signIn;
+    $("btnSignOut").onclick = signOut;
+    $("btnSave").onclick = saveOrUpdate;
+    $("btnReset").onclick = resetForm;
+    $("btnRefresh").onclick = loadList;
+    $("q").oninput = () => { clearTimeout(window.__qtid); window.__qtid = setTimeout(loadList, 300); };
+
+    syncUI();
+  </script>
 </body>
 </html>
