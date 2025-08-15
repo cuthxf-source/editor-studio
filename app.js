@@ -1,355 +1,368 @@
-<script type="module">
-// =========================
-// 1) 替换为你的 Supabase 凭据（已为你填好）
-// =========================
-const SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
+// ====== 你的 Supabase 项目配置（已替你填好）======
+const SUPABASE_URL = 'https://lywlcsrndkturdpgvvnc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs';
 
-// =========================
-// 2) 导入并初始化 supabase-js
-//    你的 index.html 里需要引入：
-//    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-// =========================
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// =========================
-// 3) 轻量的 UI（纯脚本生成，避免你改 HTML）
-// =========================
-const mount = document.getElementById("app") || document.body;
+// ====== DOM ======
+const authView = qs('#authView');
+const appView  = qs('#appView');
+const userBox  = qs('#userBox');
+const userEmailEl = qs('#userEmail');
+const toastEl  = qs('#toast');
 
-const css = `
-  .wrap{max-width:1080px;margin:32px auto;padding:16px}
-  .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
-  h1{font-size:28px;margin:0 0 8px}
-  .muted{color:#666;font-size:13px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-  input,select,textarea{padding:10px;border:1px solid #ddd;border-radius:10px;outline:none;font-size:14px}
-  input:focus,select:focus,textarea:focus{border-color:#222}
-  button{padding:10px 14px;border:1px solid #222;background:#222;color:#fff;border-radius:10px;font-size:14px;cursor:pointer}
-  button.ghost{background:#fff;color:#222}
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:14px;vertical-align:top}
-  .right{display:flex;gap:8px;align-items:center}
-  .badge{padding:3px 8px;border-radius:999px;background:#f6f7f8;border:1px solid #eee;font-size:12px}
-`;
-const style = document.createElement("style");
-style.textContent = css;
-document.head.appendChild(style);
+const tabs = $qa('.tab');
+const panels = {
+  dashboard: qs('#tab-dashboard'),
+  projects:  qs('#tab-projects'),
+  calendar:  qs('#tab-calendar'),
+  collection: qs('#tab-collection'),
+};
 
-mount.innerHTML = `
-  <div class="wrap">
-    <div class="card">
-      <h1>剪辑 ERP 管理</h1>
-      <div class="muted">登录后可管理项目：新建 / 编辑 / 删除 / 搜索。</div>
-      <div class="row" id="authRow">
-        <input id="email" type="email" placeholder="邮箱">
-        <input id="password" type="password" placeholder="密码（至少6位）">
-        <button id="btnSignUp">注册</button>
-        <button id="btnSignIn">登录</button>
-        <button id="btnSignOut" class="ghost" style="display:none">退出</button>
-      </div>
-      <div class="muted" id="me"></div>
-    </div>
+// Auth DOM
+const btnLogin = qs('#btnLogin');
+const btnToSignup = qs('#btnToSignup');
+const btnCancelSignup = qs('#btnCancelSignup');
+const signupPanel = qs('#signupPanel');
+const btnSignup = qs('#btnSignup');
+const btnSignOut = qs('#btnSignOut');
 
-    <div class="card" id="projectFormCard" style="display:none">
-      <div class="row">
-        <input id="title" placeholder="项目标题 *" style="flex:1">
-        <input id="brand" placeholder="品牌">
-        <select id="type">
-          <option value="">影片类型</option>
-          <option>LOOKBOOK</option>
-          <option>形象片</option>
-          <option>TVC</option>
-          <option>宣传片</option>
-          <option>纪录片</option>
-          <option>花絮</option>
-        </select>
-        <input id="spec" placeholder="输出规格，如 1080p/4K">
-        <select id="ratio">
-          <option value="">输出比例</option>
-          <option>16:9</option>
-          <option>9:16</option>
-          <option>1:1</option>
-          <option>3:4</option>
-          <option>4:3</option>
-        </select>
-        <input id="duration" placeholder="时长（如 30s / 2min）">
-      </div>
-      <div class="row">
-        <input id="a_copy" type="date" placeholder="A copy 日期">
-        <input id="b_copy" type="date" placeholder="B copy 日期">
-        <input id="final_date" type="date" placeholder="Final 日期">
-        <select id="pay_status">
-          <option value="unpaid">未收款</option>
-          <option value="deposit">已收定金</option>
-          <option value="paid">已收款</option>
-        </select>
-        <select id="status">
-          <option value="open">未完成</option>
-          <option value="closed">已完成</option>
-        </select>
-      </div>
-      <div class="row">
-        <input id="final_link" placeholder="成片链接">
-        <textarea id="notes" placeholder="备注 / 修改意见" style="flex:1;min-height:48px"></textarea>
-      </div>
-      <div class="right">
-        <button id="btnSave">保存/更新</button>
-        <button id="btnReset" class="ghost">重置表单</button>
-        <span class="badge" id="editingFlag" style="display:none">正在编辑</span>
-      </div>
-    </div>
+// KPI DOM
+const kpiPaid = qs('#kpiPaid');
+const kpiDue = qs('#kpiDue');
+const kpiCount = qs('#kpiCount');
+const recentList = qs('#recentList');
 
-    <div class="card" id="projectListCard" style="display:none">
-      <div class="row">
-        <input id="q" style="flex:1" placeholder="搜索：标题 / 品牌 / 备注">
-        <button id="btnRefresh" class="ghost">刷新列表</button>
-      </div>
-      <table id="tbl">
-        <thead>
-          <tr>
-            <th style="width:22%">标题 / 品牌</th>
-            <th>类型 / 规格 / 比例 / 时长</th>
-            <th>A/B/Final</th>
-            <th>收款 / 状态</th>
-            <th>成片链接</th>
-            <th style="width:140px">操作</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div class="muted" id="emptyHint" style="display:none">暂无数据，点击上方保存添加一个项目。</div>
-    </div>
-  </div>
-`;
+// Projects DOM
+const btnNew = qs('#btnNew');
+const tbodyProjects = qs('#tbodyProjects');
+const dlgProject = qs('#dlgProject');
+const frmProject = qs('#frmProject');
+const dlgTitle = qs('#dlgTitle');
 
-// ============ 工具函数 ============
-const $ = (id) => document.getElementById(id);
-const toast = (msg) => alert(msg);
+// Calendar & Collection
+const calendarList = qs('#calendarList');
+const collectionGrid = qs('#collectionGrid');
 
-// ============ 认证 ============
+// Quote
+const quoteForm = qs('#quoteForm');
 
-async function signUp() {
-  const email = $("email").value.trim();
-  const password = $("password").value.trim();
-  if (!email || password.length < 6) return toast("请输入邮箱，密码至少 6 位");
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) return toast("注册失败：" + error.message);
-  toast("注册成功，已登录。");
-  await syncUI();
+// ====== 工具函数 ======
+function qs(s, el=document){ return el.querySelector(s); }
+function $qa(s, el=document){ return Array.from(el.querySelectorAll(s)); }
+function toast(msg, type='info'){
+  toastEl.textContent = msg;
+  toastEl.classList.remove('hidden');
+  setTimeout(()=>toastEl.classList.add('hidden'), 2000);
 }
-
-async function signIn() {
-  const email = $("email").value.trim();
-  const password = $("password").value.trim();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return toast("登录失败：" + error.message);
-  await syncUI();
+function fmtMoney(n, cur='CNY'){
+  if(n==null) return '–';
+  const v = Number(n)||0;
+  return `${cur} ${v.toLocaleString()}`;
 }
-
-async function signOut() {
-  await supabase.auth.signOut();
-  await syncUI();
+function fmtDate(d){
+  if(!d) return '';
+  return new Date(d).toISOString().slice(0,10);
 }
+function nonneg(n){ n = Number(n)||0; return Math.max(n,0); }
 
-// 监听登录状态变化
-supabase.auth.onAuthStateChange(async () => {
-  await syncUI();
-});
+// ====== 登录/注册 ======
+btnToSignup.addEventListener('click', ()=> signupPanel.classList.remove('hidden'));
+btnCancelSignup.addEventListener('click', ()=> signupPanel.classList.add('hidden'));
 
-// 同步 UI
-async function syncUI() {
-  const { data: { user } } = await supabase.auth.getUser();
-  $("btnSignOut").style.display = user ? "" : "none";
-  $("projectFormCard").style.display = user ? "" : "none";
-  $("projectListCard").style.display = user ? "" : "none";
-  $("me").textContent = user ? `当前登录：${user.email}` : "未登录";
-  if (user) {
-    resetForm();
-    await loadList();
-  } else {
-    $("tbl").querySelector("tbody").innerHTML = "";
-  }
-}
-
-// ============ 表单 & 列表 ============
-
-let editingId = null; // 当前编辑记录 id
-
-function getFormData() {
-  return {
-    title: $("title").value.trim(),
-    brand: $("brand").value.trim(),
-    type: $("type").value || null,
-    spec: $("spec").value.trim(),
-    ratio: $("ratio").value || null,
-    duration: $("duration").value.trim(),
-    a_copy: $("a_copy").value || null,
-    b_copy: $("b_copy").value || null,
-    final_date: $("final_date").value || null,
-    pay_status: $("pay_status").value,
-    status: $("status").value,
-    final_link: $("final_link").value.trim(),
-    notes: $("notes").value.trim()
-  };
-}
-
-function setFormData(row) {
-  $("title").value = row.title || "";
-  $("brand").value = row.brand || "";
-  $("type").value = row.type || "";
-  $("spec").value = row.spec || "";
-  $("ratio").value = row.ratio || "";
-  $("duration").value = row.duration || "";
-  $("a_copy").value = row.a_copy || "";
-  $("b_copy").value = row.b_copy || "";
-  $("final_date").value = row.final_date || "";
-  $("pay_status").value = row.pay_status || "unpaid";
-  $("status").value = row.status || "open";
-  $("final_link").value = row.final_link || "";
-  $("notes").value = row.notes || "";
-}
-
-function resetForm() {
-  editingId = null;
-  setFormData({
-    pay_status: "unpaid",
-    status: "open"
-  });
-  $("editingFlag").style.display = "none";
-}
-
-async function saveOrUpdate() {
-  const payload = getFormData();
-  if (!payload.title) return toast("项目标题为必填");
-
-  if (editingId) {
-    const { error } = await supabase.from("projects")
-      .update({ ...payload, updated_at: new Date().toISOString() })
-      .eq("id", editingId);
-    if (error) return toast("更新失败：" + error.message);
-    toast("已更新");
-  } else {
-    const { error } = await supabase.from("projects")
-      .insert([{ ...payload }]);
-    if (error) return toast("保存失败：" + error.message);
-    toast("已保存");
-  }
-  resetForm();
-  await loadList();
-}
-
-async function loadList() {
-  const q = $("q").value.trim();
-
-  let query = supabase.from("projects")
-    .select("*")
-    .order("updated_at", { ascending: false });
-
-  if (q) {
-    // 简单过滤（后端可替换为 full-text）
-    query = query.or(
-      `title.ilike.%${q}%,brand.ilike.%${q}%,notes.ilike.%${q}%`
-    );
-  }
-
-  const { data, error } = await query;
-  if (error) return toast("加载失败：" + error.message);
-
-  const tbody = $("tbl").querySelector("tbody");
-  tbody.innerHTML = "";
-
-  if (!data || data.length === 0) {
-    $("emptyHint").style.display = "";
+btnSignup.addEventListener('click', async ()=>{
+  const email = qs('#signupEmail').value.trim();
+  const password = qs('#signupPassword').value;
+  if(!email || !password){ toast('请填写邮箱与密码'); return; }
+  const { data, error } = await client.auth.signUp({ email, password });
+  if(error){
+    // 如果用户已存在，直接提示去登录
+    if(error.message?.toLowerCase().includes('already')){
+      toast('该邮箱已注册，请直接登录');
+    }else{
+      toast('注册失败：'+error.message);
+    }
     return;
   }
-  $("emptyHint").style.display = "none";
+  toast('注册成功，已自动登录');
+  // signUp 在关闭 Confirm email 时，会直接创建 session
+  await afterAuthChanged();
+});
 
-  for (const row of data) {
-    const tr = document.createElement("tr");
+btnLogin.addEventListener('click', async ()=>{
+  const email = qs('#loginEmail').value.trim();
+  const password = qs('#loginPassword').value;
+  if(!email || !password){ toast('请填写邮箱与密码'); return; }
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if(error){ toast('登录失败：'+error.message); return; }
+  toast('登录成功');
+  await afterAuthChanged();
+});
 
-    const cell1 = `
-      <div><b>${esc(row.title)}</b></div>
-      <div class="muted">${esc(row.brand || "")}</div>
-    `;
+btnSignOut.addEventListener('click', async ()=>{
+  await client.auth.signOut();
+  toast('已退出');
+  authView.classList.remove('hidden');
+  appView.classList.add('hidden');
+  userBox.classList.add('hidden');
+});
 
-    const cell2 = `
-      <div class="muted">${esc(row.type || "-")} / ${esc(row.spec || "-")} / ${esc(row.ratio || "-")} / ${esc(row.duration || "-")}</div>
-    `;
+// 监听登录态
+client.auth.onAuthStateChange((_event, session)=> afterAuthChanged());
 
-    const cell3 = `
-      <div class="muted">A: ${esc(row.a_copy || "-")} / B: ${esc(row.b_copy || "-")} / Final: ${esc(row.final_date || "-")}</div>
-    `;
-
-    const cell4 = `
-      <span class="badge">${row.pay_status === "paid" ? "已收款" : row.pay_status === "deposit" ? "已收定金" : "未收款"}</span>
-      <span class="badge">${row.status === "closed" ? "已完成" : "未完成"}</span>
-    `;
-
-    const cell5 = row.final_link
-      ? `<a target="_blank" href="${escAttr(row.final_link)}">打开</a>`
-      : `<span class="muted">-</span>`;
-
-    const ops = `
-      <button data-edit="${row.id}" class="ghost">编辑</button>
-      <button data-del="${row.id}">删除</button>
-    `;
-
-    tr.innerHTML = `
-      <td>${cell1}</td>
-      <td>${cell2}</td>
-      <td>${cell3}</td>
-      <td>${cell4}</td>
-      <td>${cell5}</td>
-      <td>${ops}</td>
-    `;
-    tbody.appendChild(tr);
+async function afterAuthChanged(){
+  const { data: { user } } = await client.auth.getUser();
+  if(!user){
+    authView.classList.remove('hidden');
+    appView.classList.add('hidden');
+    userBox.classList.add('hidden');
+    return;
   }
+  // 登录态
+  userEmailEl.textContent = user.email || '';
+  userBox.classList.remove('hidden');
+  authView.classList.add('hidden');
+  appView.classList.remove('hidden');
 
-  // 绑定操作按钮
-  tbody.querySelectorAll("button[data-edit]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-edit");
-      const { data, error } = await supabase.from("projects").select("*").eq("id", id).single();
-      if (error) return toast("读取失败：" + error.message);
-      editingId = id;
-      setFormData(data);
-      $("editingFlag").style.display = "";
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+  // 默认展示首页
+  setActiveTab('dashboard');
+  await renderAll();
+}
+
+// ====== Tabs ======
+tabs.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    setActiveTab(btn.dataset.tab);
   });
+});
+function setActiveTab(name){
+  tabs.forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  Object.entries(panels).forEach(([k,el])=>{
+    el.classList.toggle('hidden', k!==name);
+  });
+  // 切换时刷新数据（轻量）
+  if(name==='dashboard') loadDashboard();
+  if(name==='projects')  loadProjects();
+  if(name==='calendar')  loadCalendar();
+  if(name==='collection') loadCollection();
+}
 
-  tbody.querySelectorAll("button[data-del]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-del");
-      if (!confirm("确认删除该项目？")) return;
-      const { error } = await supabase.from("projects").delete().eq("id", id);
-      if (error) return toast("删除失败：" + error.message);
-      await loadList();
-    });
+async function renderAll(){
+  await Promise.all([loadDashboard(), loadProjects(), loadCalendar(), loadCollection()]);
+}
+
+// ====== Dashboard ======
+async function loadDashboard(){
+  const { data, error } = await client.from('projects')
+    .select('*')
+    .order('updated_at', { ascending:false })
+    .limit(50);
+  if(error){ toast('读取项目失败：'+error.message); return; }
+
+  // KPI
+  let paidSum = 0, depositSum = 0, quoteSum = 0;
+  let total = data.length, done = 0;
+  for(const p of data){
+    paidSum += Number(p.paid_amount||0);
+    depositSum += Number(p.deposit_amount||0);
+    quoteSum += Number(p.quote_amount||0);
+    if(p.final_date) done++;
+  }
+  const outstanding = Math.max(quoteSum - paidSum - depositSum, 0);
+
+  kpiPaid.textContent = fmtMoney(paidSum + depositSum);
+  kpiDue.textContent  = fmtMoney(outstanding);
+  kpiCount.textContent = `${done} / ${total}`;
+
+  // 最近列表
+  recentList.innerHTML = '';
+  data.slice(0,8).forEach(p=>{
+    const row = document.createElement('div');
+    row.className='item';
+    row.innerHTML = `
+      <div class="badge-dot"><span class="dot" style="background:${p.final_date?'var(--ok)':'var(--warn)'}"></span>
+      <strong>${p.title||'-'}</strong> · ${p.brand||''} · ${p.type||''}</div>
+      <div>${p.final_date ? 'Final: '+fmtDate(p.final_date) : '未完成'}</div>`;
+    recentList.appendChild(row);
   });
 }
 
-// 简单转义
-function esc(s){ return (s || "").toString().replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
-function escAttr(s){ return esc(s).replace(/"/g, "&quot;"); }
+// 报价工具
+quoteForm.addEventListener('submit', e=>{
+  e.preventDefault();
+  const base = Number(qs('#qBase').value)||0;
+  const e1 = Number(qs('#qEdit').value)||0;
+  const c1 = Number(qs('#qColor').value)||0;
+  const m1 = Number(qs('#qMix').value)||0;
+  const s1 = Number(qs('#qComp').value)||0;
+  const revs = Number(qs('#qRevs').value)||0;
 
-// ============ 绑定事件 ============
-$("btnSignUp").addEventListener("click", signUp);
-$("btnSignIn").addEventListener("click", signIn);
-$("btnSignOut").addEventListener("click", signOut);
-
-$("btnSave").addEventListener("click", saveOrUpdate);
-$("btnReset").addEventListener("click", resetForm);
-$("btnRefresh").addEventListener("click", loadList);
-$("q").addEventListener("input", () => {
-  // 防抖
-  clearTimeout(window.__qtid);
-  window.__qtid = setTimeout(loadList, 300);
+  // 粗略计算：各模块系数*(base/2) + 修订 10%/轮
+  const core = (e1 + c1 + m1 + s1) * (base/2);
+  const total = Math.round(core * (1 + 0.1*revs));
+  qs('#qTotal').textContent = `CNY ${total.toLocaleString()}`;
 });
 
-// 首次同步
-syncUI();
+// ====== 项目 CRUD ======
+btnNew.addEventListener('click', ()=>{
+  frmProject.reset();
+  dlgTitle.textContent = '新建项目';
+  dlgProject.showModal();
+});
 
-</script>
+frmProject.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(frmProject);
+  const payload = Object.fromEntries(fd.entries());
+  // 转数字
+  ['quote_amount','deposit_amount','paid_amount'].forEach(k=>payload[k] = Number(payload[k]||0));
+  // pay_status 默认
+  payload.pay_status ||= 'unpaid';
+  // status 列（开合）沿用默认 open
+  // 统一更新时间
+  payload.updated_at = new Date().toISOString();
+
+  const { error } = await client.from('projects').insert(payload);
+  if(error){ toast('新建失败：'+error.message); return; }
+  dlgProject.close();
+  toast('已保存');
+  await loadProjects();
+  await loadDashboard();
+  await loadCalendar();
+  await loadCollection();
+});
+
+async function loadProjects(){
+  const { data, error } = await client.from('projects').select('*').order('updated_at',{ascending:false});
+  if(error){ toast('读取失败：'+error.message); return; }
+  tbodyProjects.innerHTML = '';
+  data.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      ${td('title', p.title)}
+      ${td('brand', p.brand)}
+      ${td('type', p.type)}
+      ${td('spec', p.spec)}
+      ${td('ratio', p.ratio)}
+      ${td('duration', p.duration)}
+      ${td('a_copy_date', fmtDate(p.a_copy_date), 'date')}
+      ${td('b_copy_date', fmtDate(p.b_copy_date), 'date')}
+      ${td('final_date', fmtDate(p.final_date), 'date')}
+      ${td('quote_amount', p.quote_amount, 'number')}
+      ${td('deposit_amount', p.deposit_amount, 'number')}
+      ${td('paid_amount', p.paid_amount, 'number')}
+      ${td('currency', p.currency)}
+      ${td('payment_due_date', fmtDate(p.payment_due_date), 'date')}
+      ${td('pay_status', p.pay_status)}
+      ${td('final_link', p.final_link)}
+      <td>
+        <button class="btn ghost btn-save">保存</button>
+        <button class="btn danger btn-del">删除</button>
+      </td>`;
+    // 可编辑
+    $qa('[data-edit]', tr).forEach(cell=>{
+      cell.addEventListener('dblclick', ()=>{
+        cell.contentEditable = true;
+        cell.classList.add('cell-edit');
+        cell.focus();
+      });
+      cell.addEventListener('blur', ()=>{ cell.contentEditable=false; cell.classList.remove('cell-edit'); });
+    });
+
+    // 保存
+    qs('.btn-save', tr).addEventListener('click', async ()=>{
+      const payload = collectRow(tr);
+      payload.updated_at = new Date().toISOString();
+      const { error } = await client.from('projects').update(payload).eq('id', p.id);
+      if(error){ toast('保存失败：'+error.message); return; }
+      toast('已保存');
+      await loadDashboard();
+      await loadCalendar();
+      await loadCollection();
+    });
+    // 删除
+    qs('.btn-del', tr).addEventListener('click', async ()=>{
+      if(!confirm('确定删除该项目？')) return;
+      const { error } = await client.from('projects').delete().eq('id', p.id);
+      if(error){ toast('删除失败：'+error.message); return; }
+      tr.remove();
+      toast('已删除');
+      await loadDashboard();
+      await loadCalendar();
+      await loadCollection();
+    });
+
+    tbodyProjects.appendChild(tr);
+  });
+}
+function td(field, val, type='text'){
+  const display = (val==null||val==='') ? '' : (type==='number' ? Number(val) : val);
+  return `<td data-field="${field}" data-edit>${display}</td>`;
+}
+function collectRow(tr){
+  const cells = $qa('[data-field]', tr);
+  const obj = {};
+  cells.forEach(td=>{
+    const key = td.dataset.field;
+    let v = td.textContent.trim();
+    if(['quote_amount','deposit_amount','paid_amount'].includes(key)) v = Number(v||0);
+    if(['a_copy_date','b_copy_date','final_date','payment_due_date'].includes(key)) v = v || null;
+    obj[key]=v;
+  });
+  return obj;
+}
+
+// ====== 档期 ======
+async function loadCalendar(){
+  const { data, error } = await client.from('projects').select('title,a_copy_date,b_copy_date,final_date,payment_due_date');
+  if(error){ toast('读取档期失败：'+error.message); return; }
+  const events = [];
+  data.forEach(p=>{
+    if(p.a_copy_date) events.push({date:p.a_copy_date, label:`A copy · ${p.title}`});
+    if(p.b_copy_date) events.push({date:p.b_copy_date, label:`B copy · ${p.title}`});
+    if(p.final_date)  events.push({date:p.final_date,  label:`Final · ${p.title}`});
+    if(p.payment_due_date) events.push({date:p.payment_due_date, label:`应收款 · ${p.title}`});
+  });
+  events.sort((a,b)=> new Date(a.date)-new Date(b.date));
+  calendarList.innerHTML = '';
+  events.forEach(e=>{
+    const row = document.createElement('div');
+    row.className='item';
+    row.innerHTML = `<div>${fmtDate(e.date)}</div><div>${e.label}</div>`;
+    calendarList.appendChild(row);
+  });
+}
+
+// ====== 作品合集（Final）======
+async function loadCollection(){
+  const { data, error } = await client.from('projects').select('title,brand,final_link,final_date').not('final_link','is',null);
+  if(error){ toast('读取合集失败：'+error.message); return; }
+  collectionGrid.innerHTML = '';
+  data.forEach(p=>{
+    const card = document.createElement('div');
+    card.className='card video';
+    card.innerHTML = `
+      <div class="meta">
+        <strong>${p.title||'-'}</strong> · ${p.brand||''}
+        <div class="muted">${p.final_link||''}</div>
+        <div class="muted">${p.final_date?('Final: '+fmtDate(p.final_date)):'未完结'}</div>
+        ${p.final_link?`<div style="margin-top:6px;"><a target="_blank" href="${p.final_link}" class="btn ghost">打开链接</a></div>`:''}
+      </div>`;
+    collectionGrid.appendChild(card);
+  });
+}
+
+// ====== 启动 ======
+(async function boot(){
+  const { data: { user } } = await client.auth.getUser();
+  if(user){
+    userEmailEl.textContent = user.email || '';
+    userBox.classList.remove('hidden');
+    authView.classList.add('hidden');
+    appView.classList.remove('hidden');
+    setActiveTab('dashboard');
+    await renderAll();
+  }else{
+    authView.classList.remove('hidden');
+  }
+})();
