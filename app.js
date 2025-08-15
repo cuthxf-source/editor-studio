@@ -1,24 +1,23 @@
-// ====== Supabase 配置（已替你填好）======
+// ====== Supabase（使用你的项目） ======
 const SUPABASE_URL = 'https://lywlcsrndkturdpgvvnc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs';
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ====== DOM & 小工具 ======
+// ====== 工具 ======
 const qs = (s, el=document)=> el.querySelector(s);
 const qsa = (s, el=document)=> Array.from(el.querySelectorAll(s));
-const toastEl = qs('#toast');
-function toast(m){ toastEl.textContent=m; toastEl.classList.remove('hidden'); setTimeout(()=>toastEl.classList.add('hidden'),1800); }
 const fmtMoney = (n, cur='CNY') => `${cur} ${(Number(n)||0).toLocaleString()}`;
 const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '';
 const sum = arr => arr.reduce((a,b)=> a + (Number(b)||0), 0);
+const toastEl = qs('#toast');
+function toast(m){ toastEl.textContent=m; toastEl.classList.remove('hidden'); setTimeout(()=>toastEl.classList.add('hidden'),1800); }
 
-// 视图
+// ====== 视图节点 ======
 const authView = qs('#authView');
 const appView  = qs('#appView');
 const userBox  = qs('#userBox');
 const userEmailEl = qs('#userEmail');
 
-// Tabs
 const tabs = qsa('.tab');
 const panels = {
   dashboard: qs('#tab-dashboard'),
@@ -27,92 +26,71 @@ const panels = {
   collection: qs('#tab-collection'),
 };
 
-// KPI
+// KPI & 列表
 const kpiPaid = qs('#kpiPaid');
 const kpiDue  = qs('#kpiDue');
 const kpiCount= qs('#kpiCount');
 const recentList = qs('#recentList');
 
-// Projects
 const btnNew = qs('#btnNew');
+const searchInput = qs('#searchInput');
 const tbodyProjects = qs('#tbodyProjects');
+
 const dlgProject = qs('#dlgProject');
 const frmProject = qs('#frmProject');
 const dlgTitle = qs('#dlgTitle');
 
-// Calendar & Collection
+const inlineDialog = qs('#inlineEditor');
+const inlineContent = qs('#inlineContent');
+const inlineCancel = qs('#inlineCancel');
+const inlineOk = qs('#inlineOk');
+
 const calendarList = qs('#calendarList');
 const collectionGrid = qs('#collectionGrid');
-
-// Quote
-qs('#quoteForm').addEventListener('submit', e=>{
-  e.preventDefault();
-  const base = Number(qs('#qBase').value)||0;
-  const e1 = Number(qs('#qEdit').value)||0;
-  const c1 = Number(qs('#qColor').value)||0;
-  const m1 = Number(qs('#qMix').value)||0;
-  const s1 = Number(qs('#qComp').value)||0;
-  const revs = Number(qs('#qRevs').value)||0;
-  const core = (e1 + c1 + m1 + s1) * (base/2);
-  const total = Math.round(core * (1 + 0.1*revs));
-  qs('#qTotal').textContent = `CNY ${total.toLocaleString()}`;
-});
 
 // ====== 登录/注册 ======
 qs('#btnToSignup').addEventListener('click', ()=> qs('#signupPanel').classList.remove('hidden'));
 qs('#btnCancelSignup').addEventListener('click', ()=> qs('#signupPanel').classList.add('hidden'));
 qs('#btnSignup').addEventListener('click', doSignup);
 qs('#btnLogin').addEventListener('click', doLogin);
-qs('#btnSignOut').addEventListener('click', async ()=>{ await client.auth.signOut(); location.reload(); });
+qs('#btnSignOut').addEventListener('click', async ()=>{ await db.auth.signOut(); location.reload(); });
 
-client.auth.onAuthStateChange(()=> afterAuth());
+db.auth.onAuthStateChange(()=> afterAuth());
 afterAuth();
 
 async function doSignup(){
   const email = qs('#signupEmail').value.trim();
   const password = qs('#signupPassword').value;
   if(!email || !password) return toast('请填写邮箱与密码');
-  const { error } = await client.auth.signUp({ email, password });
+  const { error } = await db.auth.signUp({ email, password });
   if(error){
     if((error.message||'').toLowerCase().includes('already')) return toast('该邮箱已注册，请直接登录');
     return toast('注册失败：'+error.message);
   }
-  // 关闭 Confirm email 时通常会直接有 session；保险起见再尝试一次密码登录
-  await client.auth.signInWithPassword({ email, password });
+  await db.auth.signInWithPassword({ email, password });
   toast('注册并登录成功');
   await afterAuth();
 }
-
 async function doLogin(){
   const email = qs('#loginEmail').value.trim();
   const password = qs('#loginPassword').value;
   if(!email || !password) return toast('请填写邮箱与密码');
-  const { error } = await client.auth.signInWithPassword({ email, password });
+  const { error } = await db.auth.signInWithPassword({ email, password });
   if(error) return toast('登录失败：'+error.message);
-  toast('登录成功');
-  await afterAuth();
+  toast('登录成功'); await afterAuth();
 }
-
 async function afterAuth(){
-  const { data:{ user } } = await client.auth.getUser();
+  const { data:{ user } } = await db.auth.getUser();
   if(!user){
-    authView.classList.remove('hidden');
-    appView.classList.add('hidden');
-    userBox.classList.add('hidden');
-    return;
+    authView.classList.remove('hidden'); appView.classList.add('hidden'); userBox.classList.add('hidden'); return;
   }
-  userEmailEl.textContent = user.email||'';
-  userBox.classList.remove('hidden');
-  authView.classList.add('hidden');
-  appView.classList.remove('hidden');
-  setActiveTab('dashboard');
-  await renderAll();
+  userEmailEl.textContent = user.email||''; userBox.classList.remove('hidden');
+  authView.classList.add('hidden'); appView.classList.remove('hidden');
+  setActiveTab('dashboard'); await renderAll();
 }
 
 // ====== Tabs ======
-tabs.forEach(btn=>{
-  btn.addEventListener('click', ()=> setActiveTab(btn.dataset.tab));
-});
+tabs.forEach(btn=> btn.addEventListener('click', ()=> setActiveTab(btn.dataset.tab)));
 function setActiveTab(name){
   tabs.forEach(b=> b.classList.toggle('active', b.dataset.tab===name));
   Object.entries(panels).forEach(([k,el])=> el.classList.toggle('hidden', k!==name));
@@ -121,38 +99,56 @@ function setActiveTab(name){
   if(name==='calendar')  loadCalendar();
   if(name==='collection')loadCollection();
 }
-
-async function renderAll(){
-  await Promise.all([loadDashboard(), loadProjects(), loadCalendar(), loadCollection()]);
-}
+async function renderAll(){ await Promise.all([loadDashboard(), loadProjects(), loadCalendar(), loadCollection()]); }
 
 // ====== Dashboard ======
+let allProjectsCache = [];
 async function loadDashboard(){
-  const { data, error } = await client.from('projects').select('*').order('updated_at',{ascending:false}).limit(100);
+  const { data, error } = await db.from('projects').select('*').order('updated_at',{ascending:false}).limit(100);
   if(error){ console.error(error); return; }
+  allProjectsCache = data || [];
 
-  const paidSum = sum((data||[]).map(p=> (p.paid_amount||0) + (p.deposit_amount||0)));
-  const dueSum  = sum((data||[]).map(p=> Math.max((p.quote_amount||0) - (p.deposit_amount||0) - (p.paid_amount||0), 0)));
-  const total   = (data||[]).length;
-  const done    = (data||[]).filter(p=> p.final_date || p.status==='done').length;
+  const paidSum = sum(allProjectsCache.map(p=> (p.paid_amount||0)+(p.deposit_amount||0)));
+  const dueSum  = sum(allProjectsCache.map(p=> Math.max((p.quote_amount||0)-(p.deposit_amount||0)-(p.paid_amount||0),0)));
+  const total   = allProjectsCache.length;
+  const done    = allProjectsCache.filter(p=> p.final_date || p.status==='done').length;
 
   kpiPaid.textContent  = fmtMoney(paidSum);
   kpiDue.textContent   = fmtMoney(dueSum);
   kpiCount.textContent = `${done} / ${total}`;
 
+  // 最近列表（可点击跳转）
   recentList.innerHTML = '';
-  (data||[]).slice(0,8).forEach(p=>{
+  allProjectsCache.slice(0,8).forEach(p=>{
     const row = document.createElement('div');
     row.className='item';
     row.innerHTML = `
-      <div class="badge-dot"><span class="dot" style="background:${p.final_date?'var(--ok)':'var(--warn)'}"></span>
-      <strong>${p.title||'-'}</strong> · ${p.brand||''} · ${p.type||''}</div>
+      <a href="javascript:void(0)" data-goto="${p.id}">
+        <div class="badge-dot">
+          <span class="dot" style="background:${p.final_date?'var(--ok)':'var(--warn)'}"></span>
+          <strong>${p.title||'-'}</strong> · ${p.brand||''} · ${p.type||''}
+        </div>
+      </a>
       <div>${p.final_date ? 'Final: '+fmtDate(p.final_date) : '未完成'}</div>`;
     recentList.appendChild(row);
   });
+
+  // 点击跳项目页并高亮
+  recentList.querySelectorAll('[data-goto]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const id = a.getAttribute('data-goto');
+      setActiveTab('projects');
+      // 等项目表加载完再滚动定位
+      highlightTargetId = id;
+      loadProjects();
+    });
+  });
 }
 
-// ====== 新建/编辑 项目 ======
+// ====== 项目 CRUD & 内联编辑 ======
+let currentRows = [];
+let highlightTargetId = null;
+
 btnNew.addEventListener('click', ()=>{
   frmProject.reset();
   qs('#specSummary').textContent = '输出规格：点击选择';
@@ -172,51 +168,71 @@ frmProject.addEventListener('submit', async (e)=>{
   p.status       ||= 'open';
   p.updated_at = new Date().toISOString();
 
-  const { error } = await client.from('projects').insert(p);
+  const { error } = await db.from('projects').insert(p);
   if(error){ toast('新建失败：'+error.message); return; }
   dlgProject.close(); toast('已保存');
   await loadProjects(); await loadDashboard(); await loadCalendar(); await loadCollection();
 });
 
-// 更新“合并控件”的摘要文字
-qsa('[name="spec"],[name="ratio"]').forEach(el=> el.addEventListener('change', ()=>{
+// 合并控件摘要文字
+function updateSpecSummary(){
   const spec = qs('[name="spec"]').value || '';
   const ratio= qs('[name="ratio"]').value || '';
   const dur  = qs('[name="duration"]').value || '';
   const parts = [spec, ratio].filter(Boolean).join(' · ');
   qs('#specSummary').textContent = '输出规格：' + (parts || '点击选择') + (dur?` · ${dur}`:'');
-}));
-qs('[name="duration"]').addEventListener('input', ()=>{
-  const spec = qs('[name="spec"]').value || '';
-  const ratio= qs('[name="ratio"]').value || '';
-  const dur  = qs('[name="duration"]').value || '';
-  const parts = [spec, ratio].filter(Boolean).join(' · ');
-  qs('#specSummary').textContent = '输出规格：' + (parts || '点击选择') + (dur?` · ${dur}`:'');
-});
-qsa('[name="a_copy"],[name="b_copy"],[name="final_date"]').forEach(el=> el.addEventListener('change', ()=>{
+}
+function updateScheduleSummary(){
   const a = fmtDate(qs('[name="a_copy"]').value);
   const b = fmtDate(qs('[name="b_copy"]').value);
   const f = fmtDate(qs('[name="final_date"]').value);
   qs('#scheduleSummary').textContent = '档期：' + [a||'-', b||'-', f||'-'].join(' / ');
-}));
+}
+qsa('[name="spec"],[name="ratio"]').forEach(el=> el.addEventListener('change', updateSpecSummary));
+qs('[name="duration"]').addEventListener('input', updateSpecSummary);
+qsa('[name="a_copy"],[name="b_copy"],[name="final_date"]').forEach(el=> el.addEventListener('change', updateScheduleSummary));
 
-// ====== 列表 CRUD ======
+// 搜索
+searchInput.addEventListener('input', ()=> renderTable(currentRows, searchInput.value.trim().toLowerCase()));
+
 async function loadProjects(){
-  const { data, error } = await client.from('projects').select('*').order('updated_at',{ascending:false});
+  const { data, error } = await db.from('projects').select('*').order('updated_at',{ascending:false});
   if(error){ toast('读取失败：'+error.message); return; }
+  currentRows = data || [];
+  renderTable(currentRows, searchInput.value.trim().toLowerCase());
+
+  // 若来自“最近项目”点击，定位并高亮
+  if(highlightTargetId){
+    const tr = tbodyProjects.querySelector(`tr[data-id="${highlightTargetId}"]`);
+    if(tr){
+      tr.classList.add('row-highlight');
+      tr.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(()=> tr.classList.remove('row-highlight'), 2200);
+    }
+    highlightTargetId = null;
+  }
+}
+
+function renderTable(rows, keyword=''){
   tbodyProjects.innerHTML = '';
-  (data||[]).forEach(p=>{
+  const list = keyword ? rows.filter(p=>{
+    const hay = `${p.title||''} ${p.brand||''} ${p.type||''}`.toLowerCase();
+    return hay.includes(keyword);
+  }) : rows;
+
+  list.forEach(p=>{
     const specView  = [p.spec||'', p.ratio||''].filter(Boolean).join(' · ');
     const schedule  = [fmtDate(p.a_copy), fmtDate(p.b_copy), fmtDate(p.final_date)].map(x=>x||'-').join(' / ');
     const q = Number(p.quote_amount||0), d=Number(p.deposit_amount||0), pa=Number(p.paid_amount||0);
     const u = Math.max(q - d - pa, 0);
 
     const tr = document.createElement('tr');
+    tr.dataset.id = p.id;
     tr.innerHTML = `
       ${td('title', p.title)}
       ${td('brand', p.brand)}
       ${td('type', p.type)}
-      ${td('spec_ratio', specView)}         <!-- 展示合并，但编辑时可直接改单元格文字或用弹窗新建 -->
+      ${td('spec_ratio', specView)}
       ${td('duration', p.duration)}
       ${td('schedule', schedule)}
       ${td('amounts', `¥${q} / ¥${d} / ¥${pa} / <strong>¥${u}</strong>`)}
@@ -229,30 +245,27 @@ async function loadProjects(){
         <button class="btn danger btn-del">删除</button>
       </td>`;
 
-    // 双击可编辑（针对基础字段）
-    qsa('[data-edit]', tr).forEach(cell=>{
-      cell.addEventListener('dblclick', ()=>{
-        cell.contentEditable = true;
-        cell.classList.add('cell-edit');
-        cell.focus();
-      });
-      cell.addEventListener('blur', ()=>{ cell.contentEditable=false; cell.classList.remove('cell-edit'); });
+    // 行内编辑：事件代理
+    tr.addEventListener('click', e=>{
+      const cell = e.target.closest('td[data-field]');
+      if(!cell) return;
+      openCellEditor(cell, p);
     });
 
-    // 保存：把合并展示的列拆回字段
-    qs('.btn-save', tr).addEventListener('click', async ()=>{
+    // 保存
+    tr.querySelector('.btn-save').addEventListener('click', async ()=>{
       const payload = collectRow(tr, p);
       payload.updated_at = new Date().toISOString();
-      const { error } = await client.from('projects').update(payload).eq('id', p.id);
+      const { error } = await db.from('projects').update(payload).eq('id', p.id);
       if(error){ toast('保存失败：'+error.message); return; }
       toast('已保存');
       await loadDashboard(); await loadCalendar(); await loadCollection();
     });
 
     // 删除
-    qs('.btn-del', tr).addEventListener('click', async ()=>{
+    tr.querySelector('.btn-del').addEventListener('click', async ()=>{
       if(!confirm('确定删除该项目？')) return;
-      const { error } = await client.from('projects').delete().eq('id', p.id);
+      const { error } = await db.from('projects').delete().eq('id', p.id);
       if(error){ toast('删除失败：'+error.message); return; }
       tr.remove(); toast('已删除');
       await loadDashboard(); await loadCalendar(); await loadCollection();
@@ -262,24 +275,151 @@ async function loadProjects(){
   });
 }
 
-function td(field, val){
-  return `<td data-field="${field}" data-edit>${val==null?'':val}</td>`;
+function td(field, val){ return `<td data-field="${field}" data-edit>${val==null?'':val}</td>`; }
+
+// —— 打开单元格编辑器（根据字段类型选择控件） ——
+function openCellEditor(cell, row){
+  const field = cell.dataset.field;
+  const text = (cell.textContent||'').trim();
+
+  // 基本文本/数字/日期直接替换为 input
+  const simpleInput = (type='text', value='')=>{
+    cell.innerHTML = '';
+    const input = document.createElement('input');
+    input.type = type; input.value = value;
+    input.addEventListener('blur', ()=> { cell.textContent = input.value; });
+    input.addEventListener('keydown', ev=>{ if(ev.key==='Enter'){ input.blur(); }});
+    cell.appendChild(input); input.focus(); input.select();
+  };
+
+  if(field==='type'){
+    const sel = document.createElement('select');
+    ['LOOKBOOK','形象片','TVC','宣传片','纪录片','花絮'].forEach(v=>{
+      const o=document.createElement('option'); o.value=o.textContent=v;
+      if(v===text) o.selected=true; sel.appendChild(o);
+    });
+    cell.innerHTML=''; cell.appendChild(sel); sel.focus();
+    sel.addEventListener('change', ()=> cell.textContent = sel.value);
+    sel.addEventListener('blur', ()=> cell.textContent = sel.value);
+    return;
+  }
+
+  if(field==='currency'){
+    const input = document.createElement('input');
+    input.value = text || 'CNY'; cell.innerHTML=''; cell.appendChild(input); input.focus();
+    input.addEventListener('blur', ()=> cell.textContent = input.value.trim()||'CNY');
+    return;
+  }
+
+  if(field==='pay_status'){
+    const sel = document.createElement('select');
+    [['unpaid','未收'],['deposit','已收定金'],['paid','已收全款']].forEach(([k,cap])=>{
+      const o=document.createElement('option'); o.value=k; o.textContent=cap;
+      if((row.pay_status||'unpaid')===k) o.selected=true; sel.appendChild(o);
+    });
+    cell.innerHTML=''; cell.appendChild(sel); sel.focus();
+    sel.addEventListener('change', ()=> cell.textContent = sel.options[sel.selectedIndex].textContent);
+    sel.addEventListener('blur', ()=> cell.textContent = sel.options[sel.selectedIndex].textContent);
+    return;
+  }
+
+  if(field==='payment_due_date'){
+    simpleInput('date', row.payment_due_date ? fmtDate(row.payment_due_date) : '');
+    return;
+  }
+
+  if(field==='amounts'){
+    // 金额编辑：弹出小面板
+    inlineContent.innerHTML = `
+      <div class="grid three" style="padding:16px;">
+        <label>报价<input id="a_quote" type="number" value="${Number(row.quote_amount||0)}"></label>
+        <label>定金<input id="a_dep" type="number" value="${Number(row.deposit_amount||0)}"></label>
+        <label>已收<input id="a_paid" type="number" value="${Number(row.paid_amount||0)}"></label>
+      </div>`;
+    inlineDialog.showModal();
+    inlineCancel.onclick = ()=> inlineDialog.close();
+    inlineOk.onclick = ()=>{
+      const q = Number(qs('#a_quote').value||0);
+      const d = Number(qs('#a_dep').value||0);
+      const p = Number(qs('#a_paid').value||0);
+      const u = Math.max(q-d-p,0);
+      cell.innerHTML = `¥${q} / ¥${d} / ¥${p} / <strong>¥${u}</strong>`;
+      inlineDialog.close();
+    };
+    return;
+  }
+
+  if(field==='spec_ratio'){
+    // 输出规格（合并）编辑
+    inlineContent.innerHTML = `
+      <div class="grid three" style="padding:16px;">
+        <label>规格
+          <select id="e_spec">
+            <option ${row.spec==='1080p'?'selected':''}>1080p</option>
+            <option ${row.spec==='4K'?'selected':''}>4K</option>
+          </select>
+        </label>
+        <label>比例
+          <select id="e_ratio">
+            ${['16:9','9:16','1:1','3:4','4:3'].map(r=>`<option ${row.ratio===r?'selected':''}>${r}</option>`).join('')}
+          </select>
+        </label>
+        <label>时长<input id="e_dur" value="${row.duration||''}" placeholder="30s / 2min"></label>
+      </div>`;
+    inlineDialog.showModal();
+    inlineCancel.onclick = ()=> inlineDialog.close();
+    inlineOk.onclick = ()=>{
+      const spec = qs('#e_spec').value; const ratio = qs('#e_ratio').value; const dur=qs('#e_dur').value.trim();
+      cell.textContent = [spec, ratio].filter(Boolean).join(' · '); // 列表展示，不把时长塞进这个单元格
+      // 同时把“时长”单元格也更新显示
+      const durCell = cell.parentElement.querySelector('[data-field="duration"]');
+      if(durCell) durCell.textContent = dur;
+      inlineDialog.close();
+    };
+    return;
+  }
+
+  if(field==='schedule'){
+    // 档期（合并）编辑
+    const a0 = row.a_copy?fmtDate(row.a_copy):'', b0=row.b_copy?fmtDate(row.b_copy):'', f0=row.final_date?fmtDate(row.final_date):'';
+    inlineContent.innerHTML = `
+      <div class="grid three" style="padding:16px;">
+        <label>A copy<input id="e_a" type="date" value="${a0}"></label>
+        <label>B copy<input id="e_b" type="date" value="${b0}"></label>
+        <label>Final<input id="e_f" type="date" value="${f0}"></label>
+      </div>`;
+    inlineDialog.showModal();
+    inlineCancel.onclick = ()=> inlineDialog.close();
+    inlineOk.onclick = ()=>{
+      const a=qs('#e_a').value, b=qs('#e_b').value, f=qs('#e_f').value;
+      cell.textContent = [a||'-', b||'-', f||'-'].join(' / ');
+      inlineDialog.close();
+    };
+    return;
+  }
+
+  if(field==='final_link' || field==='title' || field==='brand' || field==='duration'){
+    simpleInput('text', text); return;
+  }
+
+  // 其它默认文本
+  simpleInput('text', text);
 }
 
-// 把表格行的文本收集为更新 payload（把合并列拆回 spec/ratio、a/b/final）
+// 采集一行数据，合并列拆回字段
 function collectRow(tr, origin){
   const get = key => (qs(`[data-field="${key}"]`, tr)?.textContent||'').trim();
 
-  // 拆输出规格列：如 "4K · 16:9"
+  // 输出规格
   let spec = origin.spec, ratio = origin.ratio;
   const specRatio = get('spec_ratio');
   if(specRatio){
     const parts = specRatio.split('·').map(s=>s.trim());
-    spec  = (parts[0]||'').replace(/\s+$/,'') || spec;
-    ratio = (parts[1]||'').replace(/^\s+/,'') || ratio;
+    spec  = (parts[0]||'') || spec;
+    ratio = (parts[1]||'') || ratio;
   }
 
-  // 拆档期列：如 "2025-08-01 / 2025-08-05 / 2025-08-10"
+  // 档期
   let a_copy = origin.a_copy, b_copy = origin.b_copy, final_date = origin.final_date;
   const sched = get('schedule');
   if(sched && sched.includes('/')){
@@ -289,13 +429,18 @@ function collectRow(tr, origin){
     final_date = f && f!=='-' ? f : final_date;
   }
 
-  // 金额列：允许直接改数字（格式：¥q / ¥d / ¥p / ¥u），只回写前三个
+  // 金额：取前三段数值
   let quote_amount = origin.quote_amount, deposit_amount = origin.deposit_amount, paid_amount = origin.paid_amount;
   const amounts = get('amounts');
   if(amounts){
     const nums = amounts.replace(/[^\d./-]/g,'').split('/').map(s=>Number(s.trim())||0);
     if(nums.length>=3){ quote_amount=nums[0]; deposit_amount=nums[1]; paid_amount=nums[2]; }
   }
+
+  // 支付状态：显示中文，需要映射回值
+  const payStatusText = get('pay_status');
+  const mapBack = { '未收':'unpaid', '已收定金':'deposit', '已收全款':'paid' };
+  const pay_status = mapBack[payStatusText] || origin.pay_status || 'unpaid';
 
   return {
     title: get('title') || origin.title,
@@ -307,14 +452,14 @@ function collectRow(tr, origin){
     quote_amount, deposit_amount, paid_amount,
     currency: get('currency') || origin.currency,
     payment_due_date: get('payment_due_date') || origin.payment_due_date,
-    pay_status: get('pay_status') || origin.pay_status,
+    pay_status,
     final_link: get('final_link') || origin.final_link,
   };
 }
 
 // ====== 档期 ======
 async function loadCalendar(){
-  const { data, error } = await client.from('projects').select('title,a_copy,b_copy,final_date,payment_due_date');
+  const { data, error } = await db.from('projects').select('title,a_copy,b_copy,final_date,payment_due_date');
   if(error){ console.error(error); return; }
   const events = [];
   (data||[]).forEach(p=>{
@@ -335,7 +480,7 @@ async function loadCalendar(){
 
 // ====== 作品合集（Final）======
 async function loadCollection(){
-  const { data, error } = await client.from('projects').select('title,brand,final_link,final_date').not('final_link','is',null);
+  const { data, error } = await db.from('projects').select('id,title,brand,final_link,final_date').not('final_link','is',null);
   if(error){ console.error(error); return; }
   collectionGrid.innerHTML = '';
   (data||[]).forEach(p=>{
@@ -354,9 +499,9 @@ async function loadCollection(){
 
 // ====== 启动 ======
 (async function boot(){
-  const { data:{ user } } = await client.auth.getUser();
+  const { data:{ user } } = await db.auth.getUser();
   if(user){
-    qs('#userEmail').textContent = user.email||'';
+    userEmailEl.textContent = user.email||'';
     userBox.classList.remove('hidden');
     authView.classList.add('hidden');
     appView.classList.remove('hidden');
