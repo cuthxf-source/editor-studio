@@ -1,17 +1,25 @@
-// ====== 你的 Supabase 项目配置（已替你填好）======
+// ====== Supabase 配置（已替你填好）======
 const SUPABASE_URL = 'https://lywlcsrndkturdpgvvnc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs';
-
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ====== DOM ======
+// ====== DOM & 小工具 ======
+const qs = (s, el=document)=> el.querySelector(s);
+const qsa = (s, el=document)=> Array.from(el.querySelectorAll(s));
+const toastEl = qs('#toast');
+function toast(m){ toastEl.textContent=m; toastEl.classList.remove('hidden'); setTimeout(()=>toastEl.classList.add('hidden'),1800); }
+const fmtMoney = (n, cur='CNY') => `${cur} ${(Number(n)||0).toLocaleString()}`;
+const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '';
+const sum = arr => arr.reduce((a,b)=> a + (Number(b)||0), 0);
+
+// 视图
 const authView = qs('#authView');
 const appView  = qs('#appView');
 const userBox  = qs('#userBox');
 const userEmailEl = qs('#userEmail');
-const toastEl  = qs('#toast');
 
-const tabs = $qa('.tab');
+// Tabs
+const tabs = qsa('.tab');
 const panels = {
   dashboard: qs('#tab-dashboard'),
   projects:  qs('#tab-projects'),
@@ -19,21 +27,13 @@ const panels = {
   collection: qs('#tab-collection'),
 };
 
-// Auth DOM
-const btnLogin = qs('#btnLogin');
-const btnToSignup = qs('#btnToSignup');
-const btnCancelSignup = qs('#btnCancelSignup');
-const signupPanel = qs('#signupPanel');
-const btnSignup = qs('#btnSignup');
-const btnSignOut = qs('#btnSignOut');
-
-// KPI DOM
+// KPI
 const kpiPaid = qs('#kpiPaid');
-const kpiDue = qs('#kpiDue');
-const kpiCount = qs('#kpiCount');
+const kpiDue  = qs('#kpiDue');
+const kpiCount= qs('#kpiCount');
 const recentList = qs('#recentList');
 
-// Projects DOM
+// Projects
 const btnNew = qs('#btnNew');
 const tbodyProjects = qs('#tbodyProjects');
 const dlgProject = qs('#dlgProject');
@@ -45,106 +45,81 @@ const calendarList = qs('#calendarList');
 const collectionGrid = qs('#collectionGrid');
 
 // Quote
-const quoteForm = qs('#quoteForm');
-
-// ====== 工具函数 ======
-function qs(s, el=document){ return el.querySelector(s); }
-function $qa(s, el=document){ return Array.from(el.querySelectorAll(s)); }
-function toast(msg, type='info'){
-  toastEl.textContent = msg;
-  toastEl.classList.remove('hidden');
-  setTimeout(()=>toastEl.classList.add('hidden'), 2000);
-}
-function fmtMoney(n, cur='CNY'){
-  if(n==null) return '–';
-  const v = Number(n)||0;
-  return `${cur} ${v.toLocaleString()}`;
-}
-function fmtDate(d){
-  if(!d) return '';
-  return new Date(d).toISOString().slice(0,10);
-}
-function nonneg(n){ n = Number(n)||0; return Math.max(n,0); }
+qs('#quoteForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const base = Number(qs('#qBase').value)||0;
+  const e1 = Number(qs('#qEdit').value)||0;
+  const c1 = Number(qs('#qColor').value)||0;
+  const m1 = Number(qs('#qMix').value)||0;
+  const s1 = Number(qs('#qComp').value)||0;
+  const revs = Number(qs('#qRevs').value)||0;
+  const core = (e1 + c1 + m1 + s1) * (base/2);
+  const total = Math.round(core * (1 + 0.1*revs));
+  qs('#qTotal').textContent = `CNY ${total.toLocaleString()}`;
+});
 
 // ====== 登录/注册 ======
-btnToSignup.addEventListener('click', ()=> signupPanel.classList.remove('hidden'));
-btnCancelSignup.addEventListener('click', ()=> signupPanel.classList.add('hidden'));
+qs('#btnToSignup').addEventListener('click', ()=> qs('#signupPanel').classList.remove('hidden'));
+qs('#btnCancelSignup').addEventListener('click', ()=> qs('#signupPanel').classList.add('hidden'));
+qs('#btnSignup').addEventListener('click', doSignup);
+qs('#btnLogin').addEventListener('click', doLogin);
+qs('#btnSignOut').addEventListener('click', async ()=>{ await client.auth.signOut(); location.reload(); });
 
-btnSignup.addEventListener('click', async ()=>{
+client.auth.onAuthStateChange(()=> afterAuth());
+afterAuth();
+
+async function doSignup(){
   const email = qs('#signupEmail').value.trim();
   const password = qs('#signupPassword').value;
-  if(!email || !password){ toast('请填写邮箱与密码'); return; }
-  const { data, error } = await client.auth.signUp({ email, password });
+  if(!email || !password) return toast('请填写邮箱与密码');
+  const { error } = await client.auth.signUp({ email, password });
   if(error){
-    // 如果用户已存在，直接提示去登录
-    if(error.message?.toLowerCase().includes('already')){
-      toast('该邮箱已注册，请直接登录');
-    }else{
-      toast('注册失败：'+error.message);
-    }
-    return;
+    if((error.message||'').toLowerCase().includes('already')) return toast('该邮箱已注册，请直接登录');
+    return toast('注册失败：'+error.message);
   }
-  toast('注册成功，已自动登录');
-  // signUp 在关闭 Confirm email 时，会直接创建 session
-  await afterAuthChanged();
-});
+  // 关闭 Confirm email 时通常会直接有 session；保险起见再尝试一次密码登录
+  await client.auth.signInWithPassword({ email, password });
+  toast('注册并登录成功');
+  await afterAuth();
+}
 
-btnLogin.addEventListener('click', async ()=>{
+async function doLogin(){
   const email = qs('#loginEmail').value.trim();
   const password = qs('#loginPassword').value;
-  if(!email || !password){ toast('请填写邮箱与密码'); return; }
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if(error){ toast('登录失败：'+error.message); return; }
+  if(!email || !password) return toast('请填写邮箱与密码');
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  if(error) return toast('登录失败：'+error.message);
   toast('登录成功');
-  await afterAuthChanged();
-});
+  await afterAuth();
+}
 
-btnSignOut.addEventListener('click', async ()=>{
-  await client.auth.signOut();
-  toast('已退出');
-  authView.classList.remove('hidden');
-  appView.classList.add('hidden');
-  userBox.classList.add('hidden');
-});
-
-// 监听登录态
-client.auth.onAuthStateChange((_event, session)=> afterAuthChanged());
-
-async function afterAuthChanged(){
-  const { data: { user } } = await client.auth.getUser();
+async function afterAuth(){
+  const { data:{ user } } = await client.auth.getUser();
   if(!user){
     authView.classList.remove('hidden');
     appView.classList.add('hidden');
     userBox.classList.add('hidden');
     return;
   }
-  // 登录态
-  userEmailEl.textContent = user.email || '';
+  userEmailEl.textContent = user.email||'';
   userBox.classList.remove('hidden');
   authView.classList.add('hidden');
   appView.classList.remove('hidden');
-
-  // 默认展示首页
   setActiveTab('dashboard');
   await renderAll();
 }
 
 // ====== Tabs ======
 tabs.forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    setActiveTab(btn.dataset.tab);
-  });
+  btn.addEventListener('click', ()=> setActiveTab(btn.dataset.tab));
 });
 function setActiveTab(name){
-  tabs.forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-  Object.entries(panels).forEach(([k,el])=>{
-    el.classList.toggle('hidden', k!==name);
-  });
-  // 切换时刷新数据（轻量）
+  tabs.forEach(b=> b.classList.toggle('active', b.dataset.tab===name));
+  Object.entries(panels).forEach(([k,el])=> el.classList.toggle('hidden', k!==name));
   if(name==='dashboard') loadDashboard();
   if(name==='projects')  loadProjects();
   if(name==='calendar')  loadCalendar();
-  if(name==='collection') loadCollection();
+  if(name==='collection')loadCollection();
 }
 
 async function renderAll(){
@@ -153,30 +128,20 @@ async function renderAll(){
 
 // ====== Dashboard ======
 async function loadDashboard(){
-  const { data, error } = await client.from('projects')
-    .select('*')
-    .order('updated_at', { ascending:false })
-    .limit(50);
-  if(error){ toast('读取项目失败：'+error.message); return; }
+  const { data, error } = await client.from('projects').select('*').order('updated_at',{ascending:false}).limit(100);
+  if(error){ console.error(error); return; }
 
-  // KPI
-  let paidSum = 0, depositSum = 0, quoteSum = 0;
-  let total = data.length, done = 0;
-  for(const p of data){
-    paidSum += Number(p.paid_amount||0);
-    depositSum += Number(p.deposit_amount||0);
-    quoteSum += Number(p.quote_amount||0);
-    if(p.final_date) done++;
-  }
-  const outstanding = Math.max(quoteSum - paidSum - depositSum, 0);
+  const paidSum = sum((data||[]).map(p=> (p.paid_amount||0) + (p.deposit_amount||0)));
+  const dueSum  = sum((data||[]).map(p=> Math.max((p.quote_amount||0) - (p.deposit_amount||0) - (p.paid_amount||0), 0)));
+  const total   = (data||[]).length;
+  const done    = (data||[]).filter(p=> p.final_date || p.status==='done').length;
 
-  kpiPaid.textContent = fmtMoney(paidSum + depositSum);
-  kpiDue.textContent  = fmtMoney(outstanding);
+  kpiPaid.textContent  = fmtMoney(paidSum);
+  kpiDue.textContent   = fmtMoney(dueSum);
   kpiCount.textContent = `${done} / ${total}`;
 
-  // 最近列表
   recentList.innerHTML = '';
-  data.slice(0,8).forEach(p=>{
+  (data||[]).slice(0,8).forEach(p=>{
     const row = document.createElement('div');
     row.className='item';
     row.innerHTML = `
@@ -187,25 +152,11 @@ async function loadDashboard(){
   });
 }
 
-// 报价工具
-quoteForm.addEventListener('submit', e=>{
-  e.preventDefault();
-  const base = Number(qs('#qBase').value)||0;
-  const e1 = Number(qs('#qEdit').value)||0;
-  const c1 = Number(qs('#qColor').value)||0;
-  const m1 = Number(qs('#qMix').value)||0;
-  const s1 = Number(qs('#qComp').value)||0;
-  const revs = Number(qs('#qRevs').value)||0;
-
-  // 粗略计算：各模块系数*(base/2) + 修订 10%/轮
-  const core = (e1 + c1 + m1 + s1) * (base/2);
-  const total = Math.round(core * (1 + 0.1*revs));
-  qs('#qTotal').textContent = `CNY ${total.toLocaleString()}`;
-});
-
-// ====== 项目 CRUD ======
+// ====== 新建/编辑 项目 ======
 btnNew.addEventListener('click', ()=>{
   frmProject.reset();
+  qs('#specSummary').textContent = '输出规格：点击选择';
+  qs('#scheduleSummary').textContent = '档期：点击选择 A/B/Final';
   dlgTitle.textContent = '新建项目';
   dlgProject.showModal();
 });
@@ -213,54 +164,73 @@ btnNew.addEventListener('click', ()=>{
 frmProject.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const fd = new FormData(frmProject);
-  const payload = Object.fromEntries(fd.entries());
-  // 转数字
-  ['quote_amount','deposit_amount','paid_amount'].forEach(k=>payload[k] = Number(payload[k]||0));
-  // pay_status 默认
-  payload.pay_status ||= 'unpaid';
-  // status 列（开合）沿用默认 open
-  // 统一更新时间
-  payload.updated_at = new Date().toISOString();
+  const p = Object.fromEntries(fd.entries());
+  p.quote_amount   = Number(p.quote_amount||0);
+  p.deposit_amount = Number(p.deposit_amount||0);
+  p.paid_amount    = Number(p.paid_amount||0);
+  p.pay_status   ||= 'unpaid';
+  p.status       ||= 'open';
+  p.updated_at = new Date().toISOString();
 
-  const { error } = await client.from('projects').insert(payload);
+  const { error } = await client.from('projects').insert(p);
   if(error){ toast('新建失败：'+error.message); return; }
-  dlgProject.close();
-  toast('已保存');
-  await loadProjects();
-  await loadDashboard();
-  await loadCalendar();
-  await loadCollection();
+  dlgProject.close(); toast('已保存');
+  await loadProjects(); await loadDashboard(); await loadCalendar(); await loadCollection();
 });
 
+// 更新“合并控件”的摘要文字
+qsa('[name="spec"],[name="ratio"]').forEach(el=> el.addEventListener('change', ()=>{
+  const spec = qs('[name="spec"]').value || '';
+  const ratio= qs('[name="ratio"]').value || '';
+  const dur  = qs('[name="duration"]').value || '';
+  const parts = [spec, ratio].filter(Boolean).join(' · ');
+  qs('#specSummary').textContent = '输出规格：' + (parts || '点击选择') + (dur?` · ${dur}`:'');
+}));
+qs('[name="duration"]').addEventListener('input', ()=>{
+  const spec = qs('[name="spec"]').value || '';
+  const ratio= qs('[name="ratio"]').value || '';
+  const dur  = qs('[name="duration"]').value || '';
+  const parts = [spec, ratio].filter(Boolean).join(' · ');
+  qs('#specSummary').textContent = '输出规格：' + (parts || '点击选择') + (dur?` · ${dur}`:'');
+});
+qsa('[name="a_copy"],[name="b_copy"],[name="final_date"]').forEach(el=> el.addEventListener('change', ()=>{
+  const a = fmtDate(qs('[name="a_copy"]').value);
+  const b = fmtDate(qs('[name="b_copy"]').value);
+  const f = fmtDate(qs('[name="final_date"]').value);
+  qs('#scheduleSummary').textContent = '档期：' + [a||'-', b||'-', f||'-'].join(' / ');
+}));
+
+// ====== 列表 CRUD ======
 async function loadProjects(){
   const { data, error } = await client.from('projects').select('*').order('updated_at',{ascending:false});
   if(error){ toast('读取失败：'+error.message); return; }
   tbodyProjects.innerHTML = '';
-  data.forEach(p=>{
+  (data||[]).forEach(p=>{
+    const specView  = [p.spec||'', p.ratio||''].filter(Boolean).join(' · ');
+    const schedule  = [fmtDate(p.a_copy), fmtDate(p.b_copy), fmtDate(p.final_date)].map(x=>x||'-').join(' / ');
+    const q = Number(p.quote_amount||0), d=Number(p.deposit_amount||0), pa=Number(p.paid_amount||0);
+    const u = Math.max(q - d - pa, 0);
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       ${td('title', p.title)}
       ${td('brand', p.brand)}
       ${td('type', p.type)}
-      ${td('spec', p.spec)}
-      ${td('ratio', p.ratio)}
+      ${td('spec_ratio', specView)}         <!-- 展示合并，但编辑时可直接改单元格文字或用弹窗新建 -->
       ${td('duration', p.duration)}
-      ${td('a_copy_date', fmtDate(p.a_copy_date), 'date')}
-      ${td('b_copy_date', fmtDate(p.b_copy_date), 'date')}
-      ${td('final_date', fmtDate(p.final_date), 'date')}
-      ${td('quote_amount', p.quote_amount, 'number')}
-      ${td('deposit_amount', p.deposit_amount, 'number')}
-      ${td('paid_amount', p.paid_amount, 'number')}
-      ${td('currency', p.currency)}
-      ${td('payment_due_date', fmtDate(p.payment_due_date), 'date')}
-      ${td('pay_status', p.pay_status)}
-      ${td('final_link', p.final_link)}
+      ${td('schedule', schedule)}
+      ${td('amounts', `¥${q} / ¥${d} / ¥${pa} / <strong>¥${u}</strong>`)}
+      ${td('currency', p.currency||'CNY')}
+      ${td('payment_due_date', fmtDate(p.payment_due_date))}
+      ${td('pay_status', p.pay_status||'unpaid')}
+      ${td('final_link', p.final_link||'')}
       <td>
         <button class="btn ghost btn-save">保存</button>
         <button class="btn danger btn-del">删除</button>
       </td>`;
-    // 可编辑
-    $qa('[data-edit]', tr).forEach(cell=>{
+
+    // 双击可编辑（针对基础字段）
+    qsa('[data-edit]', tr).forEach(cell=>{
       cell.addEventListener('dblclick', ()=>{
         cell.contentEditable = true;
         cell.classList.add('cell-edit');
@@ -269,57 +239,87 @@ async function loadProjects(){
       cell.addEventListener('blur', ()=>{ cell.contentEditable=false; cell.classList.remove('cell-edit'); });
     });
 
-    // 保存
+    // 保存：把合并展示的列拆回字段
     qs('.btn-save', tr).addEventListener('click', async ()=>{
-      const payload = collectRow(tr);
+      const payload = collectRow(tr, p);
       payload.updated_at = new Date().toISOString();
       const { error } = await client.from('projects').update(payload).eq('id', p.id);
       if(error){ toast('保存失败：'+error.message); return; }
       toast('已保存');
-      await loadDashboard();
-      await loadCalendar();
-      await loadCollection();
+      await loadDashboard(); await loadCalendar(); await loadCollection();
     });
+
     // 删除
     qs('.btn-del', tr).addEventListener('click', async ()=>{
       if(!confirm('确定删除该项目？')) return;
       const { error } = await client.from('projects').delete().eq('id', p.id);
       if(error){ toast('删除失败：'+error.message); return; }
-      tr.remove();
-      toast('已删除');
-      await loadDashboard();
-      await loadCalendar();
-      await loadCollection();
+      tr.remove(); toast('已删除');
+      await loadDashboard(); await loadCalendar(); await loadCollection();
     });
 
     tbodyProjects.appendChild(tr);
   });
 }
-function td(field, val, type='text'){
-  const display = (val==null||val==='') ? '' : (type==='number' ? Number(val) : val);
-  return `<td data-field="${field}" data-edit>${display}</td>`;
+
+function td(field, val){
+  return `<td data-field="${field}" data-edit>${val==null?'':val}</td>`;
 }
-function collectRow(tr){
-  const cells = $qa('[data-field]', tr);
-  const obj = {};
-  cells.forEach(td=>{
-    const key = td.dataset.field;
-    let v = td.textContent.trim();
-    if(['quote_amount','deposit_amount','paid_amount'].includes(key)) v = Number(v||0);
-    if(['a_copy_date','b_copy_date','final_date','payment_due_date'].includes(key)) v = v || null;
-    obj[key]=v;
-  });
-  return obj;
+
+// 把表格行的文本收集为更新 payload（把合并列拆回 spec/ratio、a/b/final）
+function collectRow(tr, origin){
+  const get = key => (qs(`[data-field="${key}"]`, tr)?.textContent||'').trim();
+
+  // 拆输出规格列：如 "4K · 16:9"
+  let spec = origin.spec, ratio = origin.ratio;
+  const specRatio = get('spec_ratio');
+  if(specRatio){
+    const parts = specRatio.split('·').map(s=>s.trim());
+    spec  = (parts[0]||'').replace(/\s+$/,'') || spec;
+    ratio = (parts[1]||'').replace(/^\s+/,'') || ratio;
+  }
+
+  // 拆档期列：如 "2025-08-01 / 2025-08-05 / 2025-08-10"
+  let a_copy = origin.a_copy, b_copy = origin.b_copy, final_date = origin.final_date;
+  const sched = get('schedule');
+  if(sched && sched.includes('/')){
+    const [a,b,f] = sched.split('/').map(s=>s.trim());
+    a_copy = a && a!=='-' ? a : a_copy;
+    b_copy = b && b!=='-' ? b : b_copy;
+    final_date = f && f!=='-' ? f : final_date;
+  }
+
+  // 金额列：允许直接改数字（格式：¥q / ¥d / ¥p / ¥u），只回写前三个
+  let quote_amount = origin.quote_amount, deposit_amount = origin.deposit_amount, paid_amount = origin.paid_amount;
+  const amounts = get('amounts');
+  if(amounts){
+    const nums = amounts.replace(/[^\d./-]/g,'').split('/').map(s=>Number(s.trim())||0);
+    if(nums.length>=3){ quote_amount=nums[0]; deposit_amount=nums[1]; paid_amount=nums[2]; }
+  }
+
+  return {
+    title: get('title') || origin.title,
+    brand: get('brand') || origin.brand,
+    type:  get('type')  || origin.type,
+    spec, ratio,
+    duration: get('duration') || origin.duration,
+    a_copy, b_copy, final_date,
+    quote_amount, deposit_amount, paid_amount,
+    currency: get('currency') || origin.currency,
+    payment_due_date: get('payment_due_date') || origin.payment_due_date,
+    pay_status: get('pay_status') || origin.pay_status,
+    final_link: get('final_link') || origin.final_link,
+  };
 }
 
 // ====== 档期 ======
 async function loadCalendar(){
-  const { data, error } = await client.from('projects').select('title,a_copy_date,b_copy_date,final_date,payment_due_date');
-  if(error){ toast('读取档期失败：'+error.message); return; }
+  const { data, error } = await client.from('projects').select('title,a_copy,b_copy,final_date,payment_due_date');
+  if(error){ console.error(error); return; }
   const events = [];
-  data.forEach(p=>{
-    if(p.a_copy_date) events.push({date:p.a_copy_date, label:`A copy · ${p.title}`});
-    if(p.b_copy_date) events.push({date:p.b_copy_date, label:`B copy · ${p.title}`});
+  (data||[]).forEach(p=>{
+    if(p.a_copy) events.push({date:p.a_copy, label:`A copy · ${p.title}`});
+    if(p.b_copy) events.push({date:p.b_copy, label:`B copy · ${p.title}`});
     if(p.final_date)  events.push({date:p.final_date,  label:`Final · ${p.title}`});
     if(p.payment_due_date) events.push({date:p.payment_due_date, label:`应收款 · ${p.title}`});
   });
@@ -336,9 +336,9 @@ async function loadCalendar(){
 // ====== 作品合集（Final）======
 async function loadCollection(){
   const { data, error } = await client.from('projects').select('title,brand,final_link,final_date').not('final_link','is',null);
-  if(error){ toast('读取合集失败：'+error.message); return; }
+  if(error){ console.error(error); return; }
   collectionGrid.innerHTML = '';
-  data.forEach(p=>{
+  (data||[]).forEach(p=>{
     const card = document.createElement('div');
     card.className='card video';
     card.innerHTML = `
@@ -354,9 +354,9 @@ async function loadCollection(){
 
 // ====== 启动 ======
 (async function boot(){
-  const { data: { user } } = await client.auth.getUser();
+  const { data:{ user } } = await client.auth.getUser();
   if(user){
-    userEmailEl.textContent = user.email || '';
+    qs('#userEmail').textContent = user.email||'';
     userBox.classList.remove('hidden');
     authView.classList.add('hidden');
     appView.classList.remove('hidden');
