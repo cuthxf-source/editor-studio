@@ -1,164 +1,234 @@
-<!doctype html>
+<!-- editor-studio / index.html  v0.9 (2025-08-13) -->
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="stylesheet" href="./styles.css?v=ui2" />
-  <!-- Supabase JS -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <link rel="icon" href="icon.png?v=0.9" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="styles.css?v=0.9" />
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
-<header class="topbar">
-  <h1 id="app-title">剪辑师项目管理系统 <span class="badge-gold">Life_HAN</span></h1>
-  <nav class="nav">
-    <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
-    <button id="btn-projects" class="nav-btn">项目</button>
-    <button id="btn-schedule" class="nav-btn">档期</button>
-    <button id="btn-gallery" class="nav-btn">作品合集</button>
-    <button id="btn-finance" class="nav-btn">财务</button>
-    <button id="btn-logout" class="nav-btn ghost">退出登录</button>
-  </nav>
-</header>
 
-<main id="view-home" class="view active">
-  <!-- KPI 财务概览 -->
-  <section class="kpis">
-    <div class="kpi">
-      <div class="kpi-label">已收款</div>
-      <div id="kpi-paid" class="kpi-value">¥0</div>
+  <!-- 顶部导航 -->
+  <header class="site-header">
+    <div class="nav-wrap container">
+      <div class="brand">剪辑师项目管理系统 <span class="muted">· Life_HAN</span></div>
+      <nav class="nav-center">
+        <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
+        <button id="btn-projects" class="nav-btn">项目</button>
+        <button id="btn-schedule" class="nav-btn">档期</button>
+        <button id="btn-gallery" class="nav-btn">作品合集</button>
+        <button id="btn-finance" class="nav-btn">财务</button>
+      </nav>
+      <div class="nav-right">
+        <button id="btn-logout" class="nav-btn ghost">退出登录</button>
+      </div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">已收定金</div>
-      <div id="kpi-deposit" class="kpi-value">¥0</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">未收款</div>
-      <div id="kpi-unpaid" class="kpi-value">¥0</div>
+  </header>
+
+  <!-- 登录视图（未登录时显示） -->
+  <section id="view-auth" class="container auth-view hidden">
+    <div class="card auth-card">
+      <h2>登录</h2>
+      <p class="muted">（邮箱/密码）或已打开邮箱确认后直接登录</p>
+      <form id="auth-form" class="auth-form">
+        <input id="email" type="email" required placeholder="邮箱" />
+        <input id="password" type="password" required placeholder="密码" />
+        <button type="submit">登录 / 注册</button>
+      </form>
+      <p id="auth-tip" class="muted small"></p>
     </div>
   </section>
 
-  <!-- 最近项目 -->
-  <section class="card">
-    <div class="card-header">
-      <h2>最近项目</h2>
-      <button class="btn-ghost" id="go-list">查看全部</button>
-    </div>
-    <div id="recent-list" class="list"></div>
-  </section>
+  <!-- 主容器 -->
+  <main class="container main-wrap">
 
-  <!-- 成本计算器（已修复点击跳回登录问题） -->
-  <section class="card">
-    <div class="card-header"><h2>成本计算器</h2></div>
-    <form id="calc-form" class="calc-grid">
-      <label>报价（含/不含税均可）<input type="number" step="0.01" id="quote" /></label>
-      <label>定金<input type="number" step="0.01" id="deposit" /></label>
-      <label>已收尾款<input type="number" step="0.01" id="paid" /></label>
-      <button type="submit" class="btn">计算</button>
-      <div class="calc-result" id="calc-result">—</div>
-    </form>
-  </section>
-</main>
+    <!-- 首页 -->
+    <section id="view-home" class="view active">
+      <div class="grid-3 kpi">
+        <div class="card"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
+        <div class="card"><div class="kpi-label">已收定金</div><div id="kpi-deposit" class="kpi-num">¥0</div></div>
+        <div class="card"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
+      </div>
 
-<!-- 项目列表 -->
-<section id="view-projects" class="view">
-  <div class="card-header">
-    <h2>项目列表</h2>
-    <div class="filters">
-      <div class="select" data-select>
-        <button class="select-btn" data-select-toggle>类型&输出规格</button>
-        <div class="select-menu">
-          <button data-type="LOOKBOOK@1080p">LOOKBOOK · 1080p</button>
-          <button data-type="LOOKBOOK@4K">LOOKBOOK · 4K</button>
-          <button data-type="TVC@4K">TVC · 4K</button>
-          <button data-type="宣传片@1080p">宣传片 · 1080p</button>
-          <button data-type="纪录片@4K">纪录片 · 4K</button>
-          <button data-type="花絮@1080p">花絮 · 1080p</button>
-          <button data-type="">全部</button>
+      <div class="card">
+        <div class="section-head">
+          <h3>最近项目</h3>
+          <button id="go-list" class="btn-ghost">查看全部</button>
+        </div>
+        <div id="recent-list" class="list"></div>
+      </div>
+
+      <div class="grid-2">
+        <!-- 完成影片数与类型统计 -->
+        <div class="card">
+          <div class="section-head"><h3>完成影片数</h3></div>
+          <div id="done-summary" class="list compact"></div>
+        </div>
+
+        <!-- 成本计算器（按工种/难度/修改次数） -->
+        <div class="card">
+          <div class="section-head"><h3>成本计算器</h3></div>
+          <form id="calc-form" class="calc-form">
+            <div class="calc-row">
+              <label><input type="checkbox" name="task" value="edit"> 剪辑</label>
+              <label><input type="checkbox" name="task" value="color"> 调色</label>
+              <label><input type="checkbox" name="task" value="mix"> 混音</label>
+              <label><input type="checkbox" name="task" value="comp"> 合成</label>
+            </div>
+            <div class="calc-row">
+              <label>难度
+                <select id="calc-level">
+                  <option value="1">普通</option>
+                  <option value="1.25">偏难</option>
+                  <option value="1.5">困难</option>
+                </select>
+              </label>
+              <label>修改次数
+                <input id="calc-rev" type="number" min="0" step="1" value="0" />
+              </label>
+            </div>
+            <div class="calc-row">
+              <label>报价格（含/不含税均可）<input id="quote" type="number" min="0" step="0.01"></label>
+              <label>定金<input id="deposit" type="number" min="0" step="0.01"></label>
+              <label>已收尾款<input id="paid" type="number" min="0" step="0.01"></label>
+            </div>
+            <button type="submit">计算</button>
+            <div id="calc-result" class="calc-result">—</div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- 项目列表 -->
+    <section id="view-projects" class="view hidden">
+      <div class="section-head">
+        <h2>项目列表</h2>
+        <div class="toolbar">
+          <div class="select" data-select>
+            <button class="select-trigger" data-select-toggle>类型&输出规格</button>
+            <div class="select-menu">
+              <button data-type="">全部</button>
+              <button data-type="LOOKBOOK@1080p">LOOKBOOK · 1080p</button>
+              <button data-type="LOOKBOOK@4k">LOOKBOOK · 4K</button>
+              <button data-type="形象片@1080p">形象片 · 1080p</button>
+              <button data-type="TVC@4k">TVC · 4K</button>
+              <button data-type="纪录片@4k">纪录片 · 4K</button>
+              <button data-type="花絮@1080p">花絮 · 1080p</button>
+            </div>
+          </div>
+          <div class="select" data-select>
+            <button class="select-trigger" data-select-toggle>支付状态</button>
+            <div class="select-menu">
+              <button data-pay="">全部</button>
+              <button data-pay="paid">已结清</button>
+              <button data-pay="deposit">已收定金</button>
+              <button data-pay="unpaid">未收款</button>
+            </div>
+          </div>
+          <button id="btn-new" class="btn">新建项目</button>
         </div>
       </div>
 
-      <div class="select" data-select>
-        <button class="select-btn" data-select-toggle>支付状态</button>
-        <div class="select-menu">
-          <button data-pay="paid">已结清</button>
-          <button data-pay="deposit">已收定金</button>
-          <button data-pay="unpaid">未收款</button>
-          <button data-pay="">全部</button>
-        </div>
+      <div id="projects-wrap" class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>项目</th><th>品牌</th><th>类型&输出规格</th><th>影片条数</th>
+              <th>A/B/Final</th><th>支付状态</th><th>报价/定金/实收</th>
+              <th>合作制片</th><th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="projects-body"></tbody>
+        </table>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- 桌面表格 / 小屏自动转卡片，避免横向拖动 -->
-  <div id="projects-wrap" class="table-wrap">
-    <table id="projects-table" class="table">
-      <thead>
-      <tr>
-        <th>项目</th>
-        <th>品牌</th>
-        <th>类型&输出规格</th>
-        <th>影片条数</th>
-        <th>A/B/Final</th>
-        <th>支付状态</th>
-        <th>报价/定金/实收</th>
-        <th>合作制片</th>
-        <th>备注</th>
-      </tr>
-      </thead>
-      <tbody id="projects-body"></tbody>
-    </table>
-  </div>
-</section>
+    <!-- 作品合集 -->
+    <section id="view-gallery" class="view hidden">
+      <div class="section-head"><h2>作品合集</h2></div>
+      <div id="gallery-grid" class="poster-grid"></div>
+    </section>
 
-<!-- 作品合集 -->
-<section id="view-gallery" class="view">
-  <div class="card-header"><h2>作品合集</h2></div>
-  <div id="gallery-grid" class="gallery"></div>
-</section>
-
-<!-- 财务 -->
-<section id="view-finance" class="view">
-  <div class="card-header"><h2>财务</h2></div>
-  <div class="kpis">
-    <div class="kpi"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-value">¥0</div></div>
-    <div class="kpi"><div class="kpi-label">已收定金</div><div id="f-deposit" class="kpi-value">¥0</div></div>
-    <div class="kpi"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-value">¥0</div></div>
-  </div>
-  <div id="finance-list" class="list"></div>
-</section>
-
-<!-- 档期（使用“档期”按钮触发，日历模态） -->
-<div id="schedule-modal" class="modal">
-  <div class="modal-dialog">
-    <div class="modal-head">
-      <h3>档期（日历）</h3>
-      <div class="schedule-controls">
-        <button id="cal-prev" class="btn-ghost">‹</button>
-        <div id="cal-label" class="month-label"></div>
-        <button id="cal-next" class="btn-ghost">›</button>
-        <button id="cal-close" class="btn-ghost">关闭</button>
+    <!-- 财务 -->
+    <section id="view-finance" class="view hidden">
+      <div class="section-head"><h2>财务</h2></div>
+      <div class="grid-3 kpi">
+        <div class="card"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
+        <div class="card"><div class="kpi-label">已收定金</div><div id="f-deposit" class="kpi-num">¥0</div></div>
+        <div class="card"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
       </div>
-    </div>
-    <div class="calendar">
-      <div class="cal-head">
-        <span>Mon</span><span>Tue</span><span>Wed</span>
-        <span>Thu</span><span>Fri</span><span class="muted">Sat</span><span class="muted">Sun</span>
+
+      <div class="grid-3">
+        <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
+        <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
+        <div class="card"><div class="section-head"><h3>已完结未结款（账龄）</h3></div><div id="aging" class="list compact"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head"><h3>收入趋势（90 天）</h3></div>
+        <div id="trend" class="trend"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 档期（模态） -->
+  <div id="schedule-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <button id="cal-prev" class="ghost">上一月</button>
+        <div id="cal-label"></div>
+        <button id="cal-next" class="ghost">下一月</button>
+      </div>
+      <div class="cal-grid-head">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
       </div>
       <div id="cal-grid" class="cal-grid"></div>
-      <div class="legend">
-        <span class="dot ab">A/B</span>
-        <span class="dot final">Final</span>
-      </div>
+      <div class="modal-foot"><button id="cal-close">关闭</button></div>
     </div>
   </div>
-</div>
 
-<!-- 你的 Supabase 配置（已替换为你提供的值） -->
-<script>
-  window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
-  window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
-</script>
-<script src="./app.js?v=ui2"></script>
+  <!-- 新建项目（模态） -->
+  <div id="new-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head"><h3>新建项目</h3></div>
+      <form id="new-form" class="form">
+        <div class="grid-2">
+          <label>项目名<input name="title" required></label>
+          <label>品牌<input name="brand"></label>
+        </div>
+        <div class="grid-3">
+          <label>类型<select name="type"><option>LOOKBOOK</option><option>形象片</option><option>TVC</option><option>宣传片</option><option>纪录片</option><option>花絮</option></select></label>
+          <label>输出规格<select name="spec"><option>1080p</option><option>4k</option></select></label>
+          <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
+        </div>
+        <div class="grid-3">
+          <label>定金<input name="deposit_amount" type="number" min="0" step="0.01"></label>
+          <label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label>
+          <label>报价总额<input name="quote_amount" type="number" min="0" step="0.01"></label>
+        </div>
+        <div class="grid-2">
+          <label>合作制片（姓名）<input name="producer_name"></label>
+          <label>合作制片（联系方式）<input name="producer_contact"></label>
+        </div>
+        <label>备注<textarea name="notes" rows="3"></textarea></label>
+        <div class="modal-foot">
+          <button type="button" class="ghost" id="new-cancel">取消</button>
+          <button type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    window.SUPABASE_URL = 'https://lywlcsrndkturdpgvvnc.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs';
+  </script>
+  <script src="app.js?v=0.9"></script>
 </body>
 </html>
