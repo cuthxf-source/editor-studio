@@ -112,3 +112,4 @@ html,body{
 .legend .dot::before{content:"";width:12px;height:12px;border-radius:6px;border:1px solid var(--line);display:inline-block}
 .legend .ab::before{background:var(--chip-a)}
 .legend .final::before{background:var(--chip-final)}
+/* trigger rebuild */
