@@ -1,0 +1,10 @@
+{
+  "name": "剪辑ERP管理",
+  "version": "1.0.0",
+  "description": "一个最基础的飞书多维表格插件示例",
+  "icon": "icon.png",
+  "scenes": [
+    "record_view"
+  ],
+  "entry": "index.html"
+}
