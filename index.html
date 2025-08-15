@@ -59,11 +59,11 @@
       <button class="tab" data-tab="collection">作品合集</button>
     </nav>
 
-    <!-- 首页：财务总览 + 快速报价 -->
+    <!-- 首页：财务总览 + 快速报价 + 最近 -->
     <section id="tab-dashboard" class="tab-panel">
       <div class="grid three">
         <div class="card kpi">
-          <div class="kpi-title">已收款（含订金）</div>
+          <div class="kpi-title">已收款（含定金）</div>
           <div id="kpiPaid" class="kpi-value">–</div>
         </div>
         <div class="card kpi">
@@ -127,15 +127,10 @@
               <th>标题</th>
               <th>品牌</th>
               <th>类型</th>
-              <th>规格</th>
-              <th>比例</th>
+              <th>输出规格</th>
               <th>时长</th>
-              <th>A copy</th>
-              <th>B copy</th>
-              <th>Final</th>
-              <th>报价</th>
-              <th>订金</th>
-              <th>已收</th>
+              <th>档期（A/B/Final）</th>
+              <th>报价/定金/已收/未收</th>
               <th>币种</th>
               <th>应收款日</th>
               <th>支付状态</th>
@@ -148,7 +143,7 @@
       </div>
     </section>
 
-    <!-- 档期（小日历/清单） -->
+    <!-- 档期（清单） -->
     <section id="tab-calendar" class="tab-panel hidden">
       <div class="card">
         <div class="card-title">档期清单</div>
@@ -162,10 +157,11 @@
     </section>
   </main>
 
-  <!-- 新建/编辑项目弹窗 -->
+  <!-- 新建/编辑项目弹窗（合并“输出规格/档期”控件） -->
   <dialog id="dlgProject" class="dialog">
     <form method="dialog" id="frmProject" class="dialog-body">
       <h3 id="dlgTitle">新建项目</h3>
+
       <div class="grid three">
         <label>标题<input name="title" required /></label>
         <label>品牌<input name="brand" /></label>
@@ -180,23 +176,58 @@
           </select>
         </label>
 
-        <label>输出规格<select name="spec"><option>1080p</option><option>4K</option></select></label>
-        <label>输出比例<select name="ratio"><option>16:9</option><option>9:16</option><option>1:1</option><option>3:4</option><option>4:3</option></select></label>
-        <label>时长（如 30s / 2min）<input name="duration" placeholder="30s 或 2min" /></label>
+        <!-- 输出规格（合并控件：点击展开选择 spec+ratio） -->
+        <label class="col-3">
+          <details id="specDetails">
+            <summary id="specSummary">输出规格：点击选择</summary>
+            <div class="grid three specbox">
+              <label>规格
+                <select name="spec">
+                  <option>1080p</option>
+                  <option>4K</option>
+                </select>
+              </label>
+              <label>比例
+                <select name="ratio">
+                  <option>16:9</option><option>9:16</option><option>1:1</option>
+                  <option>3:4</option><option>4:3</option>
+                </select>
+              </label>
+              <label>时长（如 30s / 2min）
+                <input name="duration" placeholder="30s 或 2min" />
+              </label>
+            </div>
+          </details>
+        </label>
 
-        <label>A copy 时间<input type="date" name="a_copy_date" /></label>
-        <label>B copy 时间<input type="date" name="b_copy_date" /></label>
-        <label>Final 时间<input type="date" name="final_date" /></label>
+        <!-- 档期（合并控件：点击展开 A/B/Final） -->
+        <label class="col-3">
+          <details id="scheduleDetails">
+            <summary id="scheduleSummary">档期：点击选择 A/B/Final</summary>
+            <div class="grid three">
+              <label>A copy<input type="date" name="a_copy" /></label>
+              <label>B copy<input type="date" name="b_copy" /></label>
+              <label>Final<input type="date" name="final_date" /></label>
+            </div>
+          </details>
+        </label>
 
+        <!-- 金额区 -->
         <label>报价<input type="number" name="quote_amount" value="0" /></label>
-        <label>订金<input type="number" name="deposit_amount" value="0" /></label>
+        <label>定金<input type="number" name="deposit_amount" value="0" /></label>
         <label>已收<input type="number" name="paid_amount" value="0" /></label>
 
         <label>币种<input name="currency" value="CNY" /></label>
         <label>应收款日<input type="date" name="payment_due_date" /></label>
-        <label>支付状态<select name="pay_status"><option value="unpaid">未收</option><option value="deposit">已收定金</option><option value="paid">已收全款</option></select></label>
+        <label>支付状态
+          <select name="pay_status">
+            <option value="unpaid">未收</option>
+            <option value="deposit">已收定金</option>
+            <option value="paid">已收全款</option>
+          </select>
+        </label>
 
-        <label>成片链接<input name="final_link" placeholder="https://..." /></label>
+        <label class="col-3">成片链接<input name="final_link" placeholder="https://..." /></label>
         <label class="col-3">备注<textarea name="notes" rows="2"></textarea></label>
       </div>
 
