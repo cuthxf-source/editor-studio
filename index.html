@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>剪辑师 ERP（MVP）</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <script defer src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script defer src="./app.js"></script>
 </head>
@@ -24,7 +25,7 @@
   <!-- 未登录视图 -->
   <main id="authView" class="container">
     <section class="panel">
-      <h2>登录</h2>
+      <h1 class="h-title">欢迎回来</h1>
       <div class="grid">
         <label>邮箱<input id="loginEmail" type="email" placeholder="you@example.com" /></label>
         <label>密码<input id="loginPassword" type="password" placeholder="••••••••" /></label>
@@ -36,7 +37,7 @@
     </section>
 
     <section id="signupPanel" class="panel soft hidden">
-      <h3>注册新账号</h3>
+      <h2 class="h-sub">注册新账号</h2>
       <div class="grid">
         <label>邮箱<input id="signupEmail" type="email" placeholder="you@example.com" /></label>
         <label>密码<input id="signupPassword" type="password" placeholder="至少 6 位" /></label>
@@ -101,7 +102,7 @@
               <label>修改轮次（每轮 10%）
                 <input type="number" min="0" max="10" value="1" id="qRevs" />
               </label>
-              <label>基础单价（货币随心）
+              <label>基础单价
                 <input type="number" min="0" value="2000" id="qBase" />
               </label>
             </div>
@@ -117,8 +118,12 @@
     <!-- 项目页：列表 + 新建 / 编辑 -->
     <section id="tab-projects" class="tab-panel hidden">
       <div class="toolbar">
-        <button id="btnNew" class="btn primary">新建项目</button>
-        <span class="muted">提示：双击单元格即可编辑，右侧保存。</span>
+        <div class="left">
+          <button id="btnNew" class="btn primary">新建项目</button>
+        </div>
+        <div class="right">
+          <input id="searchInput" class="search" placeholder="搜索：标题/品牌/类型" />
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table" id="tblProjects">
@@ -167,25 +172,18 @@
         <label>品牌<input name="brand" /></label>
         <label>类型
           <select name="type">
-            <option>LOOKBOOK</option>
-            <option>形象片</option>
-            <option>TVC</option>
-            <option>宣传片</option>
-            <option>纪录片</option>
-            <option>花絮</option>
+            <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
+            <option>宣传片</option><option>纪录片</option><option>花絮</option>
           </select>
         </label>
 
-        <!-- 输出规格（合并控件：点击展开选择 spec+ratio） -->
+        <!-- 输出规格（合并控件） -->
         <label class="col-3">
           <details id="specDetails">
             <summary id="specSummary">输出规格：点击选择</summary>
             <div class="grid three specbox">
               <label>规格
-                <select name="spec">
-                  <option>1080p</option>
-                  <option>4K</option>
-                </select>
+                <select name="spec"><option>1080p</option><option>4K</option></select>
               </label>
               <label>比例
                 <select name="ratio">
@@ -193,14 +191,12 @@
                   <option>3:4</option><option>4:3</option>
                 </select>
               </label>
-              <label>时长（如 30s / 2min）
-                <input name="duration" placeholder="30s 或 2min" />
-              </label>
+              <label>时长（如 30s / 2min）<input name="duration" placeholder="30s 或 2min" /></label>
             </div>
           </details>
         </label>
 
-        <!-- 档期（合并控件：点击展开 A/B/Final） -->
+        <!-- 档期（合并控件） -->
         <label class="col-3">
           <details id="scheduleDetails">
             <summary id="scheduleSummary">档期：点击选择 A/B/Final</summary>
@@ -236,6 +232,15 @@
         <button id="btnSaveProject" value="default" class="btn primary">保存</button>
       </menu>
     </form>
+  </dialog>
+
+  <!-- 规格/档期编辑面板（列表内联弹出） -->
+  <dialog id="inlineEditor" class="dialog small">
+    <div id="inlineContent"></div>
+    <menu class="dialog-actions">
+      <button id="inlineCancel" class="btn ghost">取消</button>
+      <button id="inlineOk" class="btn primary">确定</button>
+    </menu>
   </dialog>
 
   <!-- toast -->
