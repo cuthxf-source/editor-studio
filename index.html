@@ -3,179 +3,184 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>剪辑师 ERP 管理系统</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://esm.sh/@supabase/supabase-js@2" type="module"></script>
+  <title>剪辑 ERP 管理 · Projects</title>
+  <link rel="stylesheet" href="./style.css" />
+  <!-- Supabase JS v2 CDN -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="logo">🎬</span>
-      <span>剪辑师 ERP 管理系统</span>
+      <div class="dot"></div>
+      <strong>剪辑 ERP 管理</strong>
     </div>
-    <nav class="nav">
-      <button class="nav-btn" data-tab="dashboard">首页</button>
-      <button class="nav-btn" data-tab="projects">项目</button>
-      <button class="nav-btn" data-tab="calendar">档期</button>
-      <button class="nav-btn" data-tab="gallery">成片</button>
-    </nav>
+
     <div class="auth">
-      <span id="authUser"></span>
-      <button id="btnLogin" class="ghost">登录</button>
-      <button id="btnLogout" class="ghost danger" hidden>退出</button>
+      <div id="authed" class="hidden">
+        <span id="user-email" class="muted"></span>
+        <button id="btn-logout" class="btn ghost">退出登录</button>
+      </div>
+
+      <div id="anon">
+        <input id="login-email" type="email" placeholder="你的邮箱" />
+        <button id="btn-login" class="btn">登录 / 获取验证码</button>
+      </div>
     </div>
   </header>
 
-  <main>
-    <!-- 首页 -->
-    <section id="tab-dashboard" class="tab active">
-      <div class="grid 3">
-        <div class="card kpi">
-          <div class="kpi-label">项目总数</div>
-          <div id="kpiTotal" class="kpi-value">0</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-label">未完成</div>
-          <div id="kpiOpen" class="kpi-value link">0</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-label">已完成</div>
-          <div id="kpiDone" class="kpi-value link">0</div>
-        </div>
-      </div>
+  <main class="container">
+    <section class="card">
+      <h2>新建 / 编辑项目</h2>
+      <form id="project-form" autocomplete="off">
+        <input type="hidden" id="project-id" />
 
-      <div class="grid 2">
-        <div class="card">
-          <div class="card-title">报价计算器</div>
-          <form id="quoteForm" class="quote">
-            <div class="row"><label>剪辑</label><input type="number" min="0" id="qEdit" placeholder="小时"></div>
-            <div class="row"><label>调色</label><input type="number" min="0" id="qGrade" placeholder="小时"></div>
-            <div class="row"><label>混音</label><input type="number" min="0" id="qMix" placeholder="小时"></div>
-            <div class="row"><label>合成</label><input type="number" min="0" id="qComp" placeholder="小时"></div>
-            <div class="row"><label>修改轮次</label><input type="number" min="0" id="qRounds" placeholder="次"></div>
-            <div class="row">
-              <label>难度</label>
-              <select id="qLevel">
-                <option value="1">常规</option>
-                <option value="1.2">进阶</option>
-                <option value="1.5">高难</option>
-              </select>
-            </div>
-            <div class="row">
-              <button type="button" id="btnQuote">计算</button>
-              <div class="quote-result"><span>¥</span><strong id="quotePrice">0</strong></div>
-            </div>
-          </form>
-          <div class="hint">（小时费率与加价系数后续可改为可配置）</div>
+        <div class="grid">
+          <label>
+            标题（必填）
+            <input id="title" required />
+          </label>
+          <label>
+            品牌
+            <input id="brand" />
+          </label>
+          <label>
+            类型
+            <select id="type">
+              <option value="">—</option>
+              <option>LOOKBOOK</option>
+              <option>形象片</option>
+              <option>TVC</option>
+              <option>宣传片</option>
+              <option>纪录片</option>
+              <option>花絮</option>
+            </select>
+          </label>
+          <label>
+            输出规格
+            <select id="spec">
+              <option value="">—</option>
+              <option>1080p</option>
+              <option>4K</option>
+            </select>
+          </label>
+          <label>
+            输出比例
+            <select id="ratio">
+              <option value="">—</option>
+              <option>16:9</option>
+              <option>9:16</option>
+              <option>1:1</option>
+              <option>3:4</option>
+              <option>4:3</option>
+            </select>
+          </label>
+          <label>
+            时长（如 30s / 2min）
+            <input id="duration" placeholder="例如：30s 或 2min" />
+          </label>
+
+          <label>
+            A copy 时间
+            <input id="a_copy_date" type="date" />
+          </label>
+          <label>
+            B copy 时间
+            <input id="b_copy_date" type="date" />
+          </label>
+          <label>
+            Final 时间
+            <input id="final_date" type="date" />
+          </label>
+
+          <label>
+            收款状态
+            <select id="pay_status">
+              <option>unpaid</option>
+              <option>deposit</option>
+              <option>paid</option>
+            </select>
+          </label>
+          <label>
+            项目状态
+            <select id="status">
+              <option>open</option>
+              <option>in_progress</option>
+              <option>done</option>
+              <option>archived</option>
+            </select>
+          </label>
+
+          <label class="col-2">
+            成片链接
+            <input id="final_link" placeholder="https://…" />
+          </label>
+
+          <label class="col-2">
+            备注
+            <textarea id="notes" rows="3" placeholder="补充说明…"></textarea>
+          </label>
         </div>
 
-        <div class="card">
-          <div class="card-title">近期进度</div>
-          <ul id="recentList" class="list"></ul>
+        <div class="actions">
+          <button type="submit" class="btn" id="btn-save">保存</button>
+          <button type="button" class="btn ghost" id="btn-reset">清空表单</button>
+          <button type="button" class="btn danger hidden" id="btn-delete">删除</button>
         </div>
-      </div>
+      </form>
     </section>
 
-    <!-- 项目 -->
-    <section id="tab-projects" class="tab">
+    <section class="card">
+      <h2>项目列表</h2>
+
       <div class="toolbar">
-        <button id="btnAdd">新建项目</button>
-        <div class="spacer"></div>
-        <input id="search" class="input" placeholder="搜索项目 / 品牌 / 关键字">
-        <select id="viewMode" class="input">
-          <option value="list">列表</option>
-          <option value="card">卡片</option>
+        <input id="search" placeholder="搜索标题 / 品牌…" />
+        <select id="filter-status" title="按状态">
+          <option value="">全部状态</option>
+          <option>open</option>
+          <option>in_progress</option>
+          <option>done</option>
+          <option>archived</option>
         </select>
+        <select id="filter-pay" title="按收款">
+          <option value="">全部收款</option>
+          <option>unpaid</option>
+          <option>deposit</option>
+          <option>paid</option>
+        </select>
+        <button id="btn-refresh" class="btn ghost">刷新</button>
       </div>
-      <div id="projectsContainer" class="table"></div>
-    </section>
 
-    <!-- 档期 -->
-    <section id="tab-calendar" class="tab">
-      <div class="card">
-        <div class="card-title">档期（A/B/Final）</div>
-        <div id="calendar" class="calendar"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>标题</th>
+              <th>品牌</th>
+              <th>类型</th>
+              <th>规格</th>
+              <th>比例</th>
+              <th>时长</th>
+              <th>A</th>
+              <th>B</th>
+              <th>Final</th>
+              <th>收款</th>
+              <th>状态</th>
+              <th>成片</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
       </div>
-    </section>
 
-    <!-- 成片 -->
-    <section id="tab-gallery" class="tab">
-      <div class="card">
-        <div class="card-title">成片合集</div>
-        <div id="gallery" class="masonry"></div>
-      </div>
+      <p id="empty" class="muted hidden">暂无数据。</p>
     </section>
   </main>
 
-  <!-- 登录弹窗 -->
-  <dialog id="loginDialog">
-    <form method="dialog" class="dialog">
-      <h3>登录</h3>
-      <input id="loginEmail" type="email" placeholder="邮箱" required />
-      <input id="loginPwd" type="password" placeholder="密码" required />
-      <div class="row">
-        <button id="doLogin" type="button">登录</button>
-        <button id="openSignup" type="button" class="ghost">去注册</button>
-      </div>
-    </form>
-  </dialog>
+  <footer class="foot">
+    <span class="muted">© Editor Studio</span>
+  </footer>
 
-  <!-- 注册弹窗 -->
-  <dialog id="signupDialog">
-    <form method="dialog" class="dialog">
-      <h3>注册</h3>
-      <input id="signupEmail" type="email" placeholder="邮箱" required />
-      <input id="signupPwd" type="password" placeholder="密码（至少 6 位）" required />
-      <button id="doSignup" type="button">创建账号</button>
-    </form>
-  </dialog>
-
-  <!-- 新建/编辑项目弹窗 -->
-  <dialog id="editDialog">
-    <form method="dialog" class="dialog">
-      <h3 id="editTitle">新建项目</h3>
-      <input id="pTitle" placeholder="项目名称（必填）" required />
-      <input id="pBrand" placeholder="品牌/客户" />
-      <select id="pType">
-        <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
-        <option>宣传片</option><option>纪录片</option><option>花絮</option>
-      </select>
-      <div class="row">
-        <select id="pSpec"><option>1080p</option><option>4K</option></select>
-        <select id="pRatio">
-          <option>16:9</option><option>9:16</option><option>1:1</option>
-          <option>3:4</option><option>4:3</option>
-        </select>
-        <input id="pDuration" placeholder="时长（s/min）">
-      </div>
-      <div class="row">
-        <input id="pACopy" type="date" />
-        <input id="pBCopy" type="date" />
-        <input id="pFinal" type="date" />
-      </div>
-      <div class="row">
-        <select id="pStatus">
-          <option value="open">未完成</option>
-          <option value="done">已完成</option>
-        </select>
-        <select id="pPay">
-          <option value="unpaid">未收款</option>
-          <option value="deposit">已收定金</option>
-          <option value="paid">已收款</option>
-        </select>
-      </div>
-      <input id="pFinalLink" placeholder="成片链接（可选）" />
-      <textarea id="pNotes" rows="3" placeholder="备注/修改意见概述"></textarea>
-      <div class="row">
-        <button id="saveProject" type="button">保存</button>
-        <button id="deleteProject" type="button" class="ghost danger" hidden>删除</button>
-      </div>
-    </form>
-  </dialog>
-
-  <script type="module" src="./app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
