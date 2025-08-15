@@ -10,8 +10,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.
 .hidden{display:none!important}
 
 .topbar{position:sticky;top:0;z-index:10;background:var(--card);display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:8px;font-size:16px}
-.badge{background:var(--brand-ghost);color:var(--brand);padding:2px 8px;border-radius:999px;font-weight:600}
+.brand{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800}
+.badge{background:var(--brand-ghost);color:var(--brand);padding:2px 8px;border-radius:999px;font-weight:700}
 .user-box{display:flex;align-items:center;gap:10px}
 
 .container{max-width:1200px;margin:28px auto;padding:0 16px}
@@ -41,7 +41,7 @@ textarea{resize:vertical}
 .card{background:var(--card);padding:16px;border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .card-title{font-weight:800;margin-bottom:10px}
 .kpi{display:flex;flex-direction:column;gap:6px}
-.kpi-title{color:var(--muted)}
+.kpi-title{color:var(--muted);font-size:13px}
 .kpi-value{font-size:28px;font-weight:900}
 
 .table-wrap{overflow:auto;background:var(--card);border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.04)}
@@ -68,5 +68,11 @@ textarea{resize:vertical}
 .dialog .dialog-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
 
 .quote .quote-result{margin-left:auto;font-weight:900}
+
+#specDetails summary, #scheduleDetails summary{
+  cursor:pointer; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff;
+}
+#specDetails[open] summary, #scheduleDetails[open] summary{background:#f9fbff}
+.specbox{margin-top:10px}
 
 .toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.2)}
