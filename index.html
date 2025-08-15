@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="stylesheet" href="styles.css?v=0.4" />
+  <link rel="stylesheet" href="./styles.css?v=0.3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     window.SUPABASE_URL      = "https://lywlcsrndkturdpgvvnc.supabase.co";
@@ -28,8 +28,8 @@
 <section id="view-login" class="view active">
   <div class="login-panel">
     <h2>登录</h2>
-    <input id="email" type="email" placeholder="邮箱" />
-    <input id="password" type="password" placeholder="密码" />
+    <input id="email" type="email" placeholder="邮箱"/>
+    <input id="password" type="password" placeholder="密码"/>
     <button id="login-submit">登录 / 注册</button>
   </div>
 </section>
@@ -45,28 +45,15 @@
     <div class="panel-head"><h3>最近项目</h3></div>
     <div id="recent-list" class="list"></div>
   </div>
-
-  <!-- 报价分析器 -->
   <div class="panel">
-    <h3>报价分析器</h3>
-    <div class="quote-grid">
-      <input id="q-title"   placeholder="项目名"/>
-      <input id="q-prod"    placeholder="制片"/>
-      <select id="q-type">
-        <option>LookBook</option><option>形象片</option><option>TVC</option><option>纪录片</option><option>微电影</option>
-      </select>
-      <input id="q-base" type="number" placeholder="基础价格"/>
-      <input id="q-length" type="number" placeholder="时长(秒)"/>
-      <label><input id="q-edit" checked type="checkbox">剪辑 </label>
-      <label><input id="q-color" checked type="checkbox">调色 </label>
-      <label><input id="q-audio" checked type="checkbox">混音 </label>
-      <label><input id="q-comp" type="checkbox">合成 </label>
-      <label>创意密度<input id="q-creative" type="range" min="0" max="100" value="30"></label>
-      <label>紧急系数<input id="q-rush" type="range" min="0" max="100" value="0" step="10"></label>
-      <select id="q-rev"><option>4</option><option>5</option><option>6</option></select>
-      <label>合成难度<input id="q-compRate" type="range" min="0" max="100" value="0" step="10"></label>
-      <div>不含税：<strong id="q-net">¥0</strong>　含税：<strong id="q-gross">¥0</strong></div>
-    </div>
+    <div><strong>成本计算器</strong></div>
+    <form id="calc-form">
+      <input id="quote" type="number" placeholder="总报价"/>
+      <input id="deposit" type="number" placeholder="已收定金"/>
+      <input id="paid" type="number" placeholder="已收尾款"/>
+      <button>计算</button>
+    </form>
+    <div id="calc-result" style="margin-top:6px">未收款：¥0</div>
   </div>
 </section>
 
@@ -75,41 +62,36 @@
   <div class="panel"><h3>项目列表</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>项目</th><th>合作制片</th><th>影片类型&条数&规格</th><th>进度</th><th>支付状态</th><th>金额</th><th>备注</th></tr></thead>
+        <thead><tr><th>项目</th><th>品牌</th><th>类型&规格</th><th>条数</th><th>进度</th><th>支付状态</th><th>金额</th></tr></thead>
         <tbody id="projects-body"></tbody>
       </table>
     </div>
   </div>
 </section>
 
-<!-- 档期 -->
-<section id="view-schedule" class="view">
-  <div class="panel">
-    <div class="panel-head center">
-      <button id="cal-prev">◀</button><h3 id="cal-label"></h3><button id="cal-next">▶</button>
+<!-- 档期弹窗 -->
+<div id="schedule-modal" class="modal">
+  <div class="modal-card">
+    <div class="row">
+      <button id="cal-prev">◀</button>
+      <span id="cal-label"></span>
+      <button id="cal-next">▶</button>
     </div>
     <div id="cal-grid" class="cal-grid"></div>
+    <div class="modal-actions"><button id="cal-close">关闭</button></div>
   </div>
-</section>
+</div>
 
-<!-- 作品合集 -->
+<!-- 作品 -->
 <section id="view-gallery" class="view">
   <div class="panel"><h3>作品合集</h3><div id="gallery-grid" class="poster-grid"></div></div>
 </section>
 
 <!-- 财务 -->
 <section id="view-finance" class="view">
-  <div class="kpi-row">
-    <div class="kpi-card kpi-gold"><div>已收款</div><strong id="f-paid">¥0</strong></div>
-    <div class="kpi-card kpi-yellow"><div>已收定金</div><strong id="f-deposit">¥0</strong></div>
-    <div class="kpi-card kpi-red"><div>未收款</div><strong id="f-unpaid">¥0</strong></div>
-  </div>
-  <div class="panel"><h3>合作金额最高伙伴 (TOP5)</h3><div id="rank-partner" class="list"></div></div>
-  <div class="panel"><h3>单值最高项目 (TOP5)</h3><div id="rank-project" class="list"></div></div>
-  <div class="panel"><h3>已完结未结款</h3><div id="aging-list"   class="list"></div></div>
-  <div class="panel"><h3>收入趋势</h3><canvas id="trend"></canvas></div>
+  <div class="panel"><h3>财务</h3><div id="finance-list" class="list"></div></div>
 </section>
 
-<script src="app.js?v=0.4"></script>
+<script src="./app.js?v=0.3.1"></script>
 </body>
 </html>
