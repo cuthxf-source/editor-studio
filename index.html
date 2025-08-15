@@ -1,298 +1,213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>剪辑 ERP 管理</title>
-  <meta name="description" content="剪辑项目管理系统 - Supabase + GitHub Pages" />
-  <style>
-    body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-  </style>
-  <!-- 引入 Supabase JS v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>剪辑师 ERP（MVP）</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script defer src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script defer src="./app.js"></script>
 </head>
 <body>
-  <!-- 主要应用容器 -->
-  <div id="app"></div>
+  <!-- 顶部 -->
+  <header class="topbar">
+    <div class="brand">
+      <strong>剪辑师 ERP</strong>
+      <span class="badge">MVP</span>
+    </div>
+    <div id="userBox" class="user-box hidden">
+      <span id="userEmail"></span>
+      <button id="btnSignOut" class="btn ghost">退出</button>
+    </div>
+  </header>
 
-  <!-- 应用逻辑脚本 -->
-  <script type="module">
-    // =========================
-    // Supabase 连接配置
-    // =========================
-    const SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
+  <!-- 未登录视图 -->
+  <main id="authView" class="container">
+    <section class="panel">
+      <h2>登录</h2>
+      <div class="grid">
+        <label>邮箱<input id="loginEmail" type="email" placeholder="you@example.com" /></label>
+        <label>密码<input id="loginPassword" type="password" placeholder="••••••••" /></label>
+      </div>
+      <div class="actions">
+        <button id="btnLogin" class="btn primary">登录</button>
+        <button id="btnToSignup" class="btn ghost">首次使用请先注册 →</button>
+      </div>
+    </section>
 
-    const { createClient } = window.supabase;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <section id="signupPanel" class="panel soft hidden">
+      <h3>注册新账号</h3>
+      <div class="grid">
+        <label>邮箱<input id="signupEmail" type="email" placeholder="you@example.com" /></label>
+        <label>密码<input id="signupPassword" type="password" placeholder="至少 6 位" /></label>
+      </div>
+      <div class="actions">
+        <button id="btnSignup" class="btn">注册</button>
+        <button id="btnCancelSignup" class="btn ghost">取消</button>
+      </div>
+      <p class="hint">已关闭“邮箱确认”，注册成功即可直接登录。</p>
+    </section>
+  </main>
 
-    // =========================
-    // UI 样式
-    // =========================
-    const mount = document.getElementById("app");
-    const css = `
-      .wrap{max-width:1080px;margin:32px auto;padding:16px}
-      .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
-      h1{font-size:28px;margin:0 0 8px}
-      .muted{color:#666;font-size:13px}
-      .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-      input,select,textarea{padding:10px;border:1px solid #ddd;border-radius:10px;outline:none;font-size:14px}
-      input:focus,select:focus,textarea:focus{border-color:#222}
-      button{padding:10px 14px;border:1px solid #222;background:#222;color:#fff;border-radius:10px;font-size:14px;cursor:pointer}
-      button.ghost{background:#fff;color:#222}
-      table{width:100%;border-collapse:collapse;margin-top:12px}
-      th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:14px;vertical-align:top}
-      .right{display:flex;gap:8px;align-items:center}
-      .badge{padding:3px 8px;border-radius:999px;background:#f6f7f8;border:1px solid #eee;font-size:12px}
-    `;
-    const style = document.createElement("style");
-    style.textContent = css;
-    document.head.appendChild(style);
+  <!-- 已登录视图 -->
+  <main id="appView" class="container hidden">
+    <!-- 导航 -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">首页总览</button>
+      <button class="tab" data-tab="projects">项目</button>
+      <button class="tab" data-tab="calendar">档期</button>
+      <button class="tab" data-tab="collection">作品合集</button>
+    </nav>
 
-    // =========================
-    // UI 结构
-    // =========================
-    mount.innerHTML = `
-      <div class="wrap">
-        <div class="card">
-          <h1>剪辑 ERP 管理</h1>
-          <div class="muted">登录后可管理项目：新建 / 编辑 / 删除 / 搜索。</div>
-          <div class="row" id="authRow">
-            <input id="email" type="email" placeholder="邮箱">
-            <input id="password" type="password" placeholder="密码（至少6位）">
-            <button id="btnSignUp">注册</button>
-            <button id="btnSignIn">登录</button>
-            <button id="btnSignOut" class="ghost" style="display:none">退出</button>
-          </div>
-          <div class="muted" id="me"></div>
+    <!-- 首页：财务总览 + 快速报价 -->
+    <section id="tab-dashboard" class="tab-panel">
+      <div class="grid three">
+        <div class="card kpi">
+          <div class="kpi-title">已收款（含订金）</div>
+          <div id="kpiPaid" class="kpi-value">–</div>
         </div>
-
-        <div class="card" id="projectFormCard" style="display:none">
-          <div class="row">
-            <input id="title" placeholder="项目标题 *" style="flex:1">
-            <input id="brand" placeholder="品牌">
-            <select id="type">
-              <option value="">影片类型</option>
-              <option>LOOKBOOK</option>
-              <option>形象片</option>
-              <option>TVC</option>
-              <option>宣传片</option>
-              <option>纪录片</option>
-              <option>花絮</option>
-            </select>
-            <input id="spec" placeholder="输出规格，如 1080p/4K">
-            <select id="ratio">
-              <option value="">输出比例</option>
-              <option>16:9</option>
-              <option>9:16</option>
-              <option>1:1</option>
-              <option>3:4</option>
-              <option>4:3</option>
-            </select>
-            <input id="duration" placeholder="时长（如 30s / 2min）">
-          </div>
-          <div class="row">
-            <input id="a_copy" type="date">
-            <input id="b_copy" type="date">
-            <input id="final_date" type="date">
-            <select id="pay_status">
-              <option value="unpaid">未收款</option>
-              <option value="deposit">已收定金</option>
-              <option value="paid">已收款</option>
-            </select>
-            <select id="status">
-              <option value="open">未完成</option>
-              <option value="closed">已完成</option>
-            </select>
-          </div>
-          <div class="row">
-            <input id="final_link" placeholder="成片链接">
-            <textarea id="notes" placeholder="备注" style="flex:1;min-height:48px"></textarea>
-          </div>
-          <div class="right">
-            <button id="btnSave">保存/更新</button>
-            <button id="btnReset" class="ghost">重置表单</button>
-            <span class="badge" id="editingFlag" style="display:none">正在编辑</span>
-          </div>
+        <div class="card kpi">
+          <div class="kpi-title">未收款</div>
+          <div id="kpiDue" class="kpi-value">–</div>
         </div>
-
-        <div class="card" id="projectListCard" style="display:none">
-          <div class="row">
-            <input id="q" style="flex:1" placeholder="搜索：标题 / 品牌 / 备注">
-            <button id="btnRefresh" class="ghost">刷新列表</button>
-          </div>
-          <table id="tbl">
-            <thead>
-              <tr>
-                <th style="width:22%">标题 / 品牌</th>
-                <th>类型 / 规格 / 比例 / 时长</th>
-                <th>A/B/Final</th>
-                <th>收款 / 状态</th>
-                <th>成片链接</th>
-                <th style="width:140px">操作</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <div class="muted" id="emptyHint" style="display:none">暂无数据，点击上方保存添加一个项目。</div>
+        <div class="card kpi">
+          <div class="kpi-title">项目数量（完成/全部）</div>
+          <div id="kpiCount" class="kpi-value">–</div>
         </div>
       </div>
-    `;
 
-    // ============ 工具函数 ============
-    const $ = (id) => document.getElementById(id);
-    const toast = (msg) => alert(msg);
+      <div class="grid two">
+        <div class="card">
+          <div class="card-title">按时间展示（最近项目）</div>
+          <div id="recentList" class="list"></div>
+        </div>
 
-    // ============ 认证 ============
-    async function signUp() {
-      const email = $("email").value.trim();
-      const password = $("password").value.trim();
-      if (!email || password.length < 6) return toast("请输入邮箱，密码至少 6 位");
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) return toast("注册失败：" + error.message);
-      toast("注册成功，已登录。");
-      await syncUI();
-    }
+        <div class="card">
+          <div class="card-title">快速报价（工具）</div>
+          <form id="quoteForm" class="quote">
+            <div class="grid two">
+              <label>剪辑（难度 1~3）
+                <input type="number" min="0" max="3" value="1" id="qEdit" />
+              </label>
+              <label>调色（难度 0~3）
+                <input type="number" min="0" max="3" value="1" id="qColor" />
+              </label>
+              <label>混音（难度 0~3）
+                <input type="number" min="0" max="3" value="1" id="qMix" />
+              </label>
+              <label>合成（难度 0~3）
+                <input type="number" min="0" max="3" value="1" id="qComp" />
+              </label>
+              <label>修改轮次（每轮 10%）
+                <input type="number" min="0" max="10" value="1" id="qRevs" />
+              </label>
+              <label>基础单价（货币随心）
+                <input type="number" min="0" value="2000" id="qBase" />
+              </label>
+            </div>
+            <div class="actions">
+              <button class="btn" type="submit">计算</button>
+              <div class="quote-result"><span>报价：</span><strong id="qTotal">–</strong></div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
 
-    async function signIn() {
-      const email = $("email").value.trim();
-      const password = $("password").value.trim();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return toast("登录失败：" + error.message);
-      await syncUI();
-    }
+    <!-- 项目页：列表 + 新建 / 编辑 -->
+    <section id="tab-projects" class="tab-panel hidden">
+      <div class="toolbar">
+        <button id="btnNew" class="btn primary">新建项目</button>
+        <span class="muted">提示：双击单元格即可编辑，右侧保存。</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="tblProjects">
+          <thead>
+            <tr>
+              <th>标题</th>
+              <th>品牌</th>
+              <th>类型</th>
+              <th>规格</th>
+              <th>比例</th>
+              <th>时长</th>
+              <th>A copy</th>
+              <th>B copy</th>
+              <th>Final</th>
+              <th>报价</th>
+              <th>订金</th>
+              <th>已收</th>
+              <th>币种</th>
+              <th>应收款日</th>
+              <th>支付状态</th>
+              <th>成片链接</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyProjects"></tbody>
+        </table>
+      </div>
+    </section>
 
-    async function signOut() {
-      await supabase.auth.signOut();
-      await syncUI();
-    }
+    <!-- 档期（小日历/清单） -->
+    <section id="tab-calendar" class="tab-panel hidden">
+      <div class="card">
+        <div class="card-title">档期清单</div>
+        <div id="calendarList" class="list"></div>
+      </div>
+    </section>
 
-    supabase.auth.onAuthStateChange(async () => {
-      await syncUI();
-    });
+    <!-- 作品合集（Final） -->
+    <section id="tab-collection" class="tab-panel hidden">
+      <div id="collectionGrid" class="collection"></div>
+    </section>
+  </main>
 
-    async function syncUI() {
-      const { data: { user } } = await supabase.auth.getUser();
-      $("btnSignOut").style.display = user ? "" : "none";
-      $("projectFormCard").style.display = user ? "" : "none";
-      $("projectListCard").style.display = user ? "" : "none";
-      $("me").textContent = user ? `当前登录：${user.email}` : "未登录";
-      if (user) {
-        resetForm();
-        await loadList();
-      } else {
-        $("tbl").querySelector("tbody").innerHTML = "";
-      }
-    }
+  <!-- 新建/编辑项目弹窗 -->
+  <dialog id="dlgProject" class="dialog">
+    <form method="dialog" id="frmProject" class="dialog-body">
+      <h3 id="dlgTitle">新建项目</h3>
+      <div class="grid three">
+        <label>标题<input name="title" required /></label>
+        <label>品牌<input name="brand" /></label>
+        <label>类型
+          <select name="type">
+            <option>LOOKBOOK</option>
+            <option>形象片</option>
+            <option>TVC</option>
+            <option>宣传片</option>
+            <option>纪录片</option>
+            <option>花絮</option>
+          </select>
+        </label>
 
-    // ============ 表单 ============
-    let editingId = null;
-    function getFormData() {
-      return {
-        title: $("title").value.trim(),
-        brand: $("brand").value.trim(),
-        type: $("type").value || null,
-        spec: $("spec").value.trim(),
-        ratio: $("ratio").value || null,
-        duration: $("duration").value.trim(),
-        a_copy: $("a_copy").value || null,
-        b_copy: $("b_copy").value || null,
-        final_date: $("final_date").value || null,
-        pay_status: $("pay_status").value,
-        status: $("status").value,
-        final_link: $("final_link").value.trim(),
-        notes: $("notes").value.trim()
-      };
-    }
-    function setFormData(row) {
-      $("title").value = row.title || "";
-      $("brand").value = row.brand || "";
-      $("type").value = row.type || "";
-      $("spec").value = row.spec || "";
-      $("ratio").value = row.ratio || "";
-      $("duration").value = row.duration || "";
-      $("a_copy").value = row.a_copy || "";
-      $("b_copy").value = row.b_copy || "";
-      $("final_date").value = row.final_date || "";
-      $("pay_status").value = row.pay_status || "unpaid";
-      $("status").value = row.status || "open";
-      $("final_link").value = row.final_link || "";
-      $("notes").value = row.notes || "";
-    }
-    function resetForm() {
-      editingId = null;
-      setFormData({ pay_status: "unpaid", status: "open" });
-      $("editingFlag").style.display = "none";
-    }
+        <label>输出规格<select name="spec"><option>1080p</option><option>4K</option></select></label>
+        <label>输出比例<select name="ratio"><option>16:9</option><option>9:16</option><option>1:1</option><option>3:4</option><option>4:3</option></select></label>
+        <label>时长（如 30s / 2min）<input name="duration" placeholder="30s 或 2min" /></label>
 
-    async function saveOrUpdate() {
-      const payload = getFormData();
-      if (!payload.title) return toast("项目标题为必填");
-      if (editingId) {
-        await supabase.from("projects").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", editingId);
-        toast("已更新");
-      } else {
-        await supabase.from("projects").insert([{ ...payload }]);
-        toast("已保存");
-      }
-      resetForm();
-      await loadList();
-    }
+        <label>A copy 时间<input type="date" name="a_copy_date" /></label>
+        <label>B copy 时间<input type="date" name="b_copy_date" /></label>
+        <label>Final 时间<input type="date" name="final_date" /></label>
 
-    async function loadList() {
-      const q = $("q").value.trim();
-      let query = supabase.from("projects").select("*").order("updated_at", { ascending: false });
-      if (q) query = query.or(`title.ilike.%${q}%,brand.ilike.%${q}%,notes.ilike.%${q}%`);
-      const { data } = await query;
-      const tbody = $("tbl").querySelector("tbody");
-      tbody.innerHTML = "";
-      if (!data || data.length === 0) {
-        $("emptyHint").style.display = "";
-        return;
-      }
-      $("emptyHint").style.display = "none";
-      for (const row of data) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><b>${row.title}</b><div class="muted">${row.brand || ""}</div></td>
-          <td class="muted">${row.type || "-"} / ${row.spec || "-"} / ${row.ratio || "-"} / ${row.duration || "-"}</td>
-          <td class="muted">A: ${row.a_copy || "-"} / B: ${row.b_copy || "-"} / Final: ${row.final_date || "-"}</td>
-          <td><span class="badge">${row.pay_status}</span> <span class="badge">${row.status}</span></td>
-          <td>${row.final_link ? `<a target="_blank" href="${row.final_link}">打开</a>` : "-"}</td>
-          <td>
-            <button data-edit="${row.id}" class="ghost">编辑</button>
-            <button data-del="${row.id}">删除</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      }
-      tbody.querySelectorAll("[data-edit]").forEach(btn => {
-        btn.onclick = async () => {
-          const { data } = await supabase.from("projects").select("*").eq("id", btn.dataset.edit).single();
-          editingId = btn.dataset.edit;
-          setFormData(data);
-          $("editingFlag").style.display = "";
-        };
-      });
-      tbody.querySelectorAll("[data-del]").forEach(btn => {
-        btn.onclick = async () => {
-          if (!confirm("确认删除该项目？")) return;
-          await supabase.from("projects").delete().eq("id", btn.dataset.del);
-          await loadList();
-        };
-      });
-    }
+        <label>报价<input type="number" name="quote_amount" value="0" /></label>
+        <label>订金<input type="number" name="deposit_amount" value="0" /></label>
+        <label>已收<input type="number" name="paid_amount" value="0" /></label>
 
-    // 绑定事件
-    $("btnSignUp").onclick = signUp;
-    $("btnSignIn").onclick = signIn;
-    $("btnSignOut").onclick = signOut;
-    $("btnSave").onclick = saveOrUpdate;
-    $("btnReset").onclick = resetForm;
-    $("btnRefresh").onclick = loadList;
-    $("q").oninput = () => { clearTimeout(window.__qtid); window.__qtid = setTimeout(loadList, 300); };
+        <label>币种<input name="currency" value="CNY" /></label>
+        <label>应收款日<input type="date" name="payment_due_date" /></label>
+        <label>支付状态<select name="pay_status"><option value="unpaid">未收</option><option value="deposit">已收定金</option><option value="paid">已收全款</option></select></label>
 
-    syncUI();
-  </script>
+        <label>成片链接<input name="final_link" placeholder="https://..." /></label>
+        <label class="col-3">备注<textarea name="notes" rows="2"></textarea></label>
+      </div>
+
+      <menu class="dialog-actions">
+        <button value="cancel" class="btn ghost">取消</button>
+        <button id="btnSaveProject" value="default" class="btn primary">保存</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- toast -->
+  <div id="toast" class="toast hidden"></div>
 </body>
 </html>
