@@ -1,101 +1,62 @@
-/***********************
- * Cache & Auth Hardening
- * - 自动清缓存（按版本）
- * - 稳定的 Supabase 会话持久化
- * - 失效自动刷新/登出处理
- ***********************/
+/***** =========================================================
+ *  Editor ERP - app.js
+ *  版本控制 + 缓存规避 + 会话稳健处理（基于你当前功能版）
+ *  只要替换整文件即可
+ * ========================================================= **/
 
-// 1) 每次上线改版本号（任意字符串都行）
-const APP_VERSION = '1.0.1';
+/* ====== 版本号（每次发布新代码时改一下这个值） ====== */
+const APP_VERSION = '2025-08-13-02';
 
-// 2) 版本不一致 → 自动清缓存并强制刷新
-(function ensureFreshAssets() {
+/* ====== 版本切换时清理旧缓存 & 旧 Supabase token ====== */
+(function bootstrapCache() {
   try {
-    const stored = localStorage.getItem('app_version');
-    if (stored !== APP_VERSION) {
-      // 清 local/session
-      localStorage.clear();
+    const prev = localStorage.getItem('app-version');
+    if (prev !== APP_VERSION) {
+      // 清除旧的 supabase 本地会话（不影响服务器）：
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('sb-')) localStorage.removeItem(k);
+      });
+      // 也清一下 sessionStorage（防「返回」载入旧页）
       sessionStorage.clear();
-
-      // 清 Supabase 的 IndexedDB（不同浏览器实现名可能不同，两个都试）
-      if (window.indexedDB) {
-        try { indexedDB.deleteDatabase('supabase-auth-db'); } catch (e) {}
-        try { indexedDB.deleteDatabase('SupabaseAuth'); } catch (e) {}
-      }
-
-      // 记录当前版本并强制刷新一次
-      localStorage.setItem('app_version', APP_VERSION);
-      // 避免缓存的 JS/CSS，被动 bust 一下
-      location.replace(location.pathname + '?v=' + encodeURIComponent(APP_VERSION));
-      // 注意：这里 return 后，后续初始化不会执行，刷新后会执行最新代码
-      return;
+      localStorage.setItem('app-version', APP_VERSION);
     }
   } catch (e) {
-    // 私有模式等异常时，尽量不中断
-    console.warn('version-check failed:', e);
+    console.warn('bootstrapCache error:', e);
   }
 })();
 
-// 3) Supabase 初始化（使用你的项目 URL & 匿名 KEY）
-const SUPABASE_URL = 'https://lywlcsrndkturdpgvvnc.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs';
-
-// 如果你项目里已全局引入 @supabase/supabase-js 的 UMD 版本：window.supabase
-//（GitHub Pages 静态页一般是 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>）
-const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,         // 持久化会话
-    autoRefreshToken: true,       // 自动刷新 token
-    detectSessionInUrl: true      // 兼容 OAuth（虽然我们当前不用）
-  },
-  global: { headers: { 'x-app-version': APP_VERSION } }
+/* ====== 防止从历史缓存中恢复（bfcache）导致用到旧 token ====== */
+window.addEventListener('pageshow', (e) => {
+  // 如果是从缓存恢复的页面，强制刷新一次
+  if (e.persisted) {
+    location.reload();
+  }
 });
 
-// 4) 统一的会话状态监听，自动恢复/失效处理
-if (supabase?.auth) {
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    // 可选：调试
-    console.log('[auth]', event, session);
-
-    switch (event) {
-      case 'SIGNED_IN':
-      case 'TOKEN_REFRESHED':
-      case 'USER_UPDATED':
-        // 会话有效，继续渲染应用（如果你用路由，这里可恢复到应用页）
-        break;
-
-      case 'SIGNED_OUT':
-      case 'USER_DELETED':
-      case 'PASSWORD_RECOVERY':
-      case 'MFA_CHALLENGE_VERIFIED':
-        // 清理残留并回到登录页（按你的页面结构调整）
-        try {
-          localStorage.removeItem('sb-' + SUPABASE_URL + '-auth-token');
-        } catch (e) {}
-        // 可视情况刷新或跳转：
-        // location.replace('/');  // 如果首页是登录页
-        break;
-
-      case 'INITIAL_SESSION':
-      default:
-        // 初次加载：如果 session 为空，可决定是否跳转到登录页
-        // if (!session) location.replace('/');
-        break;
-    }
-  });
-}
-
-// 5) 你的其余应用代码从这里继续（渲染 UI、绑定事件等）
-// …………………………………………
-/* ============== Supabase 初始化（保持会话 & 自动刷新） ============== */
+/* ====== 初始化 Supabase（保持会话 & 自动刷新 & URL 检测） ====== */
 const supa = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_ANON_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-/* ============== 视图切换 ============== */
+/* ====== 监听会话变化（遇到异常就清理并回到首页） ====== */
+supa.auth.onAuthStateChange(async (event, session) => {
+  // 这些事件都算正常：登录、token 刷新、用户信息更新
+  if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) return;
+
+  // 主动退出、或其它异常事件：把本地 sb- token 清掉，回到首页
+  if (['SIGNED_OUT', 'PASSWORD_RECOVERY'].includes(event)) {
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('sb-')) localStorage.removeItem(k);
+      });
+    } catch {}
+    showView('home');
+  }
+});
+
+/* ====== 视图切换（与你原版一致） ====== */
 const views = {
   home: document.getElementById('view-home'),
   projects: document.getElementById('view-projects'),
@@ -117,17 +78,40 @@ function showView(name){
   ({home:nav.home, projects:nav.projects, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
 
-/* ============== 登录校验 ============== */
+/* ====== 登录校验：取不到有效会话 → 尝试刷新，仍无则 signOut 并留在首页 ====== */
 async function requireSignIn(){
-  const { data: { session } } = await supa.auth.getSession();
-  if(!session){ /* 未登录就停留在首页，或引导到你登录页逻辑 */ }
+  try {
+    const { data, error } = await supa.auth.getSession();
+    if (error) throw error;
+
+    if (!data || !data.session) {
+      // 再尝试刷新一次（有时 token 在边界状态）
+      await supa.auth.refreshSession().catch(()=>{});
+      const ret = await supa.auth.getSession();
+      if (!ret.data || !ret.data.session) {
+        await supa.auth.signOut().catch(()=>{});
+        return; // 停留在首页（你没有强跳登录页）
+      }
+    }
+  } catch (e) {
+    console.warn('requireSignIn error:', e);
+    try { await supa.auth.signOut(); } catch {}
+  }
 }
+
+/* ====== 退出登录 ====== */
 nav.logout.addEventListener('click', async ()=>{
-  await supa.auth.signOut();
+  await supa.auth.signOut().catch(()=>{});
+  // 清掉可能残留的旧 sb- token
+  try {
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('sb-')) localStorage.removeItem(k);
+    });
+  } catch {}
   window.location.reload();
 });
 
-/* ============== 自定义下拉 - 修复“瞬间消失” ============== */
+/* ====== 自定义下拉 - 修复“瞬间消失”（与你原版一致） ====== */
 document.addEventListener('mousedown', (e)=>{
   const sel = e.target.closest('[data-select]');
   if(e.target.matches('[data-select-toggle]')){
@@ -138,16 +122,15 @@ document.addEventListener('mousedown', (e)=>{
     return;
   }
   if(sel && e.target.closest('.select-menu')){
-    e.preventDefault(); // 阻止失焦导致的瞬间收起
+    e.preventDefault();
   }else{
     document.querySelectorAll('.select.open').forEach(s=>s.classList.remove('open'));
   }
 });
 
-/* ============== 数据读取 ============== */
+/* ====== 数据读取（与你原版一致） ====== */
 let projects = [];
 async function fetchProjects(){
-  // 注意字段名：使用 a_copy / b_copy / final_date（与你库中一致）
   const { data, error } = await supa
     .from('projects')
     .select('id,title,brand,type,spec,clips,notes,pay_status,quote_amount,deposit_amount,paid_amount,producer_name,producer_contact,a_copy,b_copy,final_date,final_link,updated_at')
@@ -157,7 +140,7 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-/* ============== 工具 ============== */
+/* ====== 工具函数（与你原版一致） ====== */
 function fmtMoney(n){ return `¥${(Number(n||0)).toLocaleString()}`; }
 function mergeTypeSpec(p){
   const t = p.type || '';
@@ -171,7 +154,7 @@ function payStatus(p){
   return '未收款';
 }
 
-/* ============== 首页渲染 ============== */
+/* ====== 首页渲染（与你原版一致） ====== */
 function renderRecent(){
   const box = document.getElementById('recent-list');
   box.innerHTML = '';
@@ -189,7 +172,7 @@ function renderRecent(){
   });
   box.addEventListener('click', (e)=>{
     const id = e.target.getAttribute('data-open');
-    if(id){ showView('projects'); /* 可拓展：滚动定位到该行 */ }
+    if(id){ showView('projects'); }
   });
 }
 function renderKpis(){
@@ -199,7 +182,6 @@ function renderKpis(){
   document.getElementById('kpi-paid').textContent    = fmtMoney(paid);
   document.getElementById('kpi-deposit').textContent = fmtMoney(dep);
   document.getElementById('kpi-unpaid').textContent  = fmtMoney(unpaid);
-  // 财务页同步
   document.getElementById('f-paid').textContent    = fmtMoney(paid);
   document.getElementById('f-deposit').textContent = fmtMoney(dep);
   document.getElementById('f-unpaid').textContent  = fmtMoney(unpaid);
@@ -212,7 +194,7 @@ function renderKpis(){
   }).join('');
 }
 
-/* ============== 项目列表（桌面表格 + 小屏卡片） ============== */
+/* ====== 项目列表（与你原版一致） ====== */
 function renderProjects(list = projects){
   const tb = document.getElementById('projects-body');
   const wrap = document.getElementById('projects-wrap');
@@ -238,7 +220,6 @@ function renderProjects(list = projects){
     tb.appendChild(tr);
   });
 
-  // 小屏卡片（避免左右拖动）
   if(wrap.querySelector('#m-rows')) wrap.querySelector('#m-rows').remove();
   const mob = document.createElement('div'); mob.id='m-rows';
   list.forEach(p=>{
@@ -264,7 +245,7 @@ function renderProjects(list = projects){
   wrap.appendChild(mob);
 }
 
-/* 过滤：类型&规格 + 支付状态 */
+/* 过滤（与你原版一致） */
 document.querySelectorAll('.select-menu button[data-type]').forEach(b=>{
   b.addEventListener('mousedown', ()=>{
     const val = b.getAttribute('data-type');
@@ -288,7 +269,7 @@ document.querySelectorAll('.select-menu button[data-pay]').forEach(b=>{
   });
 });
 
-/* ============== 作品合集（海报式；空态大字） ============== */
+/* ====== 作品合集（与你原版一致） ====== */
 function renderGallery(){
   const grid = document.getElementById('gallery-grid');
   grid.innerHTML = '';
@@ -308,7 +289,7 @@ function renderGallery(){
   });
 }
 
-/* ============== 档期（日历模态；沿用“档期”按钮） ============== */
+/* ====== 档期（日历模态；与你原版一致） ====== */
 const modal = document.getElementById('schedule-modal');
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
@@ -325,7 +306,6 @@ function renderCalendar(){
   const first = new Date(y,m,1); const start = (first.getDay()+6)%7;
   const days = new Date(y,m+1,0).getDate();
 
-  // 收集当月事件：A/B/Final
   const evs = {};
   projects.forEach(p=>{
     [['a_copy','ab'],['b_copy','ab'],['final_date','final']].forEach(([field,tag])=>{
@@ -353,7 +333,7 @@ function renderCalendar(){
   }
 }
 
-/* ============== 计算器（前端计算） ============== */
+/* ====== 成本计算器（与你原版一致，修复回登录：只前端计算不触发跳转） ====== */
 document.getElementById('calc-form').addEventListener('submit',(e)=>{
   e.preventDefault();
   const q = parseFloat(document.getElementById('quote').value||0);
@@ -363,14 +343,14 @@ document.getElementById('calc-form').addEventListener('submit',(e)=>{
   document.getElementById('calc-result').textContent = `未收款：${fmtMoney(unpaid)}`;
 });
 
-/* ============== 导航 ============== */
+/* ====== 导航（与你原版一致） ====== */
 document.getElementById('go-list').addEventListener('click', ()=> showView('projects'));
 nav.home.addEventListener('click', ()=> showView('home'));
 nav.projects.addEventListener('click', ()=> showView('projects'));
 nav.gallery.addEventListener('click', ()=> showView('gallery'));
 nav.finance.addEventListener('click', ()=> showView('finance'));
 
-/* ============== 启动 ============== */
+/* ====== 启动 ====== */
 (async function boot(){
   await requireSignIn();
   await fetchProjects();
