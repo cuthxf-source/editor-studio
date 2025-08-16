@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.2 -->
+<!-- editor-studio / index.html  v1.3 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.2" />
-  <link rel="stylesheet" href="styles.css?v=v1.2" />
+  <link rel="icon" href="icon.png?v=v1.3" />
+  <link rel="stylesheet" href="styles.css?v=v1.3" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -47,11 +47,11 @@
   </section>
 
   <main class="container main-wrap">
-    <!-- 首页（保持） -->
+    <!-- 首页 -->
     <section id="view-home" class="view">
       <div class="grid-3 kpi">
-        <div class="card kpi-card kpi-gold"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收定金</div><div id="kpi-deposit" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
       </div>
 
@@ -60,7 +60,7 @@
           <h3>最近项目</h3>
           <button id="go-list" class="btn-ghost">查看全部</button>
         </div>
-        <div id="recent-list" class="list"></div>
+        <div id="recent-list" class="list recent"></div>
       </div>
 
       <!-- 报价分析器（保持） -->
@@ -171,8 +171,8 @@
     <!-- 财务 -->
     <section id="view-finance" class="view hidden">
       <div class="grid-3 kpi">
-        <div class="card kpi-card kpi-gold"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收定金</div><div id="f-deposit" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
       </div>
       <div class="grid-3">
@@ -227,7 +227,7 @@
     </div>
   </div>
 
-  <!-- 通用编辑模态（新增） -->
+  <!-- 通用编辑模态 -->
   <div id="editor-modal" class="modal">
     <div class="modal-inner modal-inner-wide">
       <div class="modal-head">
@@ -247,6 +247,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.2" defer></script>
+  <script src="app.js?v=v1.3" defer></script>
 </body>
 </html>
