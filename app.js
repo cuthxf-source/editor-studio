@@ -1,4 +1,4 @@
-/* editor-studio / app.js  v1.4 */
+/* editor-studio / app.js  v1.6 */
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -56,7 +56,7 @@ let projects = [];
 async function fetchProjects(){
   const { data, error } = await supa
     .from('projects')
-    .select(`id,title,brand,type,spec,clips,notes,pay_status,quote_amount,deposit_amount,paid_amount,producer_name,producer_contact,a_copy,b_copy,final_date,final_link,updated_at`)
+    .select(`id,title,brand,type,spec,clips,notes,meta_json,pay_status,quote_amount,deposit_amount,paid_amount,producer_name,producer_contact,final_link,updated_at`)
     .order('updated_at',{ ascending:false })
     .limit(1000);
   if(error){ console.error(error); return; }
@@ -66,17 +66,8 @@ async function fetchProjects(){
 // ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
+const pad2 = (n)=> String(n).padStart(2,'0');
 
-function hasTag(notes, tag){ return (notes||'').includes(tag); }
-function toggleTag(notes, tag, on){
-  notes = notes||'';
-  const has = notes.includes(tag);
-  if(on && !has) return (notes + ' ' + tag).trim();
-  if(!on && has) return notes.replace(tag,'').replace(/\s+/g,' ').trim();
-  return notes;
-}
-
-/** —— 兼容旧 spec 文本解析（v1.1/v1.3） —— */
 function parseSpecLegacy(specStr){
   const raw = (specStr||'').split('·').map(s=>s.trim());
   let res = raw[0] || '';
@@ -84,8 +75,6 @@ function parseSpecLegacy(specStr){
   if(!ratio && res.includes(':')){ ratio=res; res=''; }
   return { res, ratio };
 }
-
-/** —— 多类型组合：从 p.spec(JSON) 解析为包数组 —— */
 function parsePackages(p){
   const s = p.spec || '';
   try{
@@ -97,14 +86,8 @@ function parsePackages(p){
       ratios: Array.isArray(x.ratios)? x.ratios.filter(Boolean) : []
     }));
   }catch(e){}
-  // 兼容旧字段
   const {res, ratio} = parseSpecLegacy(s);
-  return [{
-    type: p.type||'',
-    clips: Number(p.clips||1),
-    res: res||'',
-    ratios: ratio? [ratio] : []
-  }];
+  return [{ type: p.type||'', clips: Number(p.clips||1), res: res||'', ratios: ratio? [ratio] : [] }];
 }
 function mergeTypeSpec(p){
   const packs = parsePackages(p);
@@ -117,87 +100,89 @@ function mergeTypeSpec(p){
 function totalClips(p){
   return parsePackages(p).reduce((s,x)=> s + Number(x.clips||0), 0) || Number(p.clips||0) || 1;
 }
-function unpaidAmt(p){
-  return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0)-Number(p.deposit_amount||0),0);
+
+/** 进度与修改（使用 meta_json） */
+function defaultMeta(){ return { prog:{ A:{date:null,ver:'v1',done:false}, B:{date:null,ver:'v1',done:false}, F:{date:null,ver:'v1',done:false} }, rev:[] }; }
+function readMeta(row){
+  return (row.meta_json && typeof row.meta_json === 'object')
+    ? JSON.parse(JSON.stringify(row.meta_json))
+    : defaultMeta();
+}
+function saveMetaPatch(row, patch){
+  const meta = readMeta(row);
+  // 深合并（仅 A/B/F 或 rev）
+  if(patch.prog){
+    ['A','B','F'].forEach(k=>{
+      meta.prog[k] = { ...(meta.prog[k]||{}), ...(patch.prog[k]||{}) };
+    });
+  }
+  if(Array.isArray(patch.rev)){
+    meta.rev = patch.rev;
+  }
+  return meta;
 }
 
-/** ===== v1.4：结构化元数据（进度 + 修改内容） =====
- *  notes 字段中嵌入  ::PM::{...}::  JSON 块
- *   { prog: {A:{date,ver,done}, B:{...}, F:{...}}, rev:[{major:'A'|'B'|'F',ver:'v1',text,ts}] }
- */
-const META_RE = /::PM::(.*?)::/s;
-function readMeta(notes){
-  const m = (notes||'').match(META_RE);
-  if(m){ try{ return JSON.parse(m[1]); }catch(e){} }
-  return { prog:{ A:{date:null,ver:'v1',done:false}, B:{date:null,ver:'v1',done:false}, F:{date:null,ver:'v1',done:false} }, rev:[] };
-}
-function writeMeta(oldNotes, meta){
-  const stripped = (oldNotes||'').replace(META_RE,'').trim();
-  return (stripped + ' ::PM::'+JSON.stringify(meta)+'::').trim();
-}
-function getProgInfo(p){
-  const meta = readMeta(p.notes);
-  const A = { ...meta.prog?.A, date: meta.prog?.A?.date || p.a_copy || null, done: (meta.prog?.A?.done||false) || hasTag(p.notes,'#A_DONE') };
-  const B = { ...meta.prog?.B, date: meta.prog?.B?.date || p.b_copy || null, done: (meta.prog?.B?.done||false) || hasTag(p.notes,'#B_DONE') };
-  const F = { ...meta.prog?.F, date: meta.prog?.F?.date || p.final_date || null, done: (meta.prog?.F?.done||false) || hasTag(p.notes,'#F_DONE') };
-  return { A,B,F, meta };
-}
-function latestRevision(p){
-  const meta = readMeta(p.notes);
-  const arr = Array.isArray(meta.rev)? meta.rev : [];
-  if(arr.length===0) return null;
-  arr.sort((a,b)=> new Date(a.ts||0) - new Date(b.ts||0));
-  return arr[arr.length-1];
+/** 未收款：总金额 - 已收款（注意：已收款=paid_amount，不含定金） */
+function unpaidAmtByRule(p){
+  const total = Number(p.quote_amount||0);
+  const paid  = Number(p.paid_amount||0);
+  return Math.max(total - paid, 0);
 }
 
-/** —— 最近未完成的里程碑（带小版本） —— */
+/** 最近未完成的里程碑（按 A→B→F 的日期排序，返回一个） */
 function upcomingMilestone(p){
-  const {A,B,F} = getProgInfo(p);
+  const meta = readMeta(p);
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // 支付已完结或者 Final 完成，直接返回完结
-  const completed = F.done || (p.pay_status==='已收尾款');
-  if(completed) return { text:'完结', overdue:false, date:null, complete:true };
+  // 完结（Final done 或支付已收尾款）
+  if((meta.prog?.F?.done) || p.pay_status==='已收尾款'){
+    return { label:'完结', ver:null, date:null, overdue:false, complete:true, text:'完结' };
+  }
 
   const items = [];
-  const push = (obj,label)=>{ if(obj.date && !obj.done) items.push({label, ver:obj.ver||'v1', date:fmt(obj.date)}); };
-  push(A,'Acopy'); push(B,'Bcopy'); push(F,'Final');
-  if(items.length===0) return { text:'—', overdue:false, date:null };
+  const push = (obj,label)=>{ if(obj?.date && !obj?.done) items.push({label, ver:obj.ver||'v1', date:fmt(obj.date)}); };
+  push(meta.prog?.A,'Acopy');
+  push(meta.prog?.B,'Bcopy');
+  push(meta.prog?.F,'Final');
+
+  if(items.length===0) return { label:'—', ver:null, date:null, overdue:false, complete:false, text:'—' };
 
   items.sort((a,b)=> a.date - b.date);
   const n = items[0];
   const overdue = n.date < today;
-  return { text: `${n.label} ${n.ver||'v1'} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue, date:n.date };
+  const mmdd = `${pad2(n.date.getMonth()+1)}-${pad2(n.date.getDate())}`;
+  return { ...n, overdue, complete:false, text:`${n.label}-${n.ver}-${mmdd}` };
 }
 
-/** —— 最近项目排序键（完成的永远不进“最近项目”） —— */
-function sortKeyByUpcoming(p){
-  const up = upcomingMilestone(p);
-  if(up.complete || !up.date) return Number.POSITIVE_INFINITY;
-  const today = new Date(); today.setHours(0,0,0,0);
-  return up.date.getTime() < today.getTime() ? up.date.getTime()+1e13 : up.date.getTime();
-}
-
-// ============== 首页 ==============
 function payBadgePill(st){
   if(st==='已收尾款') return `<span class="pill pill-purple">完结</span>`;
   if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
   return `<span class="pill pill-blue">未收款</span>`;
 }
 
+// ============== 首页 ==============
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
 
-  // 过滤“完结”的
+  // 过滤完结
   const active = projects.filter(p=>{
-    const {F} = getProgInfo(p);
-    return !(F.done || p.pay_status==='已收尾款');
+    const meta = readMeta(p);
+    return !(meta.prog?.F?.done || p.pay_status==='已收尾款');
   });
 
-  const sorted = [...active].sort((a,b)=> sortKeyByUpcoming(a) - sortKeyByUpcoming(b));
+  const sorted = [...active].sort((a,b)=>{
+    const ka = upcomingMilestone(a);
+    const kb = upcomingMilestone(b);
+    // 未有日期放后
+    if(!ka.date && kb.date) return 1;
+    if(ka.date && !kb.date) return -1;
+    if(!ka.date && !kb.date) return 0;
+    return ka.date - kb.date;
+  });
+
   sorted.slice(0,4).forEach(p=>{
     const near = upcomingMilestone(p);
-    const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+    const currentPay = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
     const li = document.createElement('div'); li.className='list-item';
     li.innerHTML = `
       <div class="title-block">
@@ -206,7 +191,7 @@ function renderRecent(){
       </div>
       <div class="muted small">条数：${totalClips(p)||1}</div>
       <div>${payBadgePill(currentPay)}</div>
-      <div class="${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
+      <div class="${near.complete?'pill pill-purple':(near.overdue?'pill pill-red':'pill')}">${near.text}</div>
     `;
     box.appendChild(li);
   });
@@ -214,13 +199,15 @@ function renderRecent(){
 }
 
 function renderKpis(){
-  const total   = projects.reduce((s,p)=>s+Number(p.quote_amount||0),0); // 收入总金额（含未收）
-  const paid    = projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);  // 已收款
-  const unpaid  = projects.reduce((s,p)=>s+unpaidAmt(p),0);              // 未收款
+  const total   = projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
+  const paid    = projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
+  const unpaid  = Math.max(total - paid, 0); // 修正：未收款=总金额-已收款
+
   // 首页
   document.getElementById('kpi-total').textContent   = money(total);
   document.getElementById('kpi-paid').textContent    = money(paid);
   document.getElementById('kpi-unpaid').textContent  = money(unpaid);
+
   // 财务页
   document.getElementById('f-total').textContent     = money(total);
   document.getElementById('f-paid').textContent      = money(paid);
@@ -313,7 +300,7 @@ function packRowHtml(i, pack){
     return `<label class="small"><input type="checkbox" name="ratio-${i}" value="${r}" ${on?'checked':''}> ${r}</label>`;
   }).join(' ');
   return `
-  <div class="pack row" data-i="${i}" style="display:grid;grid-template-columns:1fr 140px 140px 1fr auto;gap:10px;align-items:center;margin-bottom:8px">
+  <div class="pack row" data-i="${i}" style="display:grid;grid-template-columns:1fr 140px 140px 1fr auto;gap:10px;align-items:end;margin-bottom:8px">
     <label>类型<select name="type-${i}">${optionList(TYPE_OPTS, pack.type||'')}</select></label>
     <label>影片条数<input name="clips-${i}" type="number" min="1" value="${pack.clips||1}"></label>
     <label>分辨率<select name="res-${i}">${optionList(RES_OPTS, pack.res||'')}</select></label>
@@ -361,19 +348,27 @@ function openEditorModal(kind, id){
 
   if(kind==='progress'){
     editorTitle.textContent = '编辑 进度（日期 / 小版本 / 完成）';
-    const {A,B,F} = getProgInfo(p);
-    const row = (label,key,obj)=>`
+    const meta = readMeta(p);
+    const block = (label,key,obj)=>`
       <div class="grid-3" style="align-items:end">
-        <label>${label} 日期<input type="date" name="${key}_date" value="${obj.date||''}"></label>
-        <label>小版本<select name="${key}_ver">${optionList(VERS, obj.ver||'v1')}</select></label>
-        <label><input type="checkbox" name="${key}_DONE" ${obj.done?'checked':''}> ${label} 完成</label>
+        <label>${label} 日期<input type="date" name="${key}_date" value="${obj?.date||''}"></label>
+        <label>小版本<select name="${key}_ver">${optionList(VERS, obj?.ver||'v1')}</select></label>
+        <div style="display:flex;align-items:end;gap:10px">
+          <button type="button" class="toggle-pill ${obj?.done?'on':''}" data-done="${key}">完成</button>
+        </div>
       </div>`;
-    editorForm.innerHTML = row('Acopy','A',A) + row('Bcopy','B',B) + row('Final','F',F);
+    editorForm.innerHTML = block('Acopy','A',meta.prog?.A||{}) + block('Bcopy','B',meta.prog?.B||{}) + block('Final','F',meta.prog?.F||{});
+
+    // 切换完成状态
+    editorForm.addEventListener('click',(e)=>{
+      const btn = e.target.closest('.toggle-pill'); if(!btn) return;
+      btn.classList.toggle('on');
+    });
   }
 
   if(kind==='pay'){
     editorTitle.textContent = '编辑 支付状态';
-    const current = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+    const current = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
     editorForm.innerHTML = `
       <div class="grid-1">
         <label>支付状态
@@ -397,14 +392,15 @@ function openEditorModal(kind, id){
 
   if(kind==='revision'){
     editorTitle.textContent = '记录 修改内容（按版本）';
-    const last = latestRevision(p);
+    const meta = readMeta(p);
+    const last = Array.isArray(meta.rev) && meta.rev.length>0 ? meta.rev[meta.rev.length-1] : null;
     editorForm.innerHTML = `
       <div class="grid-3">
         <label>关联阶段<select name="rev_major">${optionList(['A','B','F'], last?.major||'A')}</select></label>
         <label>小版本<select name="rev_ver">${optionList(VERS, last?.ver||'v1')}</select></label>
         <label>时间（可选，默认当前）<input type="datetime-local" name="rev_ts"></label>
       </div>
-      <label>修改说明<textarea name="rev_text" rows="4" placeholder="填写这次修改的要点...">${last?.text?last.text:''}</textarea></label>
+      <label>修改说明<textarea name="rev_text" rows="4" placeholder="填写这次修改的要点...">${last?.text||''}</textarea></label>
       <div class="muted small">保存后，仅在表格中显示“最新一条”修改说明；历史会保存在内部。</div>
     `;
   }
@@ -441,23 +437,16 @@ editorForm?.addEventListener('submit', async (e)=>{
   }
 
   if(kind==='progress'){
-    const meta = readMeta(row.notes);
+    const meta = readMeta(row);
     const get = (k)=> (fd.get(`${k}_date`)||'') || null;
     const getv= (k)=> (fd.get(`${k}_ver`)||'v1');
-    const done= (k)=> !!fd.get(`${k}_DONE`);
-    meta.prog.A = { date:get('A'), ver:getv('A'), done:done('A') };
-    meta.prog.B = { date:get('B'), ver:getv('B'), done:done('B') };
-    meta.prog.F = { date:get('F'), ver:getv('F'), done:done('F') };
-    // 同步旧字段 & 标签
-    patch.a_copy = meta.prog.A.date || null;
-    patch.b_copy = meta.prog.B.date || null;
-    patch.final_date = meta.prog.F.date || null;
+    const doneFromBtn = (k)=> !!editorForm.querySelector(`.toggle-pill[data-done="${k}"]`)?.classList.contains('on');
 
-    let notes = row.notes || '';
-    notes = toggleTag(notes, '#A_DONE', meta.prog.A.done);
-    notes = toggleTag(notes, '#B_DONE', meta.prog.B.done);
-    notes = toggleTag(notes, '#F_DONE', meta.prog.F.done);
-    patch.notes = writeMeta(notes, meta);
+    meta.prog.A = { date:get('A'), ver:getv('A'), done:doneFromBtn('A') };
+    meta.prog.B = { date:get('B'), ver:getv('B'), done:doneFromBtn('B') };
+    meta.prog.F = { date:get('F'), ver:getv('F'), done:doneFromBtn('F') };
+
+    patch.meta_json = meta;
   }
 
   if(kind==='pay'){
@@ -470,7 +459,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   }
 
   if(kind==='revision'){
-    const meta = readMeta(row.notes);
+    const meta = readMeta(row);
     const nowISO = new Date().toISOString();
     (meta.rev ||= []).push({
       major: (fd.get('rev_major')||'A').toString(),
@@ -478,7 +467,7 @@ editorForm?.addEventListener('submit', async (e)=>{
       text:  (fd.get('rev_text')||'').toString().trim(),
       ts:    fd.get('rev_ts') ? new Date(fd.get('rev_ts')).toISOString() : nowISO
     });
-    patch.notes = writeMeta(row.notes, meta);
+    patch.meta_json = meta;
   }
 
   await supa.from('projects').update(patch).eq('id', id);
@@ -492,19 +481,9 @@ function renderProjects(list=projects){
 
   list.forEach(p=>{
     const near = upcomingMilestone(p);
-    const {A,B,F} = getProgInfo(p);
-    const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
-
-    // 进度 chips：Final 完成仅显示 Final
-    let chips = '';
-    if(F.done){ chips = `<span class="chip chip-final">Final</span>`; }
-    else{
-      if(A.date) chips += `<span class="chip chip-a">Acopy ${A.ver||'v1'}</span>`;
-      if(B.date) chips += `<span class="chip chip-b">Bcopy ${B.ver||'v1'}</span>`;
-      if(F.date) chips += `<span class="chip chip-final">Final ${F.ver||'v1'}</span>`;
-    }
-
-    const lastRev = latestRevision(p);
+    const currentPay = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+    const meta = readMeta(p);
+    const lastRev = Array.isArray(meta.rev) && meta.rev.length>0 ? meta.rev[meta.rev.length-1] : null;
     const lastRevText = lastRev ? `[${lastRev.major} ${lastRev.ver}] ${lastRev.text||''}` : '—';
 
     const tr = document.createElement('tr');
@@ -529,10 +508,9 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 进度 -->
+      <!-- 进度（仅显示“最近需要执行”的一个版本） -->
       <td>
         <div class="cell-summary">
-          <div class="chips">${chips}</div>
           <div class="${near.complete?'pill pill-purple':(near.overdue?'pill pill-red':'pill')}">${near.text}</div>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
@@ -565,7 +543,7 @@ function renderProjects(list=projects){
     tb.appendChild(tr);
   });
 
-  // —— 可编辑文本（标题）
+  // —— 标题内联编辑
   tb.addEventListener('blur', async (e)=>{
     const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
     const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
@@ -615,14 +593,13 @@ function renderCalendar(){
 
   const evs={};
   projects.forEach(p=>{
-    const {A,B,F} = getProgInfo(p);
-    [['A','a',A],['B','b',B],['F','final',F]].forEach(([key,typ,obj])=>{
-      const d = fmt(obj.date); if(!d) return;
+    const meta = readMeta(p);
+    [['A','a',meta.prog?.A],['B','b',meta.prog?.B],['F','final',meta.prog?.F]].forEach(([key,typ,obj])=>{
+      const d = fmt(obj?.date); if(!d) return;
       if(d.getFullYear()!==y || d.getMonth()!==m) return;
       const day=d.getDate();
-      const done = obj.done;
-      const overdue = d<today && !done;
-      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${(key==='A'?'Acopy':key==='B'?'Bcopy':'Final')} ${obj.ver||'v1'}`, overdue });
+      const overdue = d<today && !obj?.done;
+      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${(key==='A'?'Acopy':key==='B'?'Bcopy':'Final')} ${obj?.ver||'v1'}`, overdue });
     });
   });
 
@@ -641,8 +618,9 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务（保持并修正趋势乘号） ==============
+// ============== 财务（保持 & 未收款计算修正） ==============
 function renderFinance(){
+  // 合作金额最高伙伴（定金+实收）
   const byPartner = new Map();
   projects.forEach(p=>{
     const k=p.producer_name||'未填';
@@ -663,17 +641,18 @@ function renderFinance(){
 
   const aging=document.getElementById('aging'); aging.innerHTML='';
   const today=Date.now();
-  projects.filter(p=> (getProgInfo(p).F.date) && unpaidAmt(p)>0)
-    .sort((a,b)=> new Date(getProgInfo(a).F.date||0)-new Date(getProgInfo(b).F.date||0))
+  projects.filter(p=> readMeta(p)?.prog?.F?.date && unpaidAmtByRule(p)>0)
+    .sort((a,b)=> new Date(readMeta(a).prog.F.date||0)-new Date(readMeta(b).prog.F.date||0))
     .forEach(p=>{
-      const Fd = getProgInfo(p).F.date;
+      const Fd = readMeta(p).prog.F.date;
       const days = Math.floor((today - new Date(Fd).getTime())/86400000);
       const li=document.createElement('div'); li.className='list-item';
       li.innerHTML = `<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div>
-                      <div>${money(unpaidAmt(p))} / ${days>0?days:0}天</div>`;
+                      <div>${money(unpaidAmtByRule(p))} / ${days>0?days:0}天</div>`;
       aging.appendChild(li);
     });
 
+  // 趋势（保持）
   const start = new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
   const days = Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
   const map = new Map(days.map(d=>[d.toDateString(),0]));
