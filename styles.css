@@ -1,9 +1,9 @@
-/* v1.4.4-stable：在 v1.4.3 的基础上
- * 1) 首页与财务加入“截止目前日期”
- * 2) 最近项目进度条加厚，文字在条内，右侧版本色块居中
- * 3) 列表容器加宽，给更多显示空间
- * 4) 规格编辑中比例多选右上对齐在一行
- */
+/* v1.4.4-stable：在 v1.4.3 基础上
+   - 首页“已完成/未完成片数”增加截至日期展示
+   - 最近项目能量条加厚，条内放文案，右侧版本椭圆居中
+   - 容器加宽（给项目表更多空间）
+   - 规格编辑：比例多选靠右上，与类型/分辨率同排
+   - 多组合在项目列表中按“每组合换行”显示（沿用） */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -19,7 +19,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:.2px}
-.container{width:100%;max-width:1480px;margin:auto;padding:0 20px} /* v1.4.4 宽度+边距优化 */
+.container{width:100%;max-width:1480px;margin:auto;padding:0 24px} /* v1.4.4：加宽 */
+.asof{margin-left:6px}
 
 .site-header{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line)}
 .nav-wrap{display:flex;align-items:center;gap:12px;height:64px}
@@ -37,22 +38,19 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .grid-1{display:grid;grid-template-columns:1fr;gap:16px}
-@media (max-width:980px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
+@media (max-width:1100px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
 
 .kpi-label{font-size:var(--fs-sm);color:var(--muted)}
 .kpi-num{font-weight:800;font-size:26px}
 .kpi-gold .kpi-num{color:var(--gold)} .kpi-yellow .kpi-num{color:var(--yellow)} .kpi-red .kpi-num{color:var(--red)}
-.asof-line{margin:6px 0 8px}
-.kpi-card .asof{margin-top:6px}
 
-/* 表格（更宽空间） */
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:#fff}
 .table{width:100%;border-collapse:collapse;table-layout:auto}
-.table th,.table td{padding:16px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
+.table th,.table td{padding:14px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:#fafafa}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-.table th:nth-child(3), .table td:nth-child(3){min-width:340px} /* 规格列更宽 */
-.table th:nth-child(7), .table td:nth-child(7){min-width:720px} /* 修改内容列更宽 */
+.table th:nth-child(7), .table td:nth-child(7){min-width:720px} /* v1.4.4：修改内容列更宽 */
 .table td.shrink{font-size:var(--fs-xs)}
 .table td.spec-col{white-space:normal} /* 多组合换行显示 */
 
@@ -61,19 +59,16 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:260px}
 .recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
-.recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:10px;align-items:center}
+.recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:10px;align-items:center;min-width:280px}
 .recent .count{text-align:center}
 .recent .due{text-align:right}
 
-/* 进度条（v1.4.4 加厚） */
+/* 进度条：v1.4.4“能量条”更厚；文案放条内；右侧版本椭圆居中 */
 .prog{height:12px;border-radius:999px;background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
-.prog.prog-fat{height:18px}
+.prog-fat{height:18px} /* v1.4.4 */
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);display:flex;align-items:center;padding-left:8px;color:#fff;font-size:12px;font-weight:700;letter-spacing:.2px}
-.prog.prog-fat .prog-bar{font-size:13px}
 .prog-text{mix-blend-mode:luminosity}
-
-/* 阶段色块（椭圆且文本居中） */
-.badge{display:inline-block;padding:6px 12px;border-radius:999px;font-size:var(--fs-sm);border:1px solid var(--line);text-align:center}
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:var(--fs-sm);border:1px solid var(--line);min-width:56px;text-align:center}
 .badge-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
 .badge-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
 .badge-f{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
@@ -81,7 +76,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 胶囊多选 */
 .pill{display:inline-block;border-radius:999px;border:1px solid var(--line);font-size:var(--fs-sm)}
-.pill-group{gap:10px;flex-wrap:wrap;margin-top:6px;display:flex}
+.pill-group{gap:10px;flex-wrap:wrap;margin-top:6px}
 label.pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:999px;cursor:pointer;background:#fff;padding:0;font-size:var(--fs-sm)}
 label.pill input{display:none}
 label.pill span{display:inline-block;padding:6px 12px}
@@ -102,12 +97,12 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px;z-index:2000}
 .modal.show{display:flex}
-.modal-inner{width:min(1060px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px}
-.modal-inner-wide{width:min(1180px,96vw)}
+.modal-inner{width:min(960px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px}
+.modal-inner-wide{width:min(1120px,96vw)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:16px;display:flex;justify-content:flex-end;gap:10px}
 
-/* 横行布局（1.4.2/1.4.3/1.4.4 保持） */
+/* 横行布局（v1.4.2/1.4.3 要求延续） */
 .h-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .h-row > label{min-width:180px}
 
@@ -131,8 +126,8 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .trend{height:180px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:10px}
 .trend svg{width:100%;height:100%}
 
-/* 规格编辑行：比例多选右上、与类型/分辨率同排（v1.4.4 调整到更靠上） */
+/* 规格编辑行：比例多选靠右上，与类型/分辨率同排（v1.4.4微调） */
 .combo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin:8px 0}
-.combo-ratios{margin-left:auto;display:flex;align-items:flex-start;gap:8px;position:relative;top:-2px}
+.combo-ratios{margin-left:auto;display:flex;align-items:flex-start;gap:8px;margin-top:-4px} /* 右上、略上移 */
 .combo-ratios .label{font-size:var(--fs-sm);color:var(--muted)}
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
