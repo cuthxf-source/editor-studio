@@ -1,15 +1,17 @@
-<!-- editor-studio / index.html  v0.3 -->
+<!-- editor-studio / index.html  v1.1 (based on your v0.3) -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <!-- 禁缓存，避免浏览器缓存导致旧代码 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v0.3" />
-  <link rel="stylesheet" href="styles.css?v=v0.3" />
+  <link rel="icon" href="icon.png?v=v1.1" />
+  <link rel="stylesheet" href="styles.css?v=v1.1" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -18,7 +20,7 @@
   <!-- 顶部导航：中间五个、右侧为退出 -->
   <header class="site-header">
     <div class="nav-wrap container">
-      <div class="brand">剪辑师项目管理系统 <span class="muted">· Life_HAN</span></div>
+      <div class="brand">剪辑师项目管理系统 <span class="brand-gold">· Life_HAN</span></div>
       <nav class="nav-center">
         <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
         <button id="btn-projects" class="nav-btn">项目</button>
@@ -32,7 +34,7 @@
     </div>
   </header>
 
-  <!-- 登录视图 -->
+  <!-- 登录视图（未登录只显示此页，不渲染任何系统数据） -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -47,7 +49,7 @@
 
   <main class="container main-wrap">
 
-    <!-- 首页 -->
+    <!-- 首页（保持 v0.3 原样） -->
     <section id="view-home" class="view">
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold">
@@ -69,7 +71,7 @@
         <div id="recent-list" class="list"></div>
       </div>
 
-      <!-- 报价分析器 -->
+      <!-- 报价分析器（保持 v0.3 原有逻辑与UI） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -129,7 +131,7 @@
       </div>
     </section>
 
-    <!-- 项目列表 -->
+    <!-- 项目列表（根据你的要求调整列与交互） -->
     <section id="view-projects" class="view hidden">
       <div class="section-head">
         <h2>项目列表</h2>
@@ -141,9 +143,13 @@
         <table class="table">
           <thead>
             <tr>
-              <th>项目</th><th>品牌</th><th>类型&输出规格</th><th>影片条数</th>
-              <th>进度</th><th>支付状态</th><th>报价/定金/实收</th>
-              <th>合作制片</th><th>备注</th>
+              <th>项目</th>
+              <th>合作制片</th>
+              <th>影片类型&条数&规格</th>
+              <th>进度</th>
+              <th>支付状态</th>
+              <th>总金额</th>
+              <th>备注</th>
             </tr>
           </thead>
           <tbody id="projects-body"></tbody>
@@ -151,7 +157,7 @@
       </div>
     </section>
 
-    <!-- 档期（独立页） -->
+    <!-- 档期（独立页，保持 v0.3 结构） -->
     <section id="view-schedule" class="view hidden">
       <div class="section-head center">
         <button id="cal-prev" class="ghost">上一月</button>
@@ -170,7 +176,7 @@
       <div id="gallery-grid" class="poster-grid"></div>
     </section>
 
-    <!-- 财务 -->
+    <!-- 财务（保持 v0.3） -->
     <section id="view-finance" class="view hidden">
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
@@ -194,7 +200,7 @@
     </section>
   </main>
 
-  <!-- 新建项目（模态） -->
+  <!-- 新建项目（模态） ——（保持 v0.3；如后续要去掉品牌，可再调） -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head"><h3>新建项目</h3></div>
@@ -234,6 +240,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v0.3" defer></script>
+  <script src="app.js?v=v1.1" defer></script>
 </body>
 </html>
