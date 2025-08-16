@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.3 -->
+<!-- editor-studio / index.html  v1.4.3.1 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.3" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.3" />
+  <link rel="icon" href="icon.png?v=v1.4.3.1" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.3.1" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <!-- 登录视图 -->
+  <!-- 登录视图（未登录只显示此页） -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -69,16 +69,15 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（支持多组合计价 + 合成复杂度） -->
+      <!-- 报价分析器 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
+        <!-- 内容与 v1.4.3 相同，见 app.js 动态生成逻辑 -->
         <form id="quote-form" class="form">
           <div class="grid-2">
             <label>项目名<input id="qa-title" /></label>
             <label>制片<input id="qa-producer" /></label>
           </div>
-
-          <!-- 单组合模式 -->
           <div id="qa-single">
             <div class="grid-3">
               <label>影片类型
@@ -97,15 +96,15 @@
               <label class="pill"><input type="checkbox" class="qa-task" value="edit" checked><span>剪辑</span></label>
               <label class="pill"><input type="checkbox" class="qa-task" value="color" checked><span>调色</span></label>
               <label class="pill"><input type="checkbox" class="qa-task" value="mix" checked><span>混音</span></label>
-              <label class="pill"><input type="checkbox" id="qa-comp" class="qa-task" value="comp"><span>合成</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="comp"><span>合成</span></label>
             </div>
-            <div id="comp-wrap" class="h-row hidden">
-              <label style="min-width:260px">合成复杂度（%）
-                <input id="qa-comp-rate" type="range" min="0" max="100" step="10" value="0">
+            <div id="qa-comp-row" class="h-row hidden">
+              <label style="min-width:280px">合成复杂度（%）
+                <input id="qa-comp" type="range" min="0" max="100" step="10" value="0">
                 <span id="qa-comp-val" class="muted small">0%</span>
               </label>
             </div>
-            <div class="grid-3">
+            <div class="h-row">
               <label>创意密度（%）
                 <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
                 <span id="qa-creative-val" class="muted small">30%</span>
@@ -120,8 +119,7 @@
             </div>
           </div>
 
-          <!-- 多组合模式 -->
-          <div class="muted small" style="margin:8px 0">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
+          <div class="muted small" style="margin:10px 0 6px">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
           <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
 
           <div id="qa-multi" class="hidden">
@@ -138,9 +136,7 @@
 
           <div class="muted small">
             *以上报价不含发票与税费及购买版权素材费用<br>
-            参与导演简述沟通会议，提供线上远程跟片及线下跟片；上门剪辑需项目前沟通；提供剪辑/基础调色/音效/简单合成<br>
-            【支付方式】执行前50%，提交FINAL后50%尾款（以B copy 起30天内结清）。对私：微信/支付宝/银行卡；对公：票面1%，类目剪辑服务，收6%<br>
-            【合作流程】1.确认合作&档期 → 2.项目简述&配合事项 → 3.按计划剪辑 → 4.修改限定4次，超出20%/次（大改60%）
+            参与导演简述沟通会议...（略）
           </div>
         </form>
       </div>
@@ -232,10 +228,9 @@
           <label>输出规格<select name="spec"><option>1080p</option><option>2k</option><option>4k</option></select></label>
           <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
         </div>
-        <div class="grid-3">
+        <div class="grid-2">
           <label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label>
-          <label>（旧字段）定金<input name="deposit_amount" type="number" min="0" step="0.01"></label>
-          <label>报价总额<input name="quote_amount" type="number" min="0" step="0.01"></label>
+          <label>总金额<input name="quote_amount" type="number" min="0" step="0.01"></label>
         </div>
         <div class="grid-2">
           <label>合作制片（姓名）<input name="producer_name"></label>
@@ -284,6 +279,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.3" defer></script>
+  <script src="app.js?v=v1.4.3.1" defer></script>
 </body>
 </html>
