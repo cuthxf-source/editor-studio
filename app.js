@@ -1,4 +1,4 @@
-/* editor-studio / app.js  v1.6 */
+/* editor-studio / app.js  v1.3 */
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -56,7 +56,7 @@ let projects = [];
 async function fetchProjects(){
   const { data, error } = await supa
     .from('projects')
-    .select(`id,title,brand,type,spec,clips,notes,meta_json,pay_status,quote_amount,deposit_amount,paid_amount,producer_name,producer_contact,final_link,updated_at`)
+    .select(`id,title,brand,type,spec,clips,notes,pay_status,quote_amount,deposit_amount,paid_amount,producer_name,producer_contact,a_copy,b_copy,final_date,final_link,updated_at`)
     .order('updated_at',{ ascending:false })
     .limit(1000);
   if(error){ console.error(error); return; }
@@ -66,148 +66,123 @@ async function fetchProjects(){
 // ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
-const pad2 = (n)=> String(n).padStart(2,'0');
 
-function parseSpecLegacy(specStr){
-  const raw = (specStr||'').split('·').map(s=>s.trim());
+function parseSpec(specStr){
+  const s = specStr || '';
+  let json = null;
+  try{
+    if((s.trim().startsWith('{') || s.trim().startsWith('['))) json = JSON.parse(s);
+  }catch(e){ json = null; }
+  if(json){
+    const combos = Array.isArray(json) ? json : (json.combos||[]);
+    return { json: true, combos };
+  }
+  // 兼容旧版： "1080p · 16:9"
+  const raw = s.split('·').map(x=>x.trim());
   let res = raw[0] || '';
   let ratio = raw[1] || '';
   if(!ratio && res.includes(':')){ ratio=res; res=''; }
-  return { res, ratio };
-}
-function parsePackages(p){
-  const s = p.spec || '';
-  try{
-    const arr = JSON.parse(s);
-    if(Array.isArray(arr)) return arr.map(x=>({
-      type: x.type||'',
-      clips: Number(x.clips||0),
-      res: x.res||'',
-      ratios: Array.isArray(x.ratios)? x.ratios.filter(Boolean) : []
-    }));
-  }catch(e){}
-  const {res, ratio} = parseSpecLegacy(s);
-  return [{ type: p.type||'', clips: Number(p.clips||1), res: res||'', ratios: ratio? [ratio] : [] }];
+  return { json:false, combos:[{ type:'', clips:1, res, ratios: ratio? [ratio]: [] }] };
 }
 function mergeTypeSpec(p){
-  const packs = parsePackages(p);
-  return packs.map(pk=>{
-    const left = `${pk.type||'未设'}×${pk.clips||1}`;
-    const right = [pk.res, (pk.ratios||[]).join(',')].filter(Boolean).join(' · ');
-    return [left, right].filter(Boolean).join(' · ');
-  }).join(' ｜ ');
-}
-function totalClips(p){
-  return parsePackages(p).reduce((s,x)=> s + Number(x.clips||0), 0) || Number(p.clips||0) || 1;
-}
-
-/** 进度与修改（使用 meta_json） */
-function defaultMeta(){ return { prog:{ A:{date:null,ver:'v1',done:false}, B:{date:null,ver:'v1',done:false}, F:{date:null,ver:'v1',done:false} }, rev:[] }; }
-function readMeta(row){
-  return (row.meta_json && typeof row.meta_json === 'object')
-    ? JSON.parse(JSON.stringify(row.meta_json))
-    : defaultMeta();
-}
-function saveMetaPatch(row, patch){
-  const meta = readMeta(row);
-  // 深合并（仅 A/B/F 或 rev）
-  if(patch.prog){
-    ['A','B','F'].forEach(k=>{
-      meta.prog[k] = { ...(meta.prog[k]||{}), ...(patch.prog[k]||{}) };
-    });
+  const parsed = parseSpec(p.spec);
+  if(parsed.json){
+    return parsed.combos.map(c=>{
+      const r = c.ratios?.length ? ` · ${c.ratios.join('/')}` : '';
+      const rr = c.res ? ` · ${c.res}` : '';
+      return `${c.type||'未填'}×${c.clips||1}${rr}${r}`;
+    }).join('，');
+  }else{
+    const c = parsed.combos[0]||{};
+    const clips = p.clips ? ` · ${p.clips}条` : '';
+    const type  = p.type || '';
+    const r = c.ratios?.length ? ` · ${c.ratios.join('/')}` : (c.ratio?` · ${c.ratio}`:'');
+    const rr = c.res ? ` · ${c.res}` : '';
+    const joined = [type, rr.replace(' · ','').trim()].filter(Boolean).join(' · ');
+    return (joined? joined : '—') + clips + (r||'');
   }
-  if(Array.isArray(patch.rev)){
-    meta.rev = patch.rev;
-  }
-  return meta;
+}
+function unpaidAmt(p){
+  return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0)-Number(p.deposit_amount||0),0);
+}
+function payBadgePill(st){
+  if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
+  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
+  return `<span class="pill pill-blue">未收款</span>`;
+}
+function hasTag(notes, tag){ return (notes||'').includes(tag); }
+function toggleTag(notes, tag, on){
+  notes = notes||'';
+  const has = notes.includes(tag);
+  if(on && !has) return (notes + ' ' + tag).trim();
+  if(!on && has) return notes.replace(tag,'').replace(/\s+/g,' ').trim();
+  return notes;
 }
 
-/** 未收款：总金额 - 已收款（注意：已收款=paid_amount，不含定金） */
-function unpaidAmtByRule(p){
-  const total = Number(p.quote_amount||0);
-  const paid  = Number(p.paid_amount||0);
-  return Math.max(total - paid, 0);
-}
-
-/** 最近未完成的里程碑（按 A→B→F 的日期排序，返回一个） */
-function upcomingMilestone(p){
-  const meta = readMeta(p);
+function nextUpcoming(p){
   const today = new Date(); today.setHours(0,0,0,0);
-
-  // 完结（Final done 或支付已收尾款）
-  if((meta.prog?.F?.done) || p.pay_status==='已收尾款'){
-    return { label:'完结', ver:null, date:null, overdue:false, complete:true, text:'完结' };
-  }
-
+  const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
+  const items=[];
+  if(A && A>=today && !hasTag(p.notes,'#A_DONE')) items.push({k:'Acopy', date:A});
+  if(B && B>=today && !hasTag(p.notes,'#B_DONE')) items.push({k:'Bcopy', date:B});
+  if(F && F>=today && !hasTag(p.notes,'#F_DONE')) items.push({k:'Final',  date:F});
+  if(!items.length) return null;
+  items.sort((a,b)=>a.date-b.date);
+  return items[0];
+}
+function nearestMilestone(p){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
+  const doneA = hasTag(p.notes,'#A_DONE'), doneB = hasTag(p.notes,'#B_DONE'), doneF = hasTag(p.notes,'#F_DONE');
   const items = [];
-  const push = (obj,label)=>{ if(obj?.date && !obj?.done) items.push({label, ver:obj.ver||'v1', date:fmt(obj.date)}); };
-  push(meta.prog?.A,'Acopy');
-  push(meta.prog?.B,'Bcopy');
-  push(meta.prog?.F,'Final');
-
-  if(items.length===0) return { label:'—', ver:null, date:null, overdue:false, complete:false, text:'—' };
-
+  if(A && !doneA) items.push({k:'Acopy', date:A});
+  if(B && !doneB) items.push({k:'Bcopy', date:B});
+  if(F && !doneF) items.push({k:'Final',  date:F});
+  if(items.length===0) return {text:'—', overdue:false};
   items.sort((a,b)=> a.date - b.date);
   const n = items[0];
   const overdue = n.date < today;
-  const mmdd = `${pad2(n.date.getMonth()+1)}-${pad2(n.date.getDate())}`;
-  return { ...n, overdue, complete:false, text:`${n.label}-${n.ver}-${mmdd}` };
-}
-
-function payBadgePill(st){
-  if(st==='已收尾款') return `<span class="pill pill-purple">完结</span>`;
-  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
-  return `<span class="pill pill-blue">未收款</span>`;
+  return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue };
 }
 
 // ============== 首页 ==============
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
+  // 依据“未来最近交稿日期”排序（无未来日期的排后）
+  const sorted = [...projects]
+    .map(p=>({p, up: nextUpcoming(p)}))
+    .sort((a,b)=>{
+      if(a.up && b.up) return a.up.date - b.up.date;
+      if(a.up && !b.up) return -1;
+      if(!a.up && b.up) return 1;
+      return new Date(b.p.updated_at) - new Date(a.p.updated_at);
+    })
+    .slice(0,4);
 
-  // 过滤完结
-  const active = projects.filter(p=>{
-    const meta = readMeta(p);
-    return !(meta.prog?.F?.done || p.pay_status==='已收尾款');
-  });
-
-  const sorted = [...active].sort((a,b)=>{
-    const ka = upcomingMilestone(a);
-    const kb = upcomingMilestone(b);
-    // 未有日期放后
-    if(!ka.date && kb.date) return 1;
-    if(ka.date && !kb.date) return -1;
-    if(!ka.date && !kb.date) return 0;
-    return ka.date - kb.date;
-  });
-
-  sorted.slice(0,4).forEach(p=>{
-    const near = upcomingMilestone(p);
-    const currentPay = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+  sorted.forEach(({p})=>{
+    const near = nearestMilestone(p);
     const li = document.createElement('div'); li.className='list-item';
     li.innerHTML = `
-      <div class="title-block">
-        <div><strong>${p.title||'未命名'}</strong>${p.brand?` · ${p.brand}`:''}</div>
-        <div class="muted small">合作制片：${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')||'—'}</div>
+      <div class="pmeta">
+        <div><strong>${p.title||'未命名'}</strong> ${p.brand?`· ${p.brand}`:''}</div>
+        <div class="subtitle">合作制片：${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')||'—'}</div>
       </div>
-      <div class="muted small">条数：${totalClips(p)||1}</div>
-      <div>${payBadgePill(currentPay)}</div>
-      <div class="${near.complete?'pill pill-purple':(near.overdue?'pill pill-red':'pill')}">${near.text}</div>
+      <div class="count muted small">条数：${p.clips||1}</div>
+      <div class="status">${payBadgePill(p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款')))}</div>
+      <div class="due ${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
     `;
     box.appendChild(li);
   });
   box.onclick = ()=> showView('projects');
 }
-
 function renderKpis(){
   const total   = projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid    = projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
-  const unpaid  = Math.max(total - paid, 0); // 修正：未收款=总金额-已收款
-
+  const unpaid  = projects.reduce((s,p)=>s+unpaidAmt(p),0);
   // 首页
   document.getElementById('kpi-total').textContent   = money(total);
   document.getElementById('kpi-paid').textContent    = money(paid);
   document.getElementById('kpi-unpaid').textContent  = money(unpaid);
-
   // 财务页
   document.getElementById('f-total').textContent     = money(total);
   document.getElementById('f-paid').textContent      = money(paid);
@@ -234,7 +209,7 @@ function renderKpis(){
   const show = ()=> {
     document.getElementById('qa-creative-val').textContent = elCreative.value+'%';
     document.getElementById('qa-urgent-val').textContent   = elUrgent.value+'%';
-    document.getElementById('qa-comp-val')  && (document.getElementById('qa-comp-val').textContent     = (elComp?.value||0)+'%');
+    elComp && (document.getElementById('qa-comp-val').textContent = (elComp?.value||0)+'%');
   };
   ['input','change'].forEach(ev=>{
     elCreative.addEventListener(ev,show);
@@ -246,7 +221,8 @@ function renderKpis(){
   });
 
   const calc = ()=>{
-    const baseDef = typeBase[elType.value] || {price:0, baseSec:0, secRate:0};
+    const t = elType.value;
+    const baseDef = typeBase[t] || {price:0, baseSec:0, secRate:0};
     const basePrice = Number(elBase.value||baseDef.price);
     const secs = Number(elSecs.value||0);
     const over = Math.max(0, secs - baseDef.baseSec);
@@ -273,7 +249,7 @@ function renderKpis(){
   calc();
 })();
 
-// ============== 通用编辑模态（producer/spec/progress/pay/money/revision） ==============
+// ============== 通用编辑模态 ==============
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
@@ -288,26 +264,16 @@ editorModal?.addEventListener('mousedown', (e)=>{ if(e.target===editorModal) clo
 function optionList(opts, selected){
   return opts.map(o=>`<option ${o===(selected||'')?'selected':''}>${o}</option>`).join('');
 }
-
+function checkboxList(opts, selectedArr){
+  const sel = new Set(selectedArr||[]);
+  return opts.map(o=>{
+    const ck = sel.has(o) ? 'checked' : '';
+    return `<label><input type="checkbox" value="${o}" ${ck}> ${o}</label>`;
+  }).join('');
+}
 const TYPE_OPTS = ['LookBook','形象片','TVC','纪录片','微电影'];
 const RES_OPTS  = ['1080p','4k'];
 const RATIO_OPTS= ['16:9','9:16','1:1','4:3','3:4'];
-const VERS      = ['v1','v2','v3','v4','v5','v6','v7','v8'];
-
-function packRowHtml(i, pack){
-  const ratios = RATIO_OPTS.map(r=>{
-    const on = (pack.ratios||[]).includes(r);
-    return `<label class="small"><input type="checkbox" name="ratio-${i}" value="${r}" ${on?'checked':''}> ${r}</label>`;
-  }).join(' ');
-  return `
-  <div class="pack row" data-i="${i}" style="display:grid;grid-template-columns:1fr 140px 140px 1fr auto;gap:10px;align-items:end;margin-bottom:8px">
-    <label>类型<select name="type-${i}">${optionList(TYPE_OPTS, pack.type||'')}</select></label>
-    <label>影片条数<input name="clips-${i}" type="number" min="1" value="${pack.clips||1}"></label>
-    <label>分辨率<select name="res-${i}">${optionList(RES_OPTS, pack.res||'')}</select></label>
-    <div><div class="muted small" style="margin-bottom:6px">画幅比例（多选）</div><div class="ratio-group" style="display:flex;gap:8px;flex-wrap:wrap">${ratios}</div></div>
-    <button class="ghost del-pack" type="button">删除</button>
-  </div>`;
-}
 
 function openEditorModal(kind, id){
   const p = projects.find(x=>String(x.id)===String(id));
@@ -325,50 +291,51 @@ function openEditorModal(kind, id){
       </div>
     `;
   }
-
   if(kind==='spec'){
-    editorTitle.textContent = '编辑 影片类型 & 条数 & 规格（多组合）';
-    const packs = parsePackages(p);
-    const packHtml = packs.map((pk,i)=> packRowHtml(i, pk)).join('');
+    editorTitle.textContent = '编辑 影片类型 & 条数 & 规格（可多组合）';
+    const parsed = parseSpec(p.spec);
+    const combos = parsed.json ? parsed.combos : [
+      { type: p.type||'', clips: p.clips||1, res: (parsed.combos[0]||{}).res||'', ratios: (parsed.combos[0]||{}).ratios||[] }
+    ];
+    const rows = combos.map((c,idx)=> comboRowHTML(idx,c)).join('');
     editorForm.innerHTML = `
-      <div id="packs">${packHtml}</div>
-      <div class="actions" style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn-ghost" type="button" id="add-pack">+ 添加一组</button>
+      <div id="combo-list">${rows}</div>
+      <div style="margin-top:10px">
+        <button type="button" id="add-combo" class="cell-edit">新增组合</button>
+      </div>
+      <div class="muted small" style="margin-top:8px">* 可添加多个组合；画幅比例支持多选。</div>
+    `;
+    editorForm.addEventListener('click', e=>{
+      const add = e.target.closest('#add-combo');
+      const del = e.target.closest('.combo-del');
+      if(add){
+        const list = editorForm.querySelector('#combo-list');
+        const idx = list.querySelectorAll('.combo-row').length;
+        list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}));
+      }
+      if(del){
+        del.closest('.combo-row')?.remove();
+      }
+    }, { once: false });
+  }
+  if(kind==='progress'){
+    editorTitle.textContent = '编辑 进度（日期 / 完成标记）';
+    editorForm.innerHTML = `
+      <div class="grid-3">
+        <label>Acopy 日期<input type="date" name="a_copy" value="${p.a_copy||''}"></label>
+        <label>Bcopy 日期<input type="date" name="b_copy" value="${p.b_copy||''}"></label>
+        <label>Final 日期<input type="date" name="final_date" value="${p.final_date||''}"></label>
+      </div>
+      <div class="grid-3">
+        <label><input type="checkbox" name="A_DONE" ${hasTag(p.notes,'#A_DONE')?'checked':''}> Acopy 完成</label>
+        <label><input type="checkbox" name="B_DONE" ${hasTag(p.notes,'#B_DONE')?'checked':''}> Bcopy 完成</label>
+        <label><input type="checkbox" name="F_DONE" ${hasTag(p.notes,'#F_DONE')?'checked':''}> Final 完成</label>
       </div>
     `;
-    editorForm.querySelector('#add-pack')?.addEventListener('click', ()=>{
-      const i = editorForm.querySelectorAll('.pack').length;
-      document.getElementById('packs').insertAdjacentHTML('beforeend', packRowHtml(i, {type:'',clips:1,res:'1080p',ratios:[]}));
-    });
-    editorForm.addEventListener('click',(e)=>{
-      const btn = e.target.closest('.del-pack'); if(!btn) return;
-      btn.closest('.pack')?.remove();
-    });
   }
-
-  if(kind==='progress'){
-    editorTitle.textContent = '编辑 进度（日期 / 小版本 / 完成）';
-    const meta = readMeta(p);
-    const block = (label,key,obj)=>`
-      <div class="grid-3" style="align-items:end">
-        <label>${label} 日期<input type="date" name="${key}_date" value="${obj?.date||''}"></label>
-        <label>小版本<select name="${key}_ver">${optionList(VERS, obj?.ver||'v1')}</select></label>
-        <div style="display:flex;align-items:end;gap:10px">
-          <button type="button" class="toggle-pill ${obj?.done?'on':''}" data-done="${key}">完成</button>
-        </div>
-      </div>`;
-    editorForm.innerHTML = block('Acopy','A',meta.prog?.A||{}) + block('Bcopy','B',meta.prog?.B||{}) + block('Final','F',meta.prog?.F||{});
-
-    // 切换完成状态
-    editorForm.addEventListener('click',(e)=>{
-      const btn = e.target.closest('.toggle-pill'); if(!btn) return;
-      btn.classList.toggle('on');
-    });
-  }
-
   if(kind==='pay'){
     editorTitle.textContent = '编辑 支付状态';
-    const current = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+    const current = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
     editorForm.innerHTML = `
       <div class="grid-1">
         <label>支付状态
@@ -377,33 +344,47 @@ function openEditorModal(kind, id){
           </select>
         </label>
       </div>
+      <div class="muted small">* 如需修改金额，请在“总金额”一栏点“编辑”。</div>
     `;
   }
-
   if(kind==='money'){
-    editorTitle.textContent = '编辑 总金额 / 已收款';
-    editorForm.innerHTML = `
-      <div class="grid-2">
-        <label>总金额（报价总额）<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label>
-        <label>已收金额<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label>
-      </div>
-    `;
-  }
-
-  if(kind==='revision'){
-    editorTitle.textContent = '记录 修改内容（按版本）';
-    const meta = readMeta(p);
-    const last = Array.isArray(meta.rev) && meta.rev.length>0 ? meta.rev[meta.rev.length-1] : null;
+    editorTitle.textContent = '编辑 金额';
     editorForm.innerHTML = `
       <div class="grid-3">
-        <label>关联阶段<select name="rev_major">${optionList(['A','B','F'], last?.major||'A')}</select></label>
-        <label>小版本<select name="rev_ver">${optionList(VERS, last?.ver||'v1')}</select></label>
-        <label>时间（可选，默认当前）<input type="datetime-local" name="rev_ts"></label>
+        <label>报价总额<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label>
+        <label>已收金额<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label>
+        <label>定金<input name="deposit_amount" type="number" min="0" step="0.01" value="${p.deposit_amount||0}"></label>
       </div>
-      <label>修改说明<textarea name="rev_text" rows="4" placeholder="填写这次修改的要点...">${last?.text||''}</textarea></label>
-      <div class="muted small">保存后，仅在表格中显示“最新一条”修改说明；历史会保存在内部。</div>
+      <div class="muted small">* 未收款 = 报价总额 - 已收金额 - 定金</div>
     `;
   }
+}
+function comboRowHTML(idx,c){
+  return `
+  <div class="combo-row grid-3" data-idx="${idx}" style="margin-bottom:10px">
+    <label>类型
+      <select class="combo-type">
+        ${optionList(TYPE_OPTS, c.type||'')}
+      </select>
+    </label>
+    <label>影片条数
+      <input class="combo-clips" type="number" min="1" value="${c.clips||1}">
+    </label>
+    <label>分辨率
+      <select class="combo-res">
+        ${optionList(RES_OPTS, c.res||'')}
+      </select>
+    </label>
+    <div class="grid-1" style="grid-column:1/-1">
+      <div class="small muted" style="margin-bottom:6px">画幅比例（可多选）</div>
+      <div class="combo-ratios" style="display:flex;gap:10px;flex-wrap:wrap">
+        ${checkboxList(RATIO_OPTS, c.ratios||[])}
+      </div>
+    </div>
+    <div style="grid-column:1/-1; display:flex; justify-content:flex-end">
+      <button type="button" class="cell-edit combo-del">删除该组合</button>
+    </div>
+  </div>`;
 }
 
 editorForm?.addEventListener('submit', async (e)=>{
@@ -411,63 +392,50 @@ editorForm?.addEventListener('submit', async (e)=>{
   const id   = editorForm.getAttribute('data-id');
   const kind = editorForm.getAttribute('data-kind');
   const fd   = new FormData(editorForm);
-  const row  = projects.find(x=>String(x.id)===String(id));
   let patch = {};
 
   if(kind==='producer'){
     patch.producer_name    = (fd.get('producer_name')||'').toString().trim();
     patch.producer_contact = (fd.get('producer_contact')||'').toString().trim();
   }
-
   if(kind==='spec'){
-    const rows = [...editorForm.querySelectorAll('.pack')];
-    const packs = rows.map(row=>{
-      const i = row.getAttribute('data-i');
-      const ratios = [...row.querySelectorAll(`input[name="ratio-${i}"]:checked`)].map(x=>x.value);
-      return {
-        type:   row.querySelector(`[name="type-${i}"]`)?.value || '',
-        clips:  Number(row.querySelector(`[name="clips-${i}"]`)?.value || 1),
-        res:    row.querySelector(`[name="res-${i}"]`)?.value || '',
-        ratios
-      };
-    }).filter(pk=> pk.type || pk.res || pk.clips);
-    patch.spec  = JSON.stringify(packs);
-    patch.type  = packs[0]?.type || '';
-    patch.clips = packs.reduce((s,x)=> s + Number(x.clips||0), 0);
+    const rows = [...editorForm.querySelectorAll('.combo-row')];
+    const combos = rows.map(row=>{
+      const type  = row.querySelector('.combo-type').value;
+      const clips = Number(row.querySelector('.combo-clips').value||1);
+      const res   = row.querySelector('.combo-res').value;
+      const ratios= [...row.querySelectorAll('.combo-ratios input[type="checkbox"]:checked')].map(i=>i.value);
+      return { type, clips, res, ratios };
+    }).filter(x=>x.type);
+    if(combos.length){
+      patch.spec = JSON.stringify({ combos });
+      // 兼容旧字段：用第一组填充 type / clips 便于首页“条数”展示
+      patch.type  = combos[0].type;
+      patch.clips = combos[0].clips;
+    }else{
+      patch.spec = '';
+      patch.type = '';
+      patch.clips= 1;
+    }
   }
-
   if(kind==='progress'){
-    const meta = readMeta(row);
-    const get = (k)=> (fd.get(`${k}_date`)||'') || null;
-    const getv= (k)=> (fd.get(`${k}_ver`)||'v1');
-    const doneFromBtn = (k)=> !!editorForm.querySelector(`.toggle-pill[data-done="${k}"]`)?.classList.contains('on');
-
-    meta.prog.A = { date:get('A'), ver:getv('A'), done:doneFromBtn('A') };
-    meta.prog.B = { date:get('B'), ver:getv('B'), done:doneFromBtn('B') };
-    meta.prog.F = { date:get('F'), ver:getv('F'), done:doneFromBtn('F') };
-
-    patch.meta_json = meta;
+    const a_copy    = fd.get('a_copy')||null;
+    const b_copy    = fd.get('b_copy')||null;
+    const final_date= fd.get('final_date')||null;
+    const row = projects.find(x=>String(x.id)===String(id));
+    let notes = row?.notes || '';
+    notes = toggleTag(notes, '#A_DONE', !!fd.get('A_DONE'));
+    notes = toggleTag(notes, '#B_DONE', !!fd.get('B_DONE'));
+    notes = toggleTag(notes, '#F_DONE', !!fd.get('F_DONE'));
+    patch = { a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null, notes };
   }
-
   if(kind==='pay'){
     patch.pay_status = (fd.get('pay_status')||'未收款').toString();
   }
-
   if(kind==='money'){
-    patch.quote_amount = Number(fd.get('quote_amount')||0);
-    patch.paid_amount  = Number(fd.get('paid_amount')||0);
-  }
-
-  if(kind==='revision'){
-    const meta = readMeta(row);
-    const nowISO = new Date().toISOString();
-    (meta.rev ||= []).push({
-      major: (fd.get('rev_major')||'A').toString(),
-      ver:   (fd.get('rev_ver')||'v1').toString(),
-      text:  (fd.get('rev_text')||'').toString().trim(),
-      ts:    fd.get('rev_ts') ? new Date(fd.get('rev_ts')).toISOString() : nowISO
-    });
-    patch.meta_json = meta;
+    patch.quote_amount   = Number(fd.get('quote_amount')||0);
+    patch.paid_amount    = Number(fd.get('paid_amount')||0);
+    patch.deposit_amount = Number(fd.get('deposit_amount')||0);
   }
 
   await supa.from('projects').update(patch).eq('id', id);
@@ -475,18 +443,16 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表（统一弹窗编辑） ==============
+// ============== 项目列表 ==============
 function renderProjects(list=projects){
   const tb = document.getElementById('projects-body'); tb.innerHTML='';
 
   list.forEach(p=>{
-    const near = upcomingMilestone(p);
-    const currentPay = p.pay_status || (unpaidAmtByRule(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
-    const meta = readMeta(p);
-    const lastRev = Array.isArray(meta.rev) && meta.rev.length>0 ? meta.rev[meta.rev.length-1] : null;
-    const lastRevText = lastRev ? `[${lastRev.major} ${lastRev.ver}] ${lastRev.text||''}` : '—';
-
+    const near = nearestMilestone(p);
     const tr = document.createElement('tr');
+    const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+    const moneyText = `${money(p.quote_amount)} / ${money(p.paid_amount)}${Number(p.deposit_amount||0)?` · 定金 ${money(p.deposit_amount)}`:''}`;
+
     tr.innerHTML = `
       <!-- 项目（仍支持直接改标题） -->
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
@@ -500,7 +466,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 多组合规格 -->
+      <!-- 影片类型&条数&规格 -->
       <td>
         <div class="cell-summary">
           <span>${mergeTypeSpec(p)||'—'}</span>
@@ -508,10 +474,15 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 进度（仅显示“最近需要执行”的一个版本） -->
+      <!-- 进度 -->
       <td>
         <div class="cell-summary">
-          <div class="${near.complete?'pill pill-purple':(near.overdue?'pill pill-red':'pill')}">${near.text}</div>
+          <div class="chips">
+            ${p.a_copy?`<span class="chip chip-a">Acopy</span>`:''}
+            ${p.b_copy?`<span class="chip chip-b">Bcopy</span>`:''}
+            ${p.final_date?`<span class="chip chip-final">Final</span>`:''}
+          </div>
+          <div class="${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
       </td>
@@ -524,26 +495,21 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 金额 -->
+      <!-- 金额（改成弹窗编辑） -->
       <td>
         <div class="cell-summary">
-          <span class="muted">${money(p.quote_amount)} / ${money(p.paid_amount)}</span>
+          <span class="muted">${moneyText}</span>
           <button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button>
         </div>
       </td>
 
-      <!-- 修改内容（仅显示最新一条） -->
-      <td>
-        <div class="cell-summary">
-          <span class="muted">${lastRevText}</span>
-          <button class="cell-edit edit-btn" data-kind="revision" data-id="${p.id}">编辑</button>
-        </div>
-      </td>
+      <!-- 备注 -->
+      <td contenteditable="true" data-k="notes" data-id="${p.id}">${p.notes||''}</td>
     `;
     tb.appendChild(tr);
   });
 
-  // —— 标题内联编辑
+  // —— 可编辑文本（标题/备注）
   tb.addEventListener('blur', async (e)=>{
     const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
     const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
@@ -552,7 +518,7 @@ function renderProjects(list=projects){
     await supa.from('projects').update(patch).eq('id', id);
   }, true);
 
-  // —— 打开弹窗编辑
+  // —— 统一弹窗入口
   tb.addEventListener('click', (e)=>{
     const btn = e.target.closest('.edit-btn'); if(!btn) return;
     openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id'));
@@ -593,13 +559,15 @@ function renderCalendar(){
 
   const evs={};
   projects.forEach(p=>{
-    const meta = readMeta(p);
-    [['A','a',meta.prog?.A],['B','b',meta.prog?.B],['F','final',meta.prog?.F]].forEach(([key,typ,obj])=>{
-      const d = fmt(obj?.date); if(!d) return;
+    [['a_copy','a'],['b_copy','b'],['final_date','final']].forEach(([key,typ])=>{
+      const d = fmt(p[key]); if(!d) return;
       if(d.getFullYear()!==y || d.getMonth()!==m) return;
       const day=d.getDate();
-      const overdue = d<today && !obj?.done;
-      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${(key==='A'?'Acopy':key==='B'?'Bcopy':'Final')} ${obj?.ver||'v1'}`, overdue });
+      const done = (typ==='a' && hasTag(p.notes,'#A_DONE')) ||
+                   (typ==='b' && hasTag(p.notes,'#B_DONE')) ||
+                   (typ==='final' && hasTag(p.notes,'#F_DONE'));
+      const overdue = d<today && !done;
+      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'}`, overdue });
     });
   });
 
@@ -618,7 +586,7 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务（保持 & 未收款计算修正） ==============
+// ============== 财务（保持，KPI 已调整） ==============
 function renderFinance(){
   // 合作金额最高伙伴（定金+实收）
   const byPartner = new Map();
@@ -641,18 +609,16 @@ function renderFinance(){
 
   const aging=document.getElementById('aging'); aging.innerHTML='';
   const today=Date.now();
-  projects.filter(p=> readMeta(p)?.prog?.F?.date && unpaidAmtByRule(p)>0)
-    .sort((a,b)=> new Date(readMeta(a).prog.F.date||0)-new Date(readMeta(b).prog.F.date||0))
+  projects.filter(p=> p.final_date && unpaidAmt(p)>0)
+    .sort((a,b)=> new Date(a.final_date)-new Date(b.final_date))
     .forEach(p=>{
-      const Fd = readMeta(p).prog.F.date;
-      const days = Math.floor((today - new Date(Fd).getTime())/86400000);
+      const days = Math.floor((today - new Date(p.final_date).getTime())/86400000);
       const li=document.createElement('div'); li.className='list-item';
       li.innerHTML = `<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div>
-                      <div>${money(unpaidAmtByRule(p))} / ${days>0?days:0}天</div>`;
+                      <div>${money(unpaidAmt(p))} / ${days>0?days:0}天</div>`;
       aging.appendChild(li);
     });
 
-  // 趋势（保持）
   const start = new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
   const days = Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
   const map = new Map(days.map(d=>[d.toDateString(),0]));
@@ -693,7 +659,9 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.quote_amount   = Number(row.quote_amount||0);
   row.deposit_amount = Number(row.deposit_amount||0);
   row.paid_amount    = Number(row.paid_amount||0);
-  if(row.spec){ row.spec = row.spec; }
+  if(row.spec){
+    row.spec = row.spec;
+  }
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
