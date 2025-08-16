@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <!-- 登录视图（未登录只显示此页） -->
+  <!-- 登录视图 -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -69,7 +69,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（支持多组合计价 & 合成复杂度） -->
+      <!-- 报价分析器（支持多组合计价 + 合成复杂度） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -97,15 +97,15 @@
               <label class="pill"><input type="checkbox" class="qa-task" value="edit" checked><span>剪辑</span></label>
               <label class="pill"><input type="checkbox" class="qa-task" value="color" checked><span>调色</span></label>
               <label class="pill"><input type="checkbox" class="qa-task" value="mix" checked><span>混音</span></label>
-              <label class="pill"><input type="checkbox" class="qa-task" value="comp"><span>合成</span></label>
+              <label class="pill"><input type="checkbox" id="qa-comp" class="qa-task" value="comp"><span>合成</span></label>
             </div>
-            <div id="qa-comp-row" class="h-row hidden">
-              <label style="min-width:280px">合成复杂度（%）
-                <input id="qa-comp" type="range" min="0" max="100" step="10" value="0">
+            <div id="comp-wrap" class="h-row hidden">
+              <label style="min-width:260px">合成复杂度（%）
+                <input id="qa-comp-rate" type="range" min="0" max="100" step="10" value="0">
                 <span id="qa-comp-val" class="muted small">0%</span>
               </label>
             </div>
-            <div class="h-row">
+            <div class="grid-3">
               <label>创意密度（%）
                 <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
                 <span id="qa-creative-val" class="muted small">30%</span>
@@ -121,7 +121,7 @@
           </div>
 
           <!-- 多组合模式 -->
-          <div class="muted small" style="margin:10px 0 6px">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
+          <div class="muted small" style="margin:8px 0">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
           <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
 
           <div id="qa-multi" class="hidden">
@@ -232,9 +232,10 @@
           <label>输出规格<select name="spec"><option>1080p</option><option>2k</option><option>4k</option></select></label>
           <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
         </div>
-        <div class="grid-2">
+        <div class="grid-3">
           <label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label>
-          <label>总金额<input name="quote_amount" type="number" min="0" step="0.01"></label>
+          <label>（旧字段）定金<input name="deposit_amount" type="number" min="0" step="0.01"></label>
+          <label>报价总额<input name="quote_amount" type="number" min="0" step="0.01"></label>
         </div>
         <div class="grid-2">
           <label>合作制片（姓名）<input name="producer_name"></label>
