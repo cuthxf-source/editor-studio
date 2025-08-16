@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.3 */
+/* editor-studio / styles.css  v1.4 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -46,7 +46,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-yellow .kpi-num{color:var(--yellow)}
 .kpi-red .kpi-num{color:var(--red)}
 
-/* Lists & table */
+/* Lists */
 .list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
 .list.compact .list-item{padding:8px 0}
 
@@ -57,10 +57,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
   .recent-list .list-item{grid-template-columns:1fr;gap:6px}
 }
 
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:#fff}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter)}
 .table thead th{background:#fafafa}
+
+/* —— 除“项目”列外文字缩小 —— */
+.table.smallify th:not(:first-child), .table.smallify td:not(:first-child){font-size:var(--fs-sm)}
 
 /* Pills / status */
 .pill{display:inline-block;padding:6px 10px;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm)}
@@ -88,7 +92,6 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .form.spacious label{line-height:2.0}
 .btn,.btn-ghost,.ghost{padding:10px 14px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
 .btn-ghost,.ghost{background:#fff}
-.cell-actions{display:flex;gap:8px;align-items:center}
 .cell-edit{padding:4px 10px;border-radius:var(--pill);border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer}
 .cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
