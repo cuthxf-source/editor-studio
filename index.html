@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.3 -->
+<!-- editor-studio / index.html  v1.4 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.3" />
-  <link rel="stylesheet" href="styles.css?v=v1.3" />
+  <link rel="icon" href="icon.png?v=v1.4" />
+  <link rel="stylesheet" href="styles.css?v=v1.4" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <!-- 登录视图（未登录只显示此页） -->
+  <!-- 登录视图 -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -49,10 +49,16 @@
   <main class="container main-wrap">
     <!-- 首页 -->
     <section id="view-home" class="view">
+      <!-- 金额 KPI -->
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
+      </div>
+      <!-- 片数 KPI -->
+      <div class="grid-2 kpi">
+        <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
+        <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
 
       <div class="card">
@@ -63,7 +69,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（保持） -->
+      <!-- 报价分析器：支持多组合计价 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -71,48 +77,59 @@
             <label>项目名<input id="qa-title" /></label>
             <label>制片<input id="qa-producer" /></label>
           </div>
-          <div class="grid-3">
-            <label>影片类型
-              <select id="qa-type">
-                <option value="LookBook">LookBook</option>
-                <option value="形象片">形象片</option>
-                <option value="TVC">TVC</option>
-                <option value="纪录片">纪录片</option>
-                <option value="微电影">微电影</option>
-              </select>
-            </label>
-            <label>基础价格（可自填）<input id="qa-base" type="number" min="0" step="1" placeholder="留空用默认"></label>
-            <label>影片时长（秒）<input id="qa-secs" type="number" min="0" step="1" value="0"></label>
+
+          <!-- 单组合模式 -->
+          <div id="qa-single">
+            <div class="grid-3">
+              <label>影片类型
+                <select id="qa-type">
+                  <option value="LookBook">LookBook</option>
+                  <option value="形象片">形象片</option>
+                  <option value="TVC">TVC</option>
+                  <option value="纪录片">纪录片</option>
+                  <option value="微电影">微电影</option>
+                </select>
+              </label>
+              <label>基础价格（可自填）<input id="qa-base" type="number" min="0" step="1" placeholder="留空用默认"></label>
+              <label>影片时长（秒）<input id="qa-secs" type="number" min="0" step="1" value="0"></label>
+            </div>
+            <div class="center pill-group">
+              <label class="pill"><input type="checkbox" class="qa-task" value="edit" checked><span>剪辑</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="color" checked><span>调色</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="mix" checked><span>混音</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="comp"><span>合成</span></label>
+            </div>
+            <div class="grid-3">
+              <label>创意密度（%）
+                <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
+                <span id="qa-creative-val" class="muted small">30%</span>
+              </label>
+              <label>紧急系数（%）
+                <input id="qa-urgent" type="range" min="0" max="100" step="10" value="0">
+                <span id="qa-urgent-val" class="muted small">0%</span>
+              </label>
+              <label>修改次数
+                <input id="qa-rev" type="number" min="0" step="1" value="4">
+              </label>
+            </div>
           </div>
-          <div class="calc-row">
-            <label><input type="checkbox" class="qa-task" value="edit" checked> 剪辑</label>
-            <label><input type="checkbox" class="qa-task" value="color" checked> 调色</label>
-            <label><input type="checkbox" class="qa-task" value="mix" checked> 混音</label>
-            <label><input type="checkbox" class="qa-task" value="comp"> 合成</label>
+
+          <!-- 多组合模式 -->
+          <div class="muted small" style="margin:8px 0">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
+          <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
+
+          <div id="qa-multi" class="hidden">
+            <div id="qa-mc-list"></div>
+            <div style="margin-top:10px">
+              <button type="button" id="qa-mc-add" class="cell-edit">新增组合</button>
+            </div>
           </div>
-          <div class="grid-3">
-            <label>创意密度（%）
-              <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
-              <span id="qa-creative-val" class="muted small">30%</span>
-            </label>
-            <label>紧急系数（%）
-              <input id="qa-urgent" type="range" min="0" max="100" step="10" value="0">
-              <span id="qa-urgent-val" class="muted small">0%</span>
-            </label>
-            <label>修改次数
-              <input id="qa-rev" type="number" min="0" step="1" value="4">
-            </label>
-          </div>
-          <div id="qa-comp-wrap" class="grid-1 hidden">
-            <label>合成难度（%）
-              <input id="qa-comp" type="range" min="0" max="100" step="10" value="0">
-              <span id="qa-comp-val" class="muted small">0%</span>
-            </label>
-          </div>
-          <div class="grid-2">
+
+          <div class="grid-2" style="margin-top:10px">
             <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
+
           <div class="muted small">
             *以上报价不含发票与税费及购买版权素材费用<br>
             参与导演简述沟通会议，提供线上远程跟片及线下跟片；上门剪辑需项目前沟通；提供剪辑/基础调色/音效/简单合成<br>
@@ -141,7 +158,7 @@
               <th>进度</th>
               <th>支付状态</th>
               <th>总金额</th>
-              <th>备注</th>
+              <th>修改内容</th>
             </tr>
           </thead>
           <tbody id="projects-body"></tbody>
@@ -192,7 +209,7 @@
     </section>
   </main>
 
-  <!-- 新建项目（保留） -->
+  <!-- 新建项目 -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head"><h3>新建项目</h3></div>
@@ -216,9 +233,10 @@
         </div>
         <div class="grid-2">
           <label>合作制片（姓名）<input name="producer_name"></label>
-          <label>合作制片（联系方式）<input name="producer_contact"></label>
+          <label>合作制片（联系方式）<input name="producer_contact"></input></label>
         </div>
-        <label>备注<textarea name="notes" rows="3" placeholder="可由系统写入 #A_DONE / #B_DONE / #F_DONE"></textarea></label>
+        <!-- 备注实际用于 tags/变更历史的 JSON 存储，表格中不直接展示 -->
+        <label class="hidden">备注<textarea name="notes" rows="3"></textarea></label>
         <div class="modal-foot">
           <button type="button" class="ghost" id="new-cancel">取消</button>
           <button type="submit">保存</button>
@@ -227,7 +245,7 @@
     </div>
   </div>
 
-  <!-- 通用编辑模态 -->
+  <!-- 通用编辑模态（合作制片 / 规格 / 进度 / 支付 / 金额 / 修改内容） -->
   <div id="editor-modal" class="modal">
     <div class="modal-inner modal-inner-wide">
       <div class="modal-head">
@@ -242,11 +260,25 @@
     </div>
   </div>
 
+  <!-- 最近项目·快速查看小窗 -->
+  <div id="quick-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3 id="quick-title">项目详情</h3>
+        <button id="quick-close" class="ghost">关闭</button>
+      </div>
+      <div id="quick-body" class="form"></div>
+      <div class="modal-foot">
+        <button type="button" id="quick-final-done" class="btn">标记 Final 完成</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase 配置 -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.3" defer></script>
+  <script src="app.js?v=v1.4" defer></script>
 </body>
 </html>
