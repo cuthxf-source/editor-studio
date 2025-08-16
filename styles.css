@@ -1,9 +1,10 @@
-/* v1.4.4-stable：在 v1.4.3 基础上
-   - 首页“已完成/未完成片数”增加截至日期展示
-   - 最近项目能量条加厚，条内放文案，右侧版本椭圆居中
-   - 容器加宽（给项目表更多空间）
-   - 规格编辑：比例多选靠右上，与类型/分辨率同排
-   - 多组合在项目列表中按“每组合换行”显示（沿用） */
+/* v1.4.4-r2 变更摘要
+   1) 首页已完成/未完成片数加“截至今日”
+   2) 最近项目进度条加厚，文字置于条内，右侧版本徽标居中
+   3) 列表容器加宽，修改内容列加宽
+   4) 规格弹窗：比例多选右上、与类型/分辨率同行；多组合在列表换行显示
+   5) 财务页金额加“统计截至”日期
+*/
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -19,7 +20,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:.2px}
-.container{width:100%;max-width:1480px;margin:auto;padding:0 24px} /* v1.4.4：加宽 */
+.container{width:100%;max-width:1480px;margin:auto;padding:0 24px} /* 加宽 */
 .asof{margin-left:6px}
 
 .site-header{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -50,7 +51,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table th,.table td{padding:14px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:#fafafa}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-.table th:nth-child(7), .table td:nth-child(7){min-width:720px} /* v1.4.4：修改内容列更宽 */
+.table th:nth-child(7), .table td:nth-child(7){min-width:720px} /* 修改内容列更宽 */
 .table td.shrink{font-size:var(--fs-xs)}
 .table td.spec-col{white-space:normal} /* 多组合换行显示 */
 
@@ -63,9 +64,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .recent .count{text-align:center}
 .recent .due{text-align:right}
 
-/* 进度条：v1.4.4“能量条”更厚；文案放条内；右侧版本椭圆居中 */
+/* 进度条：加厚；文字放条内；右侧版本徽标居中 */
 .prog{height:12px;border-radius:999px;background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
-.prog-fat{height:18px} /* v1.4.4 */
+.prog-fat{height:18px}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);display:flex;align-items:center;padding-left:8px;color:#fff;font-size:12px;font-weight:700;letter-spacing:.2px}
 .prog-text{mix-blend-mode:luminosity}
 .badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;font-size:var(--fs-sm);border:1px solid var(--line);min-width:56px;text-align:center}
@@ -102,7 +103,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:16px;display:flex;justify-content:flex-end;gap:10px}
 
-/* 横行布局（v1.4.2/1.4.3 要求延续） */
+/* 横行布局 */
 .h-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .h-row > label{min-width:180px}
 
@@ -126,8 +127,8 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .trend{height:180px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:10px}
 .trend svg{width:100%;height:100%}
 
-/* 规格编辑行：比例多选靠右上，与类型/分辨率同排（v1.4.4微调） */
+/* 规格编辑行：比例多选靠右上，与类型/分辨率同排 */
 .combo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin:8px 0}
-.combo-ratios{margin-left:auto;display:flex;align-items:flex-start;gap:8px;margin-top:-4px} /* 右上、略上移 */
+.combo-ratios{margin-left:auto;display:flex;align-items:flex-start;gap:8px;margin-top:-4px}
 .combo-ratios .label{font-size:var(--fs-sm);color:var(--muted)}
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
