@@ -1,26 +1,26 @@
-<!-- editor-studio / index.html  v1.1 (based on your v0.3) -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
+  <!-- editor-studio / index.html  v1.2 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <!-- 禁缓存，避免浏览器缓存导致旧代码 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.1" />
-  <link rel="stylesheet" href="styles.css?v=v1.1" />
+  <link rel="icon" href="icon.png?v=v1.2" />
+  <link rel="stylesheet" href="styles.css?v=v1.2" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 
-  <!-- 顶部导航：中间五个、右侧为退出 -->
+  <!-- 顶部导航（中间五个，右侧为退出；Life_HAN 金色） -->
   <header class="site-header">
     <div class="nav-wrap container">
-      <div class="brand">剪辑师项目管理系统 <span class="brand-gold">· Life_HAN</span></div>
+      <div class="brand">
+        剪辑师项目管理系统 <span class="gold">· Life_HAN</span>
+      </div>
       <nav class="nav-center">
         <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
         <button id="btn-projects" class="nav-btn">项目</button>
@@ -34,10 +34,10 @@
     </div>
   </header>
 
-  <!-- 登录视图（未登录只显示此页，不渲染任何系统数据） -->
-  <section id="view-auth" class="container auth-view hidden">
+  <!-- 登录页（与系统页分离：未登录只显示这个页） -->
+  <main id="view-auth" class="container auth-view">
     <div class="card auth-card">
-      <h2>登录 / 注册</h2>
+      <h2>登录</h2>
       <form id="auth-form" class="auth-form">
         <input id="email" type="email" required placeholder="邮箱" />
         <input id="password" type="password" required placeholder="密码" />
@@ -45,11 +45,12 @@
       </form>
       <p id="auth-tip" class="muted small"></p>
     </div>
-  </section>
+  </main>
 
-  <main class="container main-wrap">
+  <!-- 系统主容器（登录成功才显示） -->
+  <main id="view-app" class="container main-wrap hidden">
 
-    <!-- 首页（保持 v0.3 原样） -->
+    <!-- 首页（延用 v1.0 的 KPI + 最近项目 + 报价分析器） -->
     <section id="view-home" class="view">
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold">
@@ -71,7 +72,7 @@
         <div id="recent-list" class="list"></div>
       </div>
 
-      <!-- 报价分析器（保持 v0.3 原有逻辑与UI） -->
+      <!-- 报价分析器（v1.0 逻辑，UI保持） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -131,7 +132,7 @@
       </div>
     </section>
 
-    <!-- 项目列表（根据你的要求调整列与交互） -->
+    <!-- 项目列表（按你的新列定义；去掉品牌列） -->
     <section id="view-projects" class="view hidden">
       <div class="section-head">
         <h2>项目列表</h2>
@@ -148,7 +149,7 @@
               <th>影片类型&条数&规格</th>
               <th>进度</th>
               <th>支付状态</th>
-              <th>总金额</th>
+              <th>总金额/已收</th>
               <th>备注</th>
             </tr>
           </thead>
@@ -157,7 +158,7 @@
       </div>
     </section>
 
-    <!-- 档期（独立页，保持 v0.3 结构） -->
+    <!-- 档期（独立页） -->
     <section id="view-schedule" class="view hidden">
       <div class="section-head center">
         <button id="cal-prev" class="ghost">上一月</button>
@@ -176,7 +177,7 @@
       <div id="gallery-grid" class="poster-grid"></div>
     </section>
 
-    <!-- 财务（保持 v0.3） -->
+    <!-- 财务（KPI + 排行/账龄 + 趋势折线图） -->
     <section id="view-finance" class="view hidden">
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
@@ -200,7 +201,7 @@
     </section>
   </main>
 
-  <!-- 新建项目（模态） ——（保持 v0.3；如后续要去掉品牌，可再调） -->
+  <!-- 新建项目（保持 v1.0 的模态） -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head"><h3>新建项目</h3></div>
@@ -235,11 +236,26 @@
     </div>
   </div>
 
-  <!-- Supabase 配置（放在 app.js 前） -->
+  <!-- 统一编辑弹窗（本次新增：用于项目表格的四列编辑） -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3 id="modal-title">编辑</h3>
+        <button class="ghost" id="modal-close">关闭</button>
+      </div>
+      <div id="modal-body" class="form"></div>
+      <div class="modal-foot">
+        <button class="ghost" id="modal-cancel">取消</button>
+        <button class="btn" id="modal-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase 配置 -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.1" defer></script>
+  <script src="app.js?v=v1.2" defer></script>
 </body>
 </html>
