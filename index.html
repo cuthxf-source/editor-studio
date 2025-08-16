@@ -47,7 +47,7 @@
   <main class="container main-wrap">
     <!-- 首页 -->
     <section id="view-home" class="view">
-      <!-- KPI：收入总金额 / 已收款 / 未收款 -->
+      <!-- 财务 KPI（保持 v1.4.3 指标命名） -->
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold">
           <div class="kpi-label">收入总金额</div>
@@ -63,21 +63,19 @@
         </div>
       </div>
 
-      <!-- 完成/未完成片数（增加“截止目前日期”） -->
+      <!-- 完成/未完成片数（v1.4.4：增加“截至今日”） -->
       <div class="grid-2 kpi">
         <div class="card kpi-card">
-          <div class="kpi-label">已完成片数</div>
+          <div class="kpi-label">已完成片数 <span class="asof small muted">（截至 <span id="asof-home-clips-1">—</span>）</span></div>
           <div id="kpi-done" class="kpi-num">0</div>
-          <div class="asof small muted">截止：<span id="asof-home-clips-1">—</span></div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">未完成片数</div>
+          <div class="kpi-label">未完成片数 <span class="asof small muted">（截至 <span id="asof-home-clips-2">—</span>）</span></div>
           <div id="kpi-todo" class="kpi-num">0</div>
-          <div class="asof small muted">截止：<span id="asof-home-clips-2">—</span></div>
         </div>
       </div>
 
-      <!-- 最近项目：更厚能量条；说明文字置于条内；右侧椭圆版本 -->
+      <!-- 最近项目（v1.4.4：更厚“能量条”，文本置于条内，右侧版本椭圆居中） -->
       <div class="card">
         <div class="section-head">
           <h3>最近项目</h3>
@@ -86,7 +84,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（含“合成复杂度滑块” & 多组合计价） -->
+      <!-- 报价分析器（含“合成复杂度”滑块 & 多组合） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -95,7 +93,7 @@
             <label>制片<input id="qa-producer" /></label>
           </div>
 
-          <!-- 单组合 -->
+          <!-- 单组合模式 -->
           <div id="qa-single">
             <div class="grid-3">
               <label>影片类型
@@ -137,7 +135,7 @@
             </div>
           </div>
 
-          <!-- 多组合 -->
+          <!-- 多组合模式 -->
           <div class="muted small" style="margin:10px 0 6px">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
           <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
           <div id="qa-multi" class="hidden">
@@ -162,7 +160,7 @@
       </div>
     </section>
 
-    <!-- 项目列表（更宽内容区） -->
+    <!-- 项目列表（v1.4.4：容器加宽） -->
     <section id="view-projects" class="view hidden">
       <div class="section-head">
         <h2>项目列表</h2>
@@ -205,9 +203,12 @@
       <div id="gallery-grid" class="poster-grid"></div>
     </section>
 
-    <!-- 财务（金额显示“截止目前日期”） -->
+    <!-- 财务（v1.4.4：金额增加“截至”日期） -->
     <section id="view-finance" class="view hidden">
-      <div class="asof-line small muted">截止：<span id="asof-finance">—</span></div>
+      <div class="section-head">
+        <h2>财务概览</h2>
+        <div class="small muted">统计截至 <span id="asof-finance">—</span></div>
+      </div>
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
