@@ -1,4 +1,4 @@
-/* editor-studio / app.js  v1.3 */
+/* editor-studio / app.js  v1.4 */
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -67,6 +67,16 @@ async function fetchProjects(){
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
 
+function hasTag(notes, tag){ return (notes||'').includes(tag); }
+function toggleTag(notes, tag, on){
+  notes = notes||'';
+  const has = notes.includes(tag);
+  if(on && !has) return (notes + ' ' + tag).trim();
+  if(!on && has) return notes.replace(tag,'').replace(/\s+/g,' ').trim();
+  return notes;
+}
+
+/** —— 兼容旧 spec 文本解析（v1.1/v1.3） —— */
 function parseSpecLegacy(specStr){
   const raw = (specStr||'').split('·').map(s=>s.trim());
   let res = raw[0] || '';
@@ -75,7 +85,7 @@ function parseSpecLegacy(specStr){
   return { res, ratio };
 }
 
-// 多类型组合：从 p.spec(JSON) 解析为包数组
+/** —— 多类型组合：从 p.spec(JSON) 解析为包数组 —— */
 function parsePackages(p){
   const s = p.spec || '';
   try{
@@ -96,7 +106,6 @@ function parsePackages(p){
     ratios: ratio? [ratio] : []
   }];
 }
-
 function mergeTypeSpec(p){
   const packs = parsePackages(p);
   return packs.map(pk=>{
@@ -105,60 +114,87 @@ function mergeTypeSpec(p){
     return [left, right].filter(Boolean).join(' · ');
   }).join(' ｜ ');
 }
-
 function totalClips(p){
   return parsePackages(p).reduce((s,x)=> s + Number(x.clips||0), 0) || Number(p.clips||0) || 1;
 }
-
 function unpaidAmt(p){
   return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0)-Number(p.deposit_amount||0),0);
 }
-function payBadgePill(st){
-  if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
-  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
-  return `<span class="pill pill-blue">未收款</span>`;
+
+/** ===== v1.4：结构化元数据（进度 + 修改内容） =====
+ *  notes 字段中嵌入  ::PM::{...}::  JSON 块
+ *   { prog: {A:{date,ver,done}, B:{...}, F:{...}}, rev:[{major:'A'|'B'|'F',ver:'v1',text,ts}] }
+ */
+const META_RE = /::PM::(.*?)::/s;
+function readMeta(notes){
+  const m = (notes||'').match(META_RE);
+  if(m){ try{ return JSON.parse(m[1]); }catch(e){} }
+  return { prog:{ A:{date:null,ver:'v1',done:false}, B:{date:null,ver:'v1',done:false}, F:{date:null,ver:'v1',done:false} }, rev:[] };
 }
-function hasTag(notes, tag){ return (notes||'').includes(tag); }
-function toggleTag(notes, tag, on){
-  notes = notes||'';
-  const has = notes.includes(tag);
-  if(on && !has) return (notes + ' ' + tag).trim();
-  if(!on && has) return notes.replace(tag,'').replace(/\s+/g,' ').trim();
-  return notes;
+function writeMeta(oldNotes, meta){
+  const stripped = (oldNotes||'').replace(META_RE,'').trim();
+  return (stripped + ' ::PM::'+JSON.stringify(meta)+'::').trim();
+}
+function getProgInfo(p){
+  const meta = readMeta(p.notes);
+  const A = { ...meta.prog?.A, date: meta.prog?.A?.date || p.a_copy || null, done: (meta.prog?.A?.done||false) || hasTag(p.notes,'#A_DONE') };
+  const B = { ...meta.prog?.B, date: meta.prog?.B?.date || p.b_copy || null, done: (meta.prog?.B?.done||false) || hasTag(p.notes,'#B_DONE') };
+  const F = { ...meta.prog?.F, date: meta.prog?.F?.date || p.final_date || null, done: (meta.prog?.F?.done||false) || hasTag(p.notes,'#F_DONE') };
+  return { A,B,F, meta };
+}
+function latestRevision(p){
+  const meta = readMeta(p.notes);
+  const arr = Array.isArray(meta.rev)? meta.rev : [];
+  if(arr.length===0) return null;
+  arr.sort((a,b)=> new Date(a.ts||0) - new Date(b.ts||0));
+  return arr[arr.length-1];
 }
 
-// 最近交付的未来日期（未完成）
+/** —— 最近未完成的里程碑（带小版本） —— */
 function upcomingMilestone(p){
+  const {A,B,F} = getProgInfo(p);
   const today = new Date(); today.setHours(0,0,0,0);
-  const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
+
+  // 支付已完结或者 Final 完成，直接返回完结
+  const completed = F.done || (p.pay_status==='已收尾款');
+  if(completed) return { text:'完结', overdue:false, date:null, complete:true };
+
   const items = [];
-  if(A && !hasTag(p.notes,'#A_DONE')) items.push({k:'Acopy', date:A});
-  if(B && !hasTag(p.notes,'#B_DONE')) items.push({k:'Bcopy', date:B});
-  if(F && !hasTag(p.notes,'#F_DONE')) items.push({k:'Final',  date:F});
-  if(items.length===0) return { text:'—', overdue:false };
+  const push = (obj,label)=>{ if(obj.date && !obj.done) items.push({label, ver:obj.ver||'v1', date:fmt(obj.date)}); };
+  push(A,'Acopy'); push(B,'Bcopy'); push(F,'Final');
+  if(items.length===0) return { text:'—', overdue:false, date:null };
 
   items.sort((a,b)=> a.date - b.date);
   const n = items[0];
   const overdue = n.date < today;
-  return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue };
+  return { text: `${n.label} ${n.ver||'v1'} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue, date:n.date };
 }
 
-// 排序键：未来优先（升序），逾期其次，无日期最后
+/** —— 最近项目排序键（完成的永远不进“最近项目”） —— */
 function sortKeyByUpcoming(p){
+  const up = upcomingMilestone(p);
+  if(up.complete || !up.date) return Number.POSITIVE_INFINITY;
   const today = new Date(); today.setHours(0,0,0,0);
-  const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
-  const dts = [A,B,F].filter(Boolean).map(d=>d.getTime());
-  if(!dts.length) return Number.POSITIVE_INFINITY;
-  const nearest = Math.min(...dts);
-  const isOverdue = nearest < today.getTime();
-  return isOverdue ? nearest + 1e13 : nearest;
+  return up.date.getTime() < today.getTime() ? up.date.getTime()+1e13 : up.date.getTime();
 }
 
 // ============== 首页 ==============
+function payBadgePill(st){
+  if(st==='已收尾款') return `<span class="pill pill-purple">完结</span>`;
+  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
+  return `<span class="pill pill-blue">未收款</span>`;
+}
+
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
 
-  const sorted = [...projects].sort((a,b)=> sortKeyByUpcoming(a) - sortKeyByUpcoming(b));
+  // 过滤“完结”的
+  const active = projects.filter(p=>{
+    const {F} = getProgInfo(p);
+    return !(F.done || p.pay_status==='已收尾款');
+  });
+
+  const sorted = [...active].sort((a,b)=> sortKeyByUpcoming(a) - sortKeyByUpcoming(b));
   sorted.slice(0,4).forEach(p=>{
     const near = upcomingMilestone(p);
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
@@ -223,8 +259,7 @@ function renderKpis(){
   });
 
   const calc = ()=>{
-    const t = elType.value;
-    const baseDef = typeBase[t] || {price:0, baseSec:0, secRate:0};
+    const baseDef = typeBase[elType.value] || {price:0, baseSec:0, secRate:0};
     const basePrice = Number(elBase.value||baseDef.price);
     const secs = Number(elSecs.value||0);
     const over = Math.max(0, secs - baseDef.baseSec);
@@ -251,7 +286,7 @@ function renderKpis(){
   calc();
 })();
 
-// ============== 通用编辑模态 ==============
+// ============== 通用编辑模态（producer/spec/progress/pay/money/revision） ==============
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
@@ -270,8 +305,8 @@ function optionList(opts, selected){
 const TYPE_OPTS = ['LookBook','形象片','TVC','纪录片','微电影'];
 const RES_OPTS  = ['1080p','4k'];
 const RATIO_OPTS= ['16:9','9:16','1:1','4:3','3:4'];
+const VERS      = ['v1','v2','v3','v4','v5','v6','v7','v8'];
 
-// —— 渲染「多组合」行
 function packRowHtml(i, pack){
   const ratios = RATIO_OPTS.map(r=>{
     const on = (pack.ratios||[]).includes(r);
@@ -303,6 +338,7 @@ function openEditorModal(kind, id){
       </div>
     `;
   }
+
   if(kind==='spec'){
     editorTitle.textContent = '编辑 影片类型 & 条数 & 规格（多组合）';
     const packs = parsePackages(p);
@@ -313,31 +349,28 @@ function openEditorModal(kind, id){
         <button class="btn-ghost" type="button" id="add-pack">+ 添加一组</button>
       </div>
     `;
-    // 绑定添加/删除
     editorForm.querySelector('#add-pack')?.addEventListener('click', ()=>{
       const i = editorForm.querySelectorAll('.pack').length;
       document.getElementById('packs').insertAdjacentHTML('beforeend', packRowHtml(i, {type:'',clips:1,res:'1080p',ratios:[]}));
     });
     editorForm.addEventListener('click',(e)=>{
       const btn = e.target.closest('.del-pack'); if(!btn) return;
-      const row = btn.closest('.pack'); row?.remove();
+      btn.closest('.pack')?.remove();
     });
   }
+
   if(kind==='progress'){
-    editorTitle.textContent = '编辑 进度（日期 / 完成标记）';
-    editorForm.innerHTML = `
-      <div class="grid-3">
-        <label>Acopy 日期<input type="date" name="a_copy" value="${p.a_copy||''}"></label>
-        <label>Bcopy 日期<input type="date" name="b_copy" value="${p.b_copy||''}"></label>
-        <label>Final 日期<input type="date" name="final_date" value="${p.final_date||''}"></label>
-      </div>
-      <div class="grid-3">
-        <label><input type="checkbox" name="A_DONE" ${hasTag(p.notes,'#A_DONE')?'checked':''}> Acopy 完成</label>
-        <label><input type="checkbox" name="B_DONE" ${hasTag(p.notes,'#B_DONE')?'checked':''}> Bcopy 完成</label>
-        <label><input type="checkbox" name="F_DONE" ${hasTag(p.notes,'#F_DONE')?'checked':''}> Final 完成</label>
-      </div>
-    `;
+    editorTitle.textContent = '编辑 进度（日期 / 小版本 / 完成）';
+    const {A,B,F} = getProgInfo(p);
+    const row = (label,key,obj)=>`
+      <div class="grid-3" style="align-items:end">
+        <label>${label} 日期<input type="date" name="${key}_date" value="${obj.date||''}"></label>
+        <label>小版本<select name="${key}_ver">${optionList(VERS, obj.ver||'v1')}</select></label>
+        <label><input type="checkbox" name="${key}_DONE" ${obj.done?'checked':''}> ${label} 完成</label>
+      </div>`;
+    editorForm.innerHTML = row('Acopy','A',A) + row('Bcopy','B',B) + row('Final','F',F);
   }
+
   if(kind==='pay'){
     editorTitle.textContent = '编辑 支付状态';
     const current = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
@@ -351,6 +384,7 @@ function openEditorModal(kind, id){
       </div>
     `;
   }
+
   if(kind==='money'){
     editorTitle.textContent = '编辑 总金额 / 已收款';
     editorForm.innerHTML = `
@@ -358,7 +392,20 @@ function openEditorModal(kind, id){
         <label>总金额（报价总额）<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label>
         <label>已收金额<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label>
       </div>
-      <div class="muted small">* 如有定金可继续在“项目表单-定金”字段或后续扩展中维护；此处只改总额与已收。</div>
+    `;
+  }
+
+  if(kind==='revision'){
+    editorTitle.textContent = '记录 修改内容（按版本）';
+    const last = latestRevision(p);
+    editorForm.innerHTML = `
+      <div class="grid-3">
+        <label>关联阶段<select name="rev_major">${optionList(['A','B','F'], last?.major||'A')}</select></label>
+        <label>小版本<select name="rev_ver">${optionList(VERS, last?.ver||'v1')}</select></label>
+        <label>时间（可选，默认当前）<input type="datetime-local" name="rev_ts"></label>
+      </div>
+      <label>修改说明<textarea name="rev_text" rows="4" placeholder="填写这次修改的要点...">${last?.text?last.text:''}</textarea></label>
+      <div class="muted small">保存后，仅在表格中显示“最新一条”修改说明；历史会保存在内部。</div>
     `;
   }
 }
@@ -368,12 +415,14 @@ editorForm?.addEventListener('submit', async (e)=>{
   const id   = editorForm.getAttribute('data-id');
   const kind = editorForm.getAttribute('data-kind');
   const fd   = new FormData(editorForm);
+  const row  = projects.find(x=>String(x.id)===String(id));
   let patch = {};
 
   if(kind==='producer'){
     patch.producer_name    = (fd.get('producer_name')||'').toString().trim();
     patch.producer_contact = (fd.get('producer_contact')||'').toString().trim();
   }
+
   if(kind==='spec'){
     const rows = [...editorForm.querySelectorAll('.pack')];
     const packs = rows.map(row=>{
@@ -387,27 +436,49 @@ editorForm?.addEventListener('submit', async (e)=>{
       };
     }).filter(pk=> pk.type || pk.res || pk.clips);
     patch.spec  = JSON.stringify(packs);
-    // 为兼容旧字段：type 取第一组；clips 为总和
     patch.type  = packs[0]?.type || '';
     patch.clips = packs.reduce((s,x)=> s + Number(x.clips||0), 0);
   }
+
   if(kind==='progress'){
-    const a_copy    = fd.get('a_copy')||null;
-    const b_copy    = fd.get('b_copy')||null;
-    const final_date= fd.get('final_date')||null;
-    const row = projects.find(x=>String(x.id)===String(id));
-    let notes = row?.notes || '';
-    notes = toggleTag(notes, '#A_DONE', !!fd.get('A_DONE'));
-    notes = toggleTag(notes, '#B_DONE', !!fd.get('B_DONE'));
-    notes = toggleTag(notes, '#F_DONE', !!fd.get('F_DONE'));
-    patch = { a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null, notes };
+    const meta = readMeta(row.notes);
+    const get = (k)=> (fd.get(`${k}_date`)||'') || null;
+    const getv= (k)=> (fd.get(`${k}_ver`)||'v1');
+    const done= (k)=> !!fd.get(`${k}_DONE`);
+    meta.prog.A = { date:get('A'), ver:getv('A'), done:done('A') };
+    meta.prog.B = { date:get('B'), ver:getv('B'), done:done('B') };
+    meta.prog.F = { date:get('F'), ver:getv('F'), done:done('F') };
+    // 同步旧字段 & 标签
+    patch.a_copy = meta.prog.A.date || null;
+    patch.b_copy = meta.prog.B.date || null;
+    patch.final_date = meta.prog.F.date || null;
+
+    let notes = row.notes || '';
+    notes = toggleTag(notes, '#A_DONE', meta.prog.A.done);
+    notes = toggleTag(notes, '#B_DONE', meta.prog.B.done);
+    notes = toggleTag(notes, '#F_DONE', meta.prog.F.done);
+    patch.notes = writeMeta(notes, meta);
   }
+
   if(kind==='pay'){
     patch.pay_status = (fd.get('pay_status')||'未收款').toString();
   }
+
   if(kind==='money'){
     patch.quote_amount = Number(fd.get('quote_amount')||0);
     patch.paid_amount  = Number(fd.get('paid_amount')||0);
+  }
+
+  if(kind==='revision'){
+    const meta = readMeta(row.notes);
+    const nowISO = new Date().toISOString();
+    (meta.rev ||= []).push({
+      major: (fd.get('rev_major')||'A').toString(),
+      ver:   (fd.get('rev_ver')||'v1').toString(),
+      text:  (fd.get('rev_text')||'').toString().trim(),
+      ts:    fd.get('rev_ts') ? new Date(fd.get('rev_ts')).toISOString() : nowISO
+    });
+    patch.notes = writeMeta(row.notes, meta);
   }
 
   await supa.from('projects').update(patch).eq('id', id);
@@ -415,20 +486,33 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表（编辑项统一弹窗） ==============
+// ============== 项目列表（统一弹窗编辑） ==============
 function renderProjects(list=projects){
   const tb = document.getElementById('projects-body'); tb.innerHTML='';
 
   list.forEach(p=>{
     const near = upcomingMilestone(p);
+    const {A,B,F} = getProgInfo(p);
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+
+    // 进度 chips：Final 完成仅显示 Final
+    let chips = '';
+    if(F.done){ chips = `<span class="chip chip-final">Final</span>`; }
+    else{
+      if(A.date) chips += `<span class="chip chip-a">Acopy ${A.ver||'v1'}</span>`;
+      if(B.date) chips += `<span class="chip chip-b">Bcopy ${B.ver||'v1'}</span>`;
+      if(F.date) chips += `<span class="chip chip-final">Final ${F.ver||'v1'}</span>`;
+    }
+
+    const lastRev = latestRevision(p);
+    const lastRevText = lastRev ? `[${lastRev.major} ${lastRev.ver}] ${lastRev.text||''}` : '—';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <!-- 项目（仍支持直接改标题） -->
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
 
-      <!-- 合作制片：摘要 + 弹窗编辑 -->
+      <!-- 合作制片 -->
       <td>
         <div class="cell-summary">
           <span>${p.producer_name||'未填'}</span>
@@ -437,7 +521,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 影片类型&条数&规格（多组合）：摘要 + 弹窗编辑 -->
+      <!-- 多组合规格 -->
       <td>
         <div class="cell-summary">
           <span>${mergeTypeSpec(p)||'—'}</span>
@@ -445,20 +529,16 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 进度：摘要 + 弹窗编辑 -->
+      <!-- 进度 -->
       <td>
         <div class="cell-summary">
-          <div class="chips">
-            ${p.a_copy?`<span class="chip chip-a">Acopy</span>`:''}
-            ${p.b_copy?`<span class="chip chip-b">Bcopy</span>`:''}
-            ${p.final_date?`<span class="chip chip-final">Final</span>`:''}
-          </div>
-          <div class="${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
+          <div class="chips">${chips}</div>
+          <div class="${near.complete?'pill pill-purple':(near.overdue?'pill pill-red':'pill')}">${near.text}</div>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
       </td>
 
-      <!-- 支付状态：摘要 + 弹窗编辑 -->
+      <!-- 支付状态 -->
       <td>
         <div class="cell-summary">
           ${payBadgePill(currentPay)}
@@ -466,7 +546,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 总金额：改为弹窗编辑 -->
+      <!-- 金额 -->
       <td>
         <div class="cell-summary">
           <span class="muted">${money(p.quote_amount)} / ${money(p.paid_amount)}</span>
@@ -474,13 +554,18 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 备注（可直接编辑） -->
-      <td contenteditable="true" data-k="notes" data-id="${p.id}">${p.notes||''}</td>
+      <!-- 修改内容（仅显示最新一条） -->
+      <td>
+        <div class="cell-summary">
+          <span class="muted">${lastRevText}</span>
+          <button class="cell-edit edit-btn" data-kind="revision" data-id="${p.id}">编辑</button>
+        </div>
+      </td>
     `;
     tb.appendChild(tr);
   });
 
-  // —— 可编辑文本（标题/备注）
+  // —— 可编辑文本（标题）
   tb.addEventListener('blur', async (e)=>{
     const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
     const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
@@ -489,7 +574,7 @@ function renderProjects(list=projects){
     await supa.from('projects').update(patch).eq('id', id);
   }, true);
 
-  // —— 打开弹窗编辑（统一入口）
+  // —— 打开弹窗编辑
   tb.addEventListener('click', (e)=>{
     const btn = e.target.closest('.edit-btn'); if(!btn) return;
     openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id'));
@@ -530,15 +615,14 @@ function renderCalendar(){
 
   const evs={};
   projects.forEach(p=>{
-    [['a_copy','a'],['b_copy','b'],['final_date','final']].forEach(([key,typ])=>{
-      const d = fmt(p[key]); if(!d) return;
+    const {A,B,F} = getProgInfo(p);
+    [['A','a',A],['B','b',B],['F','final',F]].forEach(([key,typ,obj])=>{
+      const d = fmt(obj.date); if(!d) return;
       if(d.getFullYear()!==y || d.getMonth()!==m) return;
       const day=d.getDate();
-      const done = (typ==='a' && hasTag(p.notes,'#A_DONE')) ||
-                   (typ==='b' && hasTag(p.notes,'#B_DONE')) ||
-                   (typ==='final' && hasTag(p.notes,'#F_DONE'));
+      const done = obj.done;
       const overdue = d<today && !done;
-      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'}`, overdue });
+      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${(key==='A'?'Acopy':key==='B'?'Bcopy':'Final')} ${obj.ver||'v1'}`, overdue });
     });
   });
 
@@ -579,10 +663,11 @@ function renderFinance(){
 
   const aging=document.getElementById('aging'); aging.innerHTML='';
   const today=Date.now();
-  projects.filter(p=> p.final_date && unpaidAmt(p)>0)
-    .sort((a,b)=> new Date(a.final_date)-new Date(b.final_date))
+  projects.filter(p=> (getProgInfo(p).F.date) && unpaidAmt(p)>0)
+    .sort((a,b)=> new Date(getProgInfo(a).F.date||0)-new Date(getProgInfo(b).F.date||0))
     .forEach(p=>{
-      const days = Math.floor((today - new Date(p.final_date).getTime())/86400000);
+      const Fd = getProgInfo(p).F.date;
+      const days = Math.floor((today - new Date(Fd).getTime())/86400000);
       const li=document.createElement('div'); li.className='list-item';
       li.innerHTML = `<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div>
                       <div>${money(unpaidAmt(p))} / ${days>0?days:0}天</div>`;
@@ -629,9 +714,7 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.quote_amount   = Number(row.quote_amount||0);
   row.deposit_amount = Number(row.deposit_amount||0);
   row.paid_amount    = Number(row.paid_amount||0);
-  if(row.spec){
-    row.spec = row.spec;
-  }
+  if(row.spec){ row.spec = row.spec; }
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
