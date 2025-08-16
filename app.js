@@ -1,4 +1,4 @@
-/* editor-studio / app.js  v0.3 */
+/* editor-studio / app.js  v1.1 (based on your v0.3) */
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -31,11 +31,12 @@ function showView(name){
   ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
 
-// ============== 登录/注册 ==============
+// ============== 登录/注册（未登录只显示登录页） ==============
 const authForm = document.getElementById('auth-form');
 const authTip  = document.getElementById('auth-tip');
 nav.logout.addEventListener('click', async ()=>{
   await supa.auth.signOut();
+  // 清理视图到登录页（不展示任何数据）
   showView('auth');
 });
 authForm?.addEventListener('submit', async (e)=>{
@@ -48,7 +49,7 @@ authForm?.addEventListener('submit', async (e)=>{
     if(signUpErr){ authTip.textContent = signUpErr.message; return; }
   }
   const { data: { session } } = await supa.auth.getSession();
-  if(session){ showView('home'); bootAfterAuth(); }
+  if(session){ await bootAfterAuth(); showView('home'); }
 });
 
 // ============== 数据 ==============
@@ -67,16 +68,28 @@ async function fetchProjects(){
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
 
-function mergeTypeSpec(p){ return [p.type||'', p.spec||''].filter(Boolean).join(' · ') || '—'; }
+function parseSpec(specStr){
+  // 从 "1080p · 16:9" 拆成 {res,ratio}
+  const raw = (specStr||'').split('·').map(s=>s.trim());
+  let res = raw[0] || '';
+  let ratio = raw[1] || '';
+  // 容错：如果只有一个且包含冒号则当作比例
+  if(!ratio && res.includes(':')){ ratio=res; res=''; }
+  return { res, ratio };
+}
+function mergeTypeSpec(p){
+  // 展示用：类型 + spec（分辨率+比例）
+  const t = p.type||'';
+  const s = p.spec||'';
+  return [t, s].filter(Boolean).join(' · ') || '—';
+}
 function unpaidAmt(p){
   return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0)-Number(p.deposit_amount||0),0);
 }
-function payBadge(p){
-  const st = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
-  if(st==='未收款') return `<span class="pill pill-blue">未收款</span>`;
-  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
-  if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
-  return `<span class="pill">${st}</span>`;
+function payBadgePill(st){
+  if(st==='已收尾款') return `<span class="pill pill-gold pay-pill">已收尾款</span>`;
+  if(st==='已收定金') return `<span class="pill pill-green pay-pill">已收定金</span>`;
+  return `<span class="pill pill-blue pay-pill">未收款</span>`; // 默认未收款=蓝
 }
 function hasTag(notes, tag){ return (notes||'').includes(tag); }
 function toggleTag(notes, tag, on){
@@ -87,15 +100,15 @@ function toggleTag(notes, tag, on){
   return notes;
 }
 
-// 最近待交付（按 A→B→Final 顺序）
+// 最近待交付（按 Acopy→Bcopy→Final 顺序）
 function nearestMilestone(p){
   const today = new Date(); today.setHours(0,0,0,0);
   const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
   const doneA = hasTag(p.notes,'#A_DONE'), doneB = hasTag(p.notes,'#B_DONE'), doneF = hasTag(p.notes,'#F_DONE');
 
   const items = [];
-  if(A && !doneA) items.push({k:'A copy', date:A});
-  if(B && !doneB) items.push({k:'B copy', date:B});
+  if(A && !doneA) items.push({k:'Acopy', date:A});
+  if(B && !doneB) items.push({k:'Bcopy', date:B});
   if(F && !doneF) items.push({k:'Final',  date:F});
   if(items.length===0) return {text:'—', overdue:false};
 
@@ -105,15 +118,7 @@ function nearestMilestone(p){
   return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue };
 }
 
-function chipsAB(p){
-  const arr=[];
-  if(p.a_copy) arr.push('<span class="chip chip-a">A copy</span>');
-  if(p.b_copy) arr.push('<span class="chip chip-b">B copy</span>');
-  if(p.final_date) arr.push('<span class="chip chip-final">Final</span>');
-  return arr.join('');
-}
-
-// ============== 首页 ==============
+// ============== 首页（保持 v0.3） ==============
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
   projects.slice(0,4).forEach(p=>{
@@ -121,11 +126,11 @@ function renderRecent(){
     const li = document.createElement('div'); li.className='list-item';
     li.innerHTML = `
       <div>
-        <div><strong>${p.title||'未命名'}</strong> · ${p.brand||''}</div>
+        <div><strong>${p.title||'未命名'}</strong> ${p.brand?`· ${p.brand}`:''}</div>
         <div class="muted small">合作制片：${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')||'—'}</div>
       </div>
       <div class="muted small">条数：${p.clips||1}</div>
-      <div>${payBadge(p)}</div>
+      <div>${payBadgePill(p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款')))}</div>
       <div class="${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
     `;
     box.appendChild(li);
@@ -144,14 +149,14 @@ function renderKpis(){
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 }
 
-// 报价分析器
+// 报价分析器（保持 v0.3）
 (function initQuote(){
   const typeBase = {
-    'LookBook': {price:100, baseSec:15,  secRate:0.01},
-    '形象片':    {price:3500, baseSec:45, secRate:0.03},
-    'TVC':      {price:7000, baseSec:60, secRate:0.03},
-    '纪录片':    {price:12000, baseSec:180, secRate:0.005},
-    '微电影':    {price:12000, baseSec:180, secRate:0.005},
+    'LookBook': {price:100,  baseSec:15,  secRate:0.01},
+    '形象片':    {price:3500, baseSec:45,  secRate:0.03},
+    'TVC':      {price:7000, baseSec:60,  secRate:0.03},
+    '纪录片':    {price:12000,baseSec:180, secRate:0.005},
+    '微电影':    {price:12000,baseSec:180, secRate:0.005},
   };
   const elType = document.getElementById('qa-type');
   const elBase = document.getElementById('qa-base');
@@ -164,7 +169,7 @@ function renderKpis(){
   const show = ()=> {
     document.getElementById('qa-creative-val').textContent = elCreative.value+'%';
     document.getElementById('qa-urgent-val').textContent   = elUrgent.value+'%';
-    document.getElementById('qa-comp-val').textContent     = (elComp?.value||0)+'%';
+    document.getElementById('qa-comp-val')  && (document.getElementById('qa-comp-val').textContent     = (elComp?.value||0)+'%');
   };
   ['input','change'].forEach(ev=>{
     elCreative.addEventListener(ev,show);
@@ -183,23 +188,17 @@ function renderKpis(){
     const over = Math.max(0, secs - baseDef.baseSec);
     const secFactor = over>0 ? Math.pow(1+baseDef.secRate, over) : 1;
 
-    const tasks = [...document.querySelectorAll('.qa-task:checked')].map(i=>i.value);
-    // 工作内容基础：剪辑/调色/混音默认勾选，合成额外按难度加价；基础价主要随类型变化
-    let price = basePrice * secFactor;
-
     // 创意密度：每+1% => +1%
+    let price = basePrice * secFactor;
     price *= (1 + Number(elCreative.value||0)/100);
-
     // 紧急系数：每+10% => +3%
     price *= (1 + (Number(elUrgent.value||0)/10) * 0.03);
-
-    // 修改次数：超出4次的每+1 => +20%
+    // 修改次数：超出4次每+1 => +20%
     const rev = Number(elRev.value||0);
     const extraRev = Math.max(0, rev - 4);
     price *= (1 + extraRev*0.20);
-
-    // 合成难度：勾选合成时， 每+10% => +5%
-    if(tasks.includes('comp')){
+    // 合成难度：每+10% => +5%
+    if(document.querySelector('.qa-task[value="comp"]')?.checked){
       price *= (1 + (Number(elComp?.value||0)/10)*0.05);
     }
 
@@ -208,99 +207,238 @@ function renderKpis(){
     document.getElementById('qa-net').textContent   = money(net);
     document.getElementById('qa-gross').textContent = money(gross);
   };
-
-  // 事件绑定
   ['change','input'].forEach(ev=>{
     document.getElementById('quote-form').addEventListener(ev, calc);
   });
-  calc(); // 初次计算
+  calc();
 })();
 
-// ============== 项目列表（可编辑） ==============
+// ============== 项目列表（重排列与交互增强） ==============
 function renderProjects(list=projects){
   const tb = document.getElementById('projects-body'); tb.innerHTML='';
+
   list.forEach(p=>{
+    // 解析 spec 为分辨率+比例（不改库结构，仍写回 spec）
+    const {res, ratio} = parseSpec(p.spec);
+
     const near = nearestMilestone(p);
     const tr = document.createElement('tr');
+
+    // —— 付款状态文本（用于彩色胶囊）
+    const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
+
     tr.innerHTML = `
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
-      <td contenteditable="true" data-k="brand" data-id="${p.id}">${p.brand||''}</td>
-      <td contenteditable="true" data-k="type_spec" data-id="${p.id}">${mergeTypeSpec(p)}</td>
-      <td contenteditable="true" data-k="clips" data-id="${p.id}">${p.clips||1}</td>
+
       <td>
-        <div class="chips">
-          ${p.a_copy?`<span class="chip chip-a">A copy</span>`:''}
-          ${p.b_copy?`<span class="chip chip-b">B copy</span>`:''}
-          ${p.final_date?`<span class="chip chip-final">Final</span>`:''}
-        </div>
-        <div class="${near.overdue?'pill pill-red':'pill'}" style="margin-top:6px">${near.text}</div>
-        <div class="muted small" style="margin-top:6px">
-          完成：
-          <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#A_DONE" ${hasTag(p.notes,'#A_DONE')?'checked':''}> A</label>
-          <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#B_DONE" ${hasTag(p.notes,'#B_DONE')?'checked':''}> B</label>
-          <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#F_DONE" ${hasTag(p.notes,'#F_DONE')?'checked':''}> Final</label>
+        <div class="cell-pop">
+          <div class="row" style="gap:6px">
+            <input data-k="producer_name" data-id="${p.id}" value="${p.producer_name||''}" placeholder="姓名" style="width:120px">
+            <input data-k="producer_contact" data-id="${p.id}" value="${p.producer_contact||''}" placeholder="联系方式" style="width:160px">
+          </div>
         </div>
       </td>
+
       <td>
-        <select class="pay" data-id="${p.id}">
-          <option ${ (p.pay_status||'')==='未收款'?'selected':'' }>未收款</option>
-          <option ${ (p.pay_status||'')==='已收定金'?'selected':'' }>已收定金</option>
-          <option ${ (p.pay_status||'')==='已收尾款'?'selected':'' }>已收尾款</option>
-        </select>
+        <div class="row" style="gap:8px;align-items:center">
+          <select data-k="type" data-id="${p.id}" style="width:130px">
+            ${['LookBook','形象片','TVC','纪录片','微电影'].map(o=>`<option ${o===(p.type||'')?'selected':''}>${o}</option>`).join('')}
+          </select>
+          <input data-k="clips" data-id="${p.id}" type="number" min="1" value="${p.clips||1}" style="width:70px" title="影片条数">
+          <select data-k="res" data-id="${p.id}" style="width:100px">
+            ${['1080p','4k'].map(o=>`<option ${o===(res||'')?'selected':''}>${o}</option>`).join('')}
+          </select>
+          <select data-k="ratio" data-id="${p.id}" style="width:110px">
+            ${['16:9','9:16','1:1','4:3','3:4'].map(o=>`<option ${o===(ratio||'')?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
       </td>
-      <td contenteditable="true" data-k="qdp" data-id="${p.id}">
-        报 ${money(p.quote_amount)} / 定 ${money(p.deposit_amount)} / 实 ${money(p.paid_amount)}
+
+      <td>
+        <div class="cell-pop">
+          <div class="chips" style="margin-bottom:6px">
+            ${p.a_copy?`<span class="chip chip-a">Acopy</span>`:''}
+            ${p.b_copy?`<span class="chip chip-b">Bcopy</span>`:''}
+            ${p.final_date?`<span class="chip chip-final">Final</span>`:''}
+          </div>
+          <div class="${near.overdue?'pill pill-red':'pill'}" style="margin-bottom:6px">${near.text}</div>
+
+          <button class="btn-xs" data-pop="progress" data-id="${p.id}">设置日期/完成</button>
+          <div class="pop hidden">
+            <div class="row"><label>Acopy</label><input type="date" data-k="a_copy" data-id="${p.id}" value="${p.a_copy||''}"></div>
+            <div class="row"><label>Bcopy</label><input type="date" data-k="b_copy" data-id="${p.id}" value="${p.b_copy||''}"></div>
+            <div class="row"><label>Final</label><input type="date" data-k="final_date" data-id="${p.id}" value="${p.final_date||''}"></div>
+            <div class="row" style="gap:12px">
+              <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#A_DONE" ${hasTag(p.notes,'#A_DONE')?'checked':''}> Acopy 完成</label>
+              <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#B_DONE" ${hasTag(p.notes,'#B_DONE')?'checked':''}> Bcopy 完成</label>
+              <label><input type="checkbox" class="done" data-id="${p.id}" data-tag="#F_DONE" ${hasTag(p.notes,'#F_DONE')?'checked':''}> Final 完成</label>
+            </div>
+            <div class="actions">
+              <button class="btn-xs pop-save" data-id="${p.id}">保存</button>
+              <button class="btn-xs pop-close">关闭</button>
+            </div>
+          </div>
+        </div>
       </td>
-      <td contenteditable="true" data-k="producer" data-id="${p.id}">${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')}</td>
+
+      <td>
+        <div class="cell-pop">
+          <span class="pay-pill">${payBadgePill(currentPay)}</span>
+          <div class="pay-menu hidden">
+            <button data-pay="未收款">未收款</button>
+            <button data-pay="已收定金">已收定金</button>
+            <button data-pay="已收尾款">已收尾款</button>
+          </div>
+        </div>
+      </td>
+
+      <td>
+        <div class="cell-pop">
+          <span class="muted">${money(p.quote_amount)} / ${money(p.paid_amount)}</span>
+          <div class="pop hidden">
+            <div class="row"><label>总金额</label><input type="number" min="0" step="0.01" data-k="quote_amount" data-id="${p.id}" value="${p.quote_amount||0}"></div>
+            <div class="row"><label>已收金额</label><input type="number" min="0" step="0.01" data-k="paid_amount" data-id="${p.id}" value="${p.paid_amount||0}"></div>
+            <div class="actions">
+              <button class="btn-xs money-save" data-id="${p.id}">保存</button>
+              <button class="btn-xs pop-close">关闭</button>
+            </div>
+          </div>
+        </div>
+      </td>
+
       <td contenteditable="true" data-k="notes" data-id="${p.id}">${p.notes||''}</td>
     `;
     tb.appendChild(tr);
   });
 
-  // 失焦保存（简化：根据 data-k 拆分更新）
+  // —— 可编辑文本（标题/备注）
   tb.addEventListener('blur', async (e)=>{
     const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
     const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
-
-    let patch = {};
-    if(k==='title' || k==='brand' || k==='notes'){
-      patch[k] = v;
-    }else if(k==='clips'){
-      patch.clips = Number(v||1);
-    }else if(k==='type_spec'){
-      // 用户写 "TVC · 4k"
-      const [t,s] = v.split('·').map(x=>x.trim());
-      patch.type = t||null; patch.spec = s||null;
-    }else if(k==='qdp'){
-      // 用户可能不改这里；如需精确编辑可在后续加专门输入
-      // 这里不解析，避免误更新；留空
-      return;
-    }
-    if(Object.keys(patch).length===0) return;
-
+    if(!id || !k) return;
+    const patch = {}; patch[k]=v;
     await supa.from('projects').update(patch).eq('id', id);
   }, true);
 
-  // 支付状态下拉保存 + Final 30天未更新变红提醒（靠渲染时体现）
-  tb.addEventListener('change', async (e)=>{
-    const s = e.target.closest('select.pay'); if(!s) return;
-    const id = s.getAttribute('data-id'); const val = s.value;
-    await supa.from('projects').update({ pay_status: val }).eq('id', id);
+  // —— 合作制片 姓名/联系方式 输入
+  tb.querySelectorAll('input[data-k="producer_name"],input[data-k="producer_contact"]').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const id = inp.getAttribute('data-id');
+      const row = {};
+      tb.querySelectorAll(`input[data-id="${id}"][data-k="producer_name"],input[data-id="${id}"][data-k="producer_contact"]`).forEach(i=>{
+        row[i.getAttribute('data-k')] = i.value.trim();
+      });
+      await supa.from('projects').update(row).eq('id', id);
+    });
   });
 
-  // 完成勾选 → notes 写入 / 删除 标签
-  tb.addEventListener('change', async (e)=>{
-    const box = e.target.closest('input.done'); if(!box) return;
-    const id  = box.getAttribute('data-id');
-    const tag = box.getAttribute('data-tag');
-    const row = projects.find(x=>String(x.id)===String(id));
-    const nextNotes = toggleTag(row?.notes||'', tag, box.checked);
-    await supa.from('projects').update({ notes: nextNotes }).eq('id', id);
-    await fetchProjects(); renderProjects(); // 更新最近进度显示
+  // —— 类型/条数/规格（分辨率+比例）
+  tb.querySelectorAll('select[data-k],input[data-k="clips"]').forEach(el=>{
+    el.addEventListener('change', async ()=>{
+      const id = el.getAttribute('data-id');
+      const row = {};
+      const typeEl  = tb.querySelector(`select[data-id="${id}"][data-k="type"]`);
+      const clipsEl = tb.querySelector(`input[data-id="${id}"][data-k="clips"]`);
+      const resEl   = tb.querySelector(`select[data-id="${id}"][data-k="res"]`);
+      const ratioEl = tb.querySelector(`select[data-id="${id}"][data-k="ratio"]`);
+      if(typeEl)  row.type  = typeEl.value;
+      if(clipsEl) row.clips = Number(clipsEl.value||1);
+      if(resEl || ratioEl){
+        const res   = resEl?.value || '';
+        const ratio = ratioEl?.value || '';
+        row.spec = [res, ratio].filter(Boolean).join(' · ');
+      }
+      await supa.from('projects').update(row).eq('id', id);
+      await fetchProjects(); renderProjects(); renderKpis();
+    });
   });
+
+  // —— 进度弹层：打开/关闭
+  tb.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-pop="progress"]');
+    const close = e.target.closest('.pop-close');
+    if(btn){
+      const wrap = btn.parentElement;
+      const pop = wrap.querySelector('.pop');
+      document.querySelectorAll('#projects-body .cell-pop .pop').forEach(p=>p!==pop && p.classList.add('hidden'));
+      pop.classList.toggle('hidden');
+    }
+    if(close){
+      close.closest('.pop')?.classList.add('hidden');
+    }
+  });
+
+  // —— 进度弹层：保存 日期/完成 标签
+  tb.addEventListener('click', async (e)=>{
+    const saveBtn = e.target.closest('.pop-save'); if(!saveBtn) return;
+    const id = saveBtn.getAttribute('data-id');
+    const get = k => tb.querySelector(`input[data-id="${id}"][data-k="${k}"]`)?.value || null;
+    const patch = {
+      a_copy:     get('a_copy') || null,
+      b_copy:     get('b_copy') || null,
+      final_date: get('final_date') || null,
+    };
+    // 完成标签
+    const row = projects.find(x=>String(x.id)===String(id));
+    let notes = row?.notes || '';
+    tb.querySelectorAll(`input.done[data-id="${id}"]`).forEach(box=>{
+      notes = toggleTag(notes, box.getAttribute('data-tag'), box.checked);
+    });
+    patch.notes = notes;
+
+    await supa.from('projects').update(patch).eq('id', id);
+    await fetchProjects(); renderProjects(); renderKpis();
+  });
+
+  // —— 支付状态 彩色胶囊 下拉
+  tb.addEventListener('click', (e)=>{
+    const pill = e.target.closest('.pay-pill'); if(!pill) return;
+    const wrap = pill.parentElement;
+    const menu = wrap.querySelector('.pay-menu');
+    document.querySelectorAll('#projects-body .pay-menu').forEach(m=>m!==menu && m.classList.add('hidden'));
+    menu.classList.toggle('hidden');
+  });
+  tb.addEventListener('click', async (e)=>{
+    const opt = e.target.closest('.pay-menu button'); if(!opt) return;
+    const wrap = opt.closest('.cell-pop'); const id = wrap.querySelector('.pay-pill')?.closest('td')?.parentElement?.querySelector('[data-id]')?.getAttribute('data-id');
+    const rowEl = wrap.closest('tr');
+    // 更安全地取 id：
+    const anyDataId = rowEl?.querySelector('[data-id]')?.getAttribute('data-id');
+    const pid = anyDataId || id;
+    const val = opt.getAttribute('data-pay');
+    await supa.from('projects').update({ pay_status: val }).eq('id', pid);
+    await fetchProjects(); renderProjects(); renderKpis();
+  });
+
+  // —— 总金额/已收金额 弹层
+  tb.addEventListener('click', (e)=>{
+    const cell = e.target.closest('td'); if(!cell) return;
+    const pop = cell.querySelector('.cell-pop .pop'); if(!pop) return;
+    const isMoney = !!cell.querySelector('.money-save');
+    if(isMoney){
+      document.querySelectorAll('#projects-body .cell-pop .pop').forEach(p=>p!==pop && p.classList.add('hidden'));
+      pop.classList.toggle('hidden');
+    }
+  });
+  tb.addEventListener('click', async (e)=>{
+    const saveBtn = e.target.closest('.money-save'); if(!saveBtn) return;
+    const id = saveBtn.getAttribute('data-id');
+    const total = Number(document.querySelector(`input[data-id="${id}"][data-k="quote_amount"]`)?.value||0);
+    const paid  = Number(document.querySelector(`input[data-id="${id}"][data-k="paid_amount"]`)?.value||0);
+    await supa.from('projects').update({ quote_amount: total, paid_amount: paid }).eq('id', id);
+    await fetchProjects(); renderProjects(); renderKpis();
+  });
+
+  // 点击其它区域关闭所有 pop
+  document.addEventListener('mousedown', (e)=>{
+    const inPop = e.target.closest('.cell-pop');
+    if(!inPop){
+      document.querySelectorAll('#projects-body .cell-pop .pop,.pay-menu').forEach(p=>p.classList.add('hidden'));
+    }
+  }, {capture:true});
 }
 
-// ============== 作品合集 ==============
+// ============== 作品合集（保持 v0.3） ==============
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); grid.innerHTML='';
   const finals = projects.filter(p=>p.final_link);
@@ -314,12 +452,12 @@ function renderGallery(){
   finals.forEach(p=>{
     const a = document.createElement('a');
     a.className='poster'; a.href=p.final_link; a.target='_blank';
-    a.innerHTML = `<div class="caption">${p.title||'未命名'} · ${p.brand||''}</div>`;
+    a.innerHTML = `<div class="caption">${p.title||'未命名'}${p.brand?` · ${p.brand}`:''}</div>`;
     grid.appendChild(a);
   });
 }
 
-// ============== 档期（独立页） ==============
+// ============== 档期（独立页，保持 v0.3） ==============
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
 let calBase = new Date(); calBase.setDate(1);
@@ -342,7 +480,7 @@ function renderCalendar(){
                    (typ==='b' && hasTag(p.notes,'#B_DONE')) ||
                    (typ==='final' && hasTag(p.notes,'#F_DONE'));
       const overdue = d<today && !done;
-      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${typ==='a'?'A copy':typ==='b'?'B copy':'Final'}`, overdue });
+      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'}`, overdue });
     });
   });
 
@@ -361,7 +499,7 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务：排行榜/账龄/趋势 ==============
+// ============== 财务：排行榜/账龄/趋势（保持 v0.3并修复乘号） ==============
 function renderFinance(){
   // KPI 在 renderKpis 已填
 
@@ -398,7 +536,7 @@ function renderFinance(){
       aging.appendChild(li);
     });
 
-  // 收入趋势（近 90 天，按 updated_at 粗粒度累计 paid_amount）
+  // 收入趋势（近 90 天），修正计算公式中的“×”为“*”
   const start = new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
   const days = Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
   const map = new Map(days.map(d=>[d.toDateString(),0]));
@@ -414,9 +552,9 @@ function renderFinance(){
 }
 function drawTrend(container, arr){
   container.innerHTML='';
-  const w=container.clientWidth||800, h=container.clientHeight||180, p=10;
-  const max=Math.max(...arr,1), step=(w-2*p)/(arr.length-1);
-  let d=''; arr.forEach((v,i)=>{ const x=p+i*step, y=h-p-(v/max)*(h-2*p); d+=(i?'L':'M')+x+','+y+' '; });
+  const w=container.clientWidth||800, h=container.clientHeight||180, pad=10;
+  const max=Math.max(...arr,1), step=(w-2*pad)/Math.max(arr.length-1,1);
+  let d=''; arr.forEach((v,i)=>{ const x=pad+i*step, y=h-pad-(v/max)*(h-2*pad); d+=(i?'L':'M')+x+','+y+' '; });
   container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#0a84ff" stroke-width="2"/></svg>`;
 }
 
@@ -428,7 +566,7 @@ nav.gallery.addEventListener('click',  ()=> showView('gallery'));
 nav.finance.addEventListener('click',  ()=> showView('finance'));
 nav.schedule.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
 
-// ============== 新建项目 ==============
+// ============== 新建项目（保持 v0.3） ==============
 const mNew = document.getElementById('new-modal');
 document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classList.add('show'));
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
@@ -439,6 +577,9 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.quote_amount   = Number(row.quote_amount||0);
   row.deposit_amount = Number(row.deposit_amount||0);
   row.paid_amount    = Number(row.paid_amount||0);
+  if(row.spec){ // 仅保存用户在创建时选的分辨率，比例可在列表再选
+    row.spec = row.spec;
+  }
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
@@ -454,7 +595,7 @@ function renderAll(){
   renderFinance();
 }
 
-// ============== 启动 ==============
+// ============== 启动（未登录只显示登录页） ==============
 async function boot(){
   const { data:{ session } } = await supa.auth.getSession();
   if(!session){ showView('auth'); return; }
