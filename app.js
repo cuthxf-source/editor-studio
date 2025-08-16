@@ -1,4 +1,7 @@
-/* editor-studio / app.js  v1.4 */
+/* editor-studio / app.js  v1.4.2 */
+
+// ============== App 版本（用于修改记录） ==============
+const APP_VERSION = 'v1.4.2';
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -78,7 +81,6 @@ function parseNotes(notes){
       };
     }
   }catch(e){}
-  // 兼容旧文本备注：提取 #A_DONE 等
   const tags = new Set((notes.match(/#[A-Z_]+/g)||[]));
   return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes };
 }
@@ -100,6 +102,13 @@ function toggleTag(notes, tag, on){
 // ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
+
+// 小版本号自增：v1 -> v2（上限 v8）
+function bumpVersion(ver){
+  const n = parseInt(String(ver||'v1').replace(/[^\d]/g,''), 10) || 1;
+  const next = Math.min(n + 1, 8);
+  return 'v' + next;
+}
 
 function parseSpec(specStr){
   const s = specStr || '';
@@ -168,30 +177,28 @@ function nearestMilestone(p){
   if(B && !doneB) items.push({k:'Bcopy', date:B});
   if(F && !doneF) items.push({k:'Final',  date:F});
   if(items.length===0){
-    // 无未来节点：取最近的历史节点（最大已过去日期）
     const past = [{k:'Acopy',date:A,done:doneA},{k:'Bcopy',date:B,done:doneB},{k:'Final',date:F,done:doneF}]
       .filter(x=>x.date).sort((a,b)=>b.date-a.date)[0];
-    if(!past) return {text:'—', overdue:false, date:null};
+    if(!past) return {text:'—', overdue:false, date:null, k:null};
     const overdue = past.date < today && !past.done;
-    return { text:`${past.k} - ${past.date.getMonth()+1}/${past.date.getDate()}`, overdue, date:past.date };
+    return { text:`${past.k} - ${past.date.getMonth()+1}/${past.date.getDate()}`, overdue, date:past.date, k:past.k };
   }
   items.sort((a,b)=> a.date - b.date);
   const n = items[0];
   const overdue = n.date < today;
-  return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue, date:n.date };
+  return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue, date:n.date, k:n.k };
 }
 
 // ============== 首页 ==============
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
-  // 按“最近节点日期”排序：优先未来最近，其次最近过去
   const weighted = projects.map(p=>{
     const n = nearestMilestone(p);
     let w = 1e15;
     if(n.date){
       const now = new Date();
       const diff = n.date - now;
-      w = (diff>=0? diff : Math.abs(diff) + 1e12); // 未来优先，过去排后
+      w = (diff>=0? diff : Math.abs(diff) + 1e12);
     }
     return {p, w};
   }).sort((a,b)=>a.w-b.w).slice(0,4);
@@ -214,12 +221,10 @@ function renderRecent(){
       </div>
       <div class="due ${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
     `;
-    // 点击打开快速详情小窗
     li.addEventListener('click', ()=> openQuickModal(p.id));
     box.appendChild(li);
   });
 
-  // 顶部“查看全部”仍跳转列表
   document.getElementById('go-list')?.addEventListener('click', (e)=>{
     e.stopPropagation(); showView('projects');
   }, { once: true });
@@ -233,13 +238,12 @@ function renderKpis(){
   const clipAll  = projects.reduce((s,p)=> s + totalClipsOf(p), 0);
   const clipTodo = Math.max(clipAll - clipDone, 0);
 
-  // 首页
   document.getElementById('kpi-total').textContent   = money(total);
   document.getElementById('kpi-paid').textContent    = money(paid);
   document.getElementById('kpi-unpaid').textContent  = money(unpaid);
   document.getElementById('kpi-done').textContent    = String(clipDone);
   document.getElementById('kpi-todo').textContent    = String(clipTodo);
-  // 财务页
+
   document.getElementById('f-total').textContent     = money(total);
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
@@ -260,13 +264,11 @@ function renderKpis(){
   const elCreative = document.getElementById('qa-creative');
   const elUrgent   = document.getElementById('qa-urgent');
   const elRev      = document.getElementById('qa-rev');
-  const elCompWrap = document.createElement('div'); // 兼容以前可能的合成滑杆
   const elMultiToggle = document.getElementById('qa-multi-toggle');
   const elMulti = document.getElementById('qa-multi');
   const list = document.getElementById('qa-mc-list');
   const addBtn = document.getElementById('qa-mc-add');
 
-  // 胶囊显示百分比
   const show = ()=> {
     document.getElementById('qa-creative-val').textContent = elCreative.value+'%';
     document.getElementById('qa-urgent-val').textContent   = elUrgent.value+'%';
@@ -300,7 +302,7 @@ function renderKpis(){
 
   function mcRowHTML(idx, c){
     return `
-      <div class="grid-3" data-idx="${idx}" style="margin-top:10px">
+      <div class="h-row" data-idx="${idx}" style="margin-top:10px">
         <label>类型
           <select class="mc-type">
             ${['LookBook','形象片','TVC','纪录片','微电影'].map(o=>`<option ${o===c.type?'selected':''}>${o}</option>`).join('')}
@@ -385,7 +387,7 @@ function openEditorModal(kind, id){
   if(kind==='producer'){
     editorTitle.textContent = '编辑 合作制片';
     editorForm.innerHTML = `
-      <div class="grid-2">
+      <div class="h-row">
         <label>合作制片（姓名）<input name="producer_name" value="${p.producer_name||''}"></label>
         <label>合作制片（联系方式）<input name="producer_contact" value="${p.producer_contact||''}"></label>
       </div>
@@ -404,7 +406,7 @@ function openEditorModal(kind, id){
       <div style="margin-top:10px">
         <button type="button" id="add-combo" class="cell-edit">新增组合</button>
       </div>
-      <div class="muted small" style="margin-top:8px">* 可添加多个组合；画幅比例支持多选（胶囊按钮）。</div>
+      <div class="muted small" style="margin-top:8px">* 横行排列；画幅比例为胶囊多选（点击前后同尺寸）。</div>
     `;
     editorForm.addEventListener('click', e=>{
       const add = e.target.closest('#add-combo');
@@ -419,20 +421,20 @@ function openEditorModal(kind, id){
   }
 
   if(kind==='progress'){
-    editorTitle.textContent = '编辑 进度（日期 / 完成标记 / 小版本号）';
+    editorTitle.textContent = '编辑 进度（横行 / 完成标记 / 小版本号）';
     const d = parseNotes(p.notes);
     editorForm.innerHTML = `
-      <div class="grid-3">
+      <div class="h-row">
         <label>Acopy 日期<input type="date" name="a_copy" value="${p.a_copy||''}"></label>
         <label>Bcopy 日期<input type="date" name="b_copy" value="${p.b_copy||''}"></label>
         <label>Final 日期<input type="date" name="final_date" value="${p.final_date||''}"></label>
       </div>
-      <div class="grid-3">
+      <div class="h-row pill-group">
         <label class="pill"><input type="checkbox" name="A_DONE" ${hasTag(p.notes,'#A_DONE')?'checked':''}><span>Acopy 完成</span></label>
         <label class="pill"><input type="checkbox" name="B_DONE" ${hasTag(p.notes,'#B_DONE')?'checked':''}><span>Bcopy 完成</span></label>
         <label class="pill"><input type="checkbox" name="F_DONE" ${hasTag(p.notes,'#F_DONE')?'checked':''}><span>Final 完成</span></label>
       </div>
-      <div class="grid-3">
+      <div class="h-row">
         <label>Acopy 小版本
           <select name="ver_A">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], d.versions.A||'v1')}</select>
         </label>
@@ -450,7 +452,7 @@ function openEditorModal(kind, id){
     editorTitle.textContent = '编辑 支付状态';
     const current = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
     editorForm.innerHTML = `
-      <div class="grid-1">
+      <div class="h-row">
         <label>支付状态
           <select name="pay_status">
             ${optionList(['未收款','已收定金','已收尾款'], current)}
@@ -464,12 +466,11 @@ function openEditorModal(kind, id){
   if(kind==='money'){
     editorTitle.textContent = '编辑 金额';
     editorForm.innerHTML = `
-      <div class="grid-3">
+      <div class="h-row">
         <label>报价总额<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label>
-        <label>已收金额<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label>
         <label>定金<input name="deposit_amount" type="number" min="0" step="0.01" value="${p.deposit_amount||0}"></label>
       </div>
-      <div class="muted small">* 未收款 = 报价总额 - 已收金额 - 定金</div>
+      <div class="muted small">* 按 v1.4.2 要求：去掉“已收金额”编辑入口。未收款 = 报价总额 - 已收金额 - 定金。</div>
     `;
   }
 
@@ -481,21 +482,26 @@ function openEditorModal(kind, id){
     const histHTML = history.length? history.map(x=>{
       const dt = new Date(x.ts||Date.now());
       const time = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-      return `<div class="list-item"><div class="small muted">[${x.phase} · ${x.version}] · ${time}</div><div>${(x.text||'').replace(/</g,'&lt;')}</div></div>`;
+      const appVer = x.appVer ? `APP ${x.appVer}` : 'APP —';
+      return `<div class="list-item">
+        <div class="small muted">[${appVer}] [${x.phase} · ${x.version}] · ${time}</div>
+        <div>${(x.text||'').replace(/</g,'&lt;')}</div>
+      </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
     editorForm.innerHTML = `
-      <div class="grid-3">
+      <div class="h-row">
         <label>关联阶段
           <select name="chg_phase">${optionList(['Acopy','Bcopy','Final'], st.name==='催收尾款'?'Final':st.name)}</select>
         </label>
         <label>小版本号
           <select name="chg_version">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)}</select>
         </label>
-        <label>记录时间
-          <input type="text" value="${new Date().toLocaleString()}" disabled>
+        <label>系统版本（只读）
+          <input type="text" value="${APP_VERSION}" disabled>
         </label>
       </div>
-      <label>修改内容（本次）
+      <label class="pill"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>
+      <label style="margin-top:8px">修改内容（本次）
         <textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea>
       </label>
       <div class="card" style="margin-top:10px">
@@ -508,7 +514,7 @@ function openEditorModal(kind, id){
 
 function comboRowHTML(idx,c){
   return `
-  <div class="combo-row grid-3" data-idx="${idx}" style="margin-bottom:10px">
+  <div class="combo-row" data-idx="${idx}">
     <label>类型
       <select class="combo-type">
         ${optionList(TYPE_OPTS, c.type||'')}
@@ -522,13 +528,10 @@ function comboRowHTML(idx,c){
         ${optionList(RES_OPTS, c.res||'')}
       </select>
     </label>
-    <div class="grid-1" style="grid-column:1/-1">
-      <div class="small muted" style="margin-bottom:6px">画幅比例（可多选）</div>
-      <div class="combo-ratios center pill-group">
-        ${checkboxList(RATIO_OPTS, c.ratios||[])}
-      </div>
+    <div class="center pill-group" style="flex:1 1 100%;">
+      ${checkboxList(RATIO_OPTS, c.ratios||[])}
     </div>
-    <div style="grid-column:1/-1; display:flex; justify-content:flex-end">
+    <div style="margin-left:auto">
       <button type="button" class="cell-edit combo-del">删除该组合</button>
     </div>
   </div>`;
@@ -551,7 +554,7 @@ editorForm?.addEventListener('submit', async (e)=>{
       const type  = row.querySelector('.combo-type').value;
       const clips = Number(row.querySelector('.combo-clips').value||1);
       const res   = row.querySelector('.combo-res').value;
-      const ratios= [...row.querySelectorAll('.combo-ratios input[type="checkbox"]:checked')].map(i=>i.value);
+      const ratios= [...row.querySelectorAll('.pill-group input[type="checkbox"]:checked')].map(i=>i.value);
       return { type, clips, res, ratios };
     }).filter(x=>x.type);
     if(combos.length){
@@ -570,19 +573,17 @@ editorForm?.addEventListener('submit', async (e)=>{
     const final_date= fd.get('final_date')||null;
     const row = projects.find(x=>String(x.id)===String(id));
     let d = parseNotes(row?.notes||'');
-    d = { ...d };
-    d.tags = new Set(d.tags);
-    d.tags = new Set(d.tags); // 保留既有标签
     d = { ...d, versions:{
       A: fd.get('ver_A')||d.versions.A||'v1',
       B: fd.get('ver_B')||d.versions.B||'v1',
       F: fd.get('ver_F')||d.versions.F||'v1'
     }};
     // 完成标记
-    d.tags = new Set(d.tags);
-    if(fd.get('A_DONE')) d.tags.add('#A_DONE'); else d.tags.delete('#A_DONE');
-    if(fd.get('B_DONE')) d.tags.add('#B_DONE'); else d.tags.delete('#B_DONE');
-    if(fd.get('F_DONE')) d.tags.add('#F_DONE'); else d.tags.delete('#F_DONE');
+    const tags = new Set(d.tags||[]);
+    if(fd.get('A_DONE')) tags.add('#A_DONE'); else tags.delete('#A_DONE');
+    if(fd.get('B_DONE')) tags.add('#B_DONE'); else tags.delete('#B_DONE');
+    if(fd.get('F_DONE')) tags.add('#F_DONE'); else tags.delete('#F_DONE');
+    d.tags = Array.from(tags);
     patch = {
       a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null,
       notes: stringifyNotes(d)
@@ -593,20 +594,29 @@ editorForm?.addEventListener('submit', async (e)=>{
   }
   if(kind==='money'){
     patch.quote_amount   = Number(fd.get('quote_amount')||0);
-    patch.paid_amount    = Number(fd.get('paid_amount')||0);
     patch.deposit_amount = Number(fd.get('deposit_amount')||0);
+    // v1.4.2：不再从此处修改已收金额
   }
   if(kind==='changes'){
     const row = projects.find(x=>String(x.id)===String(id));
     let d = parseNotes(row?.notes||'');
-    const chg = {
-      phase: (fd.get('chg_phase')||'Final').toString(),
-      version: (fd.get('chg_version')||'v1').toString(),
-      text: (fd.get('chg_text')||'').toString().trim(),
-      ts: Date.now()
-    };
-    d.changes = Array.isArray(d.changes)? d.changes : [];
-    if(chg.text) d.changes.push(chg);
+
+    const phase = (fd.get('chg_phase')||'Final').toString();
+    const version = (fd.get('chg_version')||'v1').toString();
+    const text = (fd.get('chg_text')||'').toString().trim();
+    const autoBump = !!fd.get('auto_bump');
+
+    if(text){
+      const chg = { phase, version, text, ts: Date.now(), appVer: APP_VERSION };
+      d.changes = Array.isArray(d.changes)? d.changes : [];
+      d.changes.push(chg);
+    }
+    if(autoBump){
+      d.versions = d.versions || {A:'v1',B:'v1',F:'v1'};
+      if(phase==='Acopy') d.versions.A = bumpVersion(d.versions.A);
+      if(phase==='Bcopy') d.versions.B = bumpVersion(d.versions.B);
+      if(phase==='Final') d.versions.F = bumpVersion(d.versions.F);
+    }
     patch.notes = stringifyNotes(d);
   }
 
@@ -616,16 +626,24 @@ editorForm?.addEventListener('submit', async (e)=>{
 });
 
 // ============== 项目列表 ==============
+function formatProgressCell(p){
+  // 仅显示“最近未完成版本”的：大版本号-mm.dd-小版本号
+  const near = nearestMilestone(p);
+  if(!near || !near.k || !near.date) return '—';
+  const mm = String(near.date.getMonth()+1).padStart(2,'0');
+  const dd = String(near.date.getDate()).padStart(2,'0');
+  const vers = parseNotes(p.notes).versions;
+  const small = near.k==='Acopy'? (vers.A||'v1') : near.k==='Bcopy'? (vers.B||'v1') : (vers.F||'v1');
+  return `${near.k}-${mm}.${dd}-${small}`;
+}
 function renderProjects(list=projects){
   const tb = document.getElementById('projects-body'); tb.innerHTML='';
 
   list.forEach(p=>{
-    const near = nearestMilestone(p);
     const tr = document.createElement('tr');
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.deposit_amount||0)>0?'已收定金':'未收款'));
     const moneyText = `${money(p.quote_amount)} / ${money(p.paid_amount)}${Number(p.deposit_amount||0)?` · 定金 ${money(p.deposit_amount)}`:''}`;
 
-    // 最近一次修改摘要
     const d = parseNotes(p.notes);
     const last = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
     const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,24)}${last.text.length>24?'…':''}` : '—';
@@ -651,15 +669,10 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 进度 -->
+      <!-- 进度（v1.4.2：仅显示 大版本号-mm.dd-小版本号） -->
       <td>
         <div class="cell-summary">
-          <div class="chips">
-            ${p.a_copy?`<span class="chip chip-a">Acopy</span>`:''}
-            ${p.b_copy?`<span class="chip chip-b">Bcopy</span>`:''}
-            ${p.final_date?`<span class="chip chip-final">Final</span>`:''}
-          </div>
-          <div class="${near.overdue?'pill pill-red':'pill'}">${near.text}</div>
+          <span>${formatProgressCell(p)}</span>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
       </td>
@@ -672,7 +685,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 金额（弹窗编辑） -->
+      <!-- 金额（弹窗编辑：无“已收金额”输入） -->
       <td>
         <div class="cell-summary">
           <span class="muted">${moneyText}</span>
@@ -680,7 +693,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 修改内容（新） -->
+      <!-- 修改内容 -->
       <td>
         <div class="cell-summary">
           <span class="small">${lastText}</span>
