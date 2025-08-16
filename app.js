@@ -1,10 +1,12 @@
-/* editor-studio / app.js  v1.4.4.1 (compat hotfix)
- * 修复：去除 ?. 和 ||=，增加本地缓存回退，增强容错 & 可观测性
+/* app.js  v1.4.4-stable
+ * - 承接 v1.4.3 全部功能 + v1.4.4 需求
+ * - 继续移除可选链/逻辑赋值等新语法（兼容旧内核）
+ * - 本地缓存回退，避免看起来像“数据丢失”
  */
 
-const APP_VERSION = 'v1.4.4.1';
+var APP_VERSION = 'v1.4.4-stable';
 
-// ---- 简易日志与错误提示（不遮挡点击） ----
+/* 轻量提示（不遮挡点击） */
 (function () {
   if (!document.getElementById('app-toast')) {
     var t = document.createElement('div');
@@ -21,9 +23,7 @@ const APP_VERSION = 'v1.4.4.1';
       el.textContent = msg;
       el.style.display = 'block';
       clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(function () {
-        el.style.display = 'none';
-      }, 3000);
+      window.__toastTimer = setTimeout(function () { el.style.display = 'none'; }, 3000);
     } catch (e) {}
   };
   window.addEventListener('error', function (e) {
@@ -32,14 +32,14 @@ const APP_VERSION = 'v1.4.4.1';
   });
 })();
 
-// ---- Supabase 初始化 ----
+/* Supabase */
 var supa = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_ANON_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-// ---- 视图引用 & 导航 ----
+/* 视图 */
 var views = {
   auth: document.getElementById('view-auth'),
   home: document.getElementById('view-home'),
@@ -58,15 +58,14 @@ var nav = {
 };
 function showView(name) {
   for (var k in views) { if (views[k]) views[k].classList.add('hidden'); }
-  var v = views[name] || views.home;
-  if (v) v.classList.remove('hidden');
+  var v = views[name] || views.home; if (v) v.classList.remove('hidden');
   var navBtns = document.querySelectorAll('.nav-btn');
   for (var i = 0; i < navBtns.length; i++) navBtns[i].removeAttribute('aria-current');
   var m = {home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name];
   if (m) m.setAttribute('aria-current', 'page');
 }
 
-// ---- 登录/注册 ----
+/* 登录/注册 */
 var authForm = document.getElementById('auth-form');
 var authTip  = document.getElementById('auth-tip');
 if (nav.logout) {
@@ -83,32 +82,24 @@ if (authForm) {
       if (r.error) {
         return supa.auth.signUp({ email: email, password: password }).then(function (r2) {
           if (r2.error) { authTip.textContent = r2.error.message; return; }
-          return supa.auth.getSession().then(function (s) {
-            if (s.data && s.data.session) { bootAfterAuth().then(function(){ showView('home'); }); }
-          });
+          return supa.auth.getSession().then(function (s) { if (s.data && s.data.session) { bootAfterAuth().then(function(){ showView('home'); }); } });
         });
       } else {
-        return supa.auth.getSession().then(function (s) {
-          if (s.data && s.data.session) { bootAfterAuth().then(function(){ showView('home'); }); }
-        });
+        return supa.auth.getSession().then(function (s) { if (s.data && s.data.session) { bootAfterAuth().then(function(){ showView('home'); }); } });
       }
     });
   });
 }
 
-// ---- 数据状态 ----
+/* 数据 */
 var projects = [];
 var LS_KEY = 'cache_projects_v144';
 
-// ---- 工具函数 ----
+/* 工具 */
 function money(n){ return '¥' + (Number(n||0)).toLocaleString(); }
 function fmt(d){ return d ? new Date(d) : null; }
 function todayStr(){
-  var d = new Date();
-  var y = d.getFullYear();
-  var m = String(d.getMonth()+1).padStart(2,'0');
-  var dd = String(d.getDate()).padStart(2,'0');
-  return y + '-' + m + '-' + dd;
+  var d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function parseNotes(notes){
   var base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' };
@@ -138,6 +129,7 @@ function stringifyNotes(obj){
 function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
 function bumpVersion(ver){ var n=parseInt(String(ver||'v1').replace(/[^\d]/g,''),10)||1; return 'v'+Math.min(n+1,8); }
 
+/* 规格解析/合并（支持多组合） */
 function parseSpec(specStr){
   var s = specStr || '';
   var json = null;
@@ -179,6 +171,7 @@ function totalClipsOf(p){
 }
 function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
 
+/* 阶段与最近节点（最近项目排序使用） */
 function stageInfo(p){
   var d = parseNotes(p.notes);
   var A = !hasTag(p.notes,'#A_DONE');
@@ -209,39 +202,20 @@ function nearestMilestone(p){
   var overdue2 = n.date < today;
   return { text: n.k + ' - ' + (n.date.getMonth()+1) + '/' + n.date.getDate(), overdue:overdue2, date:n.date, k:n.k };
 }
-function stageBadgeHTML(name, version){
-  var map = { 'Acopy':'a', 'Bcopy':'b', 'Final':'f', '完结':'done', '催收尾款':'f' };
-  var cls = map[name] || 'a';
-  var text = name==='完结' ? '完结' : (name + (version?(' · ' + version):''));
-  return '<span class="badge badge-' + cls + '">' + text + '</span>';
-}
 
-// ---- 拉取数据（带本地缓存回退） ----
-function saveCache(list){
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), data: list })); } catch(e){}
-}
-function loadCache(){
-  try {
-    var raw = localStorage.getItem(LS_KEY);
-    if(!raw) return null;
-    var obj = JSON.parse(raw);
-    return obj && obj.data ? obj.data : null;
-  } catch(e){ return null; }
-}
+/* 拉取数据（带本地缓存回退） */
+function saveCache(list){ try { localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), data: list })); } catch(e){} }
+function loadCache(){ try { var raw=localStorage.getItem(LS_KEY); if(!raw) return null; var obj=JSON.parse(raw); return obj && obj.data ? obj.data : null; } catch(e){ return null; } }
 function fetchProjects(){
   return supa.from('projects').select('*').order('updated_at', { ascending:false }).limit(1000)
     .then(function(res){
-      if(res.error){
-        // 退回按 id 倒序
-        return supa.from('projects').select('*').order('id',{ascending:false}).limit(1000);
-      }
+      if(res.error){ return supa.from('projects').select('*').order('id',{ascending:false}).limit(1000); }
       return res;
     })
     .then(function (res2){
       if(res2.error){
         __toast('读取云端失败，使用本地缓存');
-        var cached = loadCache() || [];
-        projects = cached;
+        projects = loadCache() || [];
         return;
       }
       projects = res2.data || [];
@@ -250,15 +224,13 @@ function fetchProjects(){
     .catch(function (err){
       console.error('fetchProjects error', err);
       __toast('读取失败：' + (err.message||''));
-      var cached = loadCache() || [];
-      projects = cached;
+      projects = loadCache() || [];
     });
 }
 
-// ---- 首页 ----
+/* 首页渲染（最近项目：靠未来最近节点排序；能量条更厚） */
 function renderRecent(){
-  var box = document.getElementById('recent-list'); if(!box) return;
-  box.innerHTML='';
+  var box = document.getElementById('recent-list'); if(!box) return; box.innerHTML='';
   var weighted = projects.map(function(p){
     var n = nearestMilestone(p);
     var w = 1e15;
@@ -270,8 +242,8 @@ function renderRecent(){
     return {p:p, w:w};
   }).sort(function(a,b){return a.w-b.w;}).slice(0,4);
 
-  weighted.forEach(function(item){
-    var p = item.p;
+  for(var i=0;i<weighted.length;i++){
+    var p = weighted[i].p;
     var near = nearestMilestone(p);
     var st = stageInfo(p);
     var li = document.createElement('div'); li.className='list-item';
@@ -290,9 +262,9 @@ function renderRecent(){
       '</div>' +
       '<div class="count muted small">条数：'+(totalClipsOf(p)||1)+'</div>' +
       '<div class="due '+(near.overdue?'pill pill-red':'pill')+'">'+near.text+'</div>';
-    li.addEventListener('click', function(){ openQuickModal(p.id); });
+    (function(id){ li.addEventListener('click', function(){ openQuickModal(id); }); })(p.id);
     box.appendChild(li);
-  });
+  }
 
   var go = document.getElementById('go-list');
   if (go && !go.__binded) {
@@ -300,6 +272,8 @@ function renderRecent(){
     go.__binded = true;
   }
 }
+
+/* KPI & 财务（v1.4.4：增加“截至”日期） */
 function renderKpis(){
   var total = projects.reduce(function(s,p){ return s + Number(p.quote_amount||0); },0);
   var paid  = projects.reduce(function(s,p){ return s + Number(p.paid_amount||0); },0);
@@ -326,7 +300,7 @@ function renderKpis(){
   (el=document.getElementById('asof-finance')) && (el.textContent = asof);
 }
 
-// ---- 报价分析器（与 v1.4.4 相同逻辑） ----
+/* 报价分析器（含合成复杂度：每 10% 上调 10%） */
 (function initQuote(){
   var typeBase = {
     'LookBook': {price:100,  baseSec:15,  secRate:0.01},
@@ -429,7 +403,7 @@ function renderKpis(){
   calc();
 })();
 
-// ---- 通用编辑模态 ----
+/* 通用编辑模态（含 v1.4.4：规格编辑布局细化；修改内容编辑器保留） */
 var editorModal  = document.getElementById('editor-modal');
 var editorTitle  = document.getElementById('editor-title');
 var editorForm   = document.getElementById('editor-form');
@@ -438,12 +412,8 @@ var editorCancel = document.getElementById('editor-cancel');
 function closeEditor(){ if(editorModal) editorModal.classList.remove('show'); if(editorForm) editorForm.innerHTML=''; }
 if(editorClose) editorClose.addEventListener('click', closeEditor);
 if(editorCancel) editorCancel.addEventListener('click', closeEditor);
-if(editorModal){
-  editorModal.addEventListener('mousedown', function(e){ if(e.target===editorModal) closeEditor(); });
-}
-function optionList(opts, selected){
-  return opts.map(function(o){ return '<option '+(o===(selected||'')?'selected':'')+'>'+o+'</option>'; }).join('');
-}
+if(editorModal){ editorModal.addEventListener('mousedown', function(e){ if(e.target===editorModal) closeEditor(); }); }
+function optionList(opts, selected){ return opts.map(function(o){ return '<option '+(o===(selected||'')?'selected':'')+'>'+o+'</option>'; }).join(''); }
 function checkboxList(opts, selectedArr){
   var sel = new Set(selectedArr||[]);
   return opts.map(function(o){
@@ -489,7 +459,7 @@ function openEditorModal(kind, id){
       '<div id="combo-list">'+rows+'</div>' +
       '<div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>' +
       '<div class="combo-help">· 4K（UHD）对应常见比例：16:9 → 3840×2160；9:16 → 2160×3840；1:1 → 2160×2160；4:3 → 2880×2160；3:4 → 2160×2880</div>';
-    editorForm.addEventListener('click', function h(e){
+    editorForm.addEventListener('click', function(e){
       var add = e.target && e.target.closest && e.target.closest('#add-combo');
       var del = e.target && e.target.closest && e.target.closest('.combo-del');
       if(add){
@@ -543,7 +513,7 @@ function openEditorModal(kind, id){
       '<div class="h-row">' +
         '<label>关联阶段<select name="chg_phase">'+optionList(['Acopy','Bcopy','Final'], st.name==='完结'?'Final':st.name)+'</select></label>' +
         '<label>小版本号<select name="chg_version">'+optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)+'</select></label>' +
-        '<label>系统版本（只读）<input type="text" value="'+APP_VERSION+'" disabled></label>' +
+        <label>系统版本（只读）<input type="text" value="'+APP_VERSION+'" disabled></label>' +
       '</div>' +
       '<label class="pill"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>' +
       '<label style="margin-top:8px">修改内容（本次）<textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea></label>' +
@@ -629,7 +599,7 @@ if (editorForm){
   });
 }
 
-// ---- 项目列表 ----
+/* 项目列表（规格多组合换行；支付状态内联；修改内容可编辑） */
 function formatProgressCell(p){
   var vers = parseNotes(p.notes).versions;
   var near = nearestMilestone(p);
@@ -663,12 +633,14 @@ function shrinkOverflowCells(tb){
 function renderProjects(list){
   list = list || projects;
   var tb = document.getElementById('projects-body'); if(!tb) return; tb.innerHTML='';
-  list.forEach(function(p){
+  for(var i=0;i<list.length;i++){
+    var p = list[i];
     var tr = document.createElement('tr');
     var currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
     var moneyText = money(p.quote_amount) + ' / ' + money(p.paid_amount);
     var d = parseNotes(p.notes);
-    var last = (d.changes||[]).slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);})[0];
+    var hist = (d.changes||[]).slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+    var last = hist[0];
     var lastText = last ? ('['+last.phase+'·'+last.version+'] '+ (last.text||'')).slice(0,64) + ((last.text||'').length>60?'…':'') : '—';
     var specHTML = mergeTypeSpec(p, { multiline:true }) || '—';
 
@@ -681,7 +653,7 @@ function renderProjects(list){
       '<td><div class="cell-summary"><span class="muted text-cell">'+moneyText+'</span><button class="cell-edit edit-btn" data-kind="money" data-id="'+p.id+'">编辑</button></div></td>' +
       '<td><div class="cell-summary"><span class="small text-cell">'+lastText+'</span><button class="cell-edit edit-btn" data-kind="changes" data-id="'+p.id+'">编辑</button></div></td>';
     tb.appendChild(tr);
-  });
+  }
 
   tb.addEventListener('blur', function(e){
     var td = e.target.closest && e.target.closest('td[contenteditable="true"]'); if(!td) return;
@@ -699,24 +671,23 @@ function renderProjects(list){
   tb.addEventListener('change', function(e){
     var sel = e.target.closest && e.target.closest('select.pay-inline'); if(!sel) return;
     var id = sel.getAttribute('data-id');
-    supa.from('projects').update({ pay_status: sel.value }).eq('id', id);
+    supa.from('projects').update({ pay_status: sel.value }).eq('id', id).then(function(r){
+      if(r && r.error){ console.warn('pay_status 更新失败（可能列不存在）'); }
+    });
   });
 
   shrinkOverflowCells(tb);
 }
 
-// ---- 快速查看 ----
+/* 最近项目快速查看（不跳转列表） */
 var quickModal = document.getElementById('quick-modal');
 var quickTitle = document.getElementById('quick-title');
 var quickBody  = document.getElementById('quick-body');
 var quickClose = document.getElementById('quick-close');
 var quickFinalBtn = document.getElementById('quick-final-done');
-
 function closeQuick(){ if(quickModal) quickModal.classList.remove('show'); if(quickBody) quickBody.innerHTML=''; }
 if(quickClose) quickClose.addEventListener('click', closeQuick);
-if(quickModal){
-  quickModal.addEventListener('mousedown', function(e){ if(e.target===quickModal) closeQuick(); });
-}
+if(quickModal){ quickModal.addEventListener('mousedown', function(e){ if(e.target===quickModal) closeQuick(); }); }
 function openQuickModal(id){
   var p = projects.find(function(x){return String(x.id)===String(id);}); if(!p || !quickModal || !quickBody) return;
   var st = stageInfo(p);
@@ -735,11 +706,8 @@ function openQuickModal(id){
   quickFinalBtn.onclick = function(){
     var row = projects.find(function(x){return String(x.id)===String(id);});
     var d = parseNotes(row && row.notes || '');
-    d.tags.add && d.tags.add('#F_DONE'); // 若为 Set
-    if(!(d.tags instanceof Set)){ // notes 解析回来的 tags 在 stringify 后会变数组
-      var s = new Set(d.tags||[]);
-      s.add('#F_DONE'); d.tags = Array.from(s);
-    }
+    if(d.tags && d.tags.add){ d.tags.add('#F_DONE'); }
+    else { var s=new Set(d.tags||[]); s.add('#F_DONE'); d.tags = Array.from(s); }
     supa.from('projects').update({ notes: stringifyNotes(d) }).eq('id', id).then(function(){
       fetchProjects().then(function(){ renderAll(); closeQuick(); });
     });
@@ -747,7 +715,7 @@ function openQuickModal(id){
   quickModal.classList.add('show');
 }
 
-// ---- 财务/日历/合集 ----
+/* 合集/日历/财务榜单 */
 function renderGallery(){
   var grid = document.getElementById('gallery-grid'); if(!grid) return; grid.innerHTML='';
   var finals = projects.filter(function(p){ return p.final_link; });
@@ -755,12 +723,13 @@ function renderGallery(){
     var ph = document.createElement('div'); ph.className='poster';
     ph.innerHTML = '<div class="caption">暂未上传成片，请在项目中填写 Final 链接</div>'; grid.appendChild(ph); return;
   }
-  finals.forEach(function(p){
+  for(var i=0;i<finals.length;i++){
+    var p = finals[i];
     var a = document.createElement('a');
     a.className='poster'; a.href=p.final_link; a.target='_blank';
     a.innerHTML = '<div class="caption">'+(p.title||'未命名')+(p.brand?(' · '+p.brand):'')+'</div>';
     grid.appendChild(a);
-  });
+  }
 }
 
 var gridEl  = document.getElementById('cal-grid');
@@ -768,7 +737,6 @@ var labelEl = document.getElementById('cal-label');
 var calBase = new Date(); calBase.setDate(1);
 var btnPrev = document.getElementById('cal-prev'); if(btnPrev){ btnPrev.addEventListener('click', function(){ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); }); }
 var btnNext = document.getElementById('cal-next'); if(btnNext){ btnNext.addEventListener('click', function(){ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); }); }
-
 function renderCalendar(){
   if(!gridEl || !labelEl) return;
   gridEl.innerHTML=''; var y=calBase.getFullYear(), m=calBase.getMonth();
@@ -776,7 +744,8 @@ function renderCalendar(){
   var first=new Date(y,m,1), start=(first.getDay()+6)%7, days=new Date(y,m+1,0).getDate();
   var today=new Date(); today.setHours(0,0,0,0);
   var evs={};
-  projects.forEach(function(p){
+  for(var i=0;i<projects.length;i++){
+    var p = projects[i];
     [['a_copy','a'],['b_copy','b'],['final_date','final']].forEach(function(pair){
       var key=pair[0], typ=pair[1];
       var d = fmt(p[key]); if(!d) return;
@@ -787,10 +756,10 @@ function renderCalendar(){
       if(!evs[day]) evs[day]=[];
       evs[day].push({ typ:typ, txt:(p.title||'未命名')+' · '+(typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'), overdue:overdue });
     });
-  });
-  for(var i=0;i<42;i++){
+  }
+  for(var i2=0;i2<42;i2++){
     var cell=document.createElement('div'); cell.className='cal-cell';
-    var day=i-start+1;
+    var day=i2-start+1;
     if(day>0 && day<=days){
       var head=document.createElement('div'); head.className='cal-day'; head.textContent=String(day); cell.appendChild(head);
       (evs[day]||[]).forEach(function(e){
@@ -802,6 +771,8 @@ function renderCalendar(){
     gridEl.appendChild(cell);
   }
 }
+
+/* 财务侧榜单 + 收入趋势 */
 function renderFinance(){
   var rp=document.getElementById('rank-partner');
   var rq=document.getElementById('rank-project');
@@ -809,11 +780,12 @@ function renderFinance(){
   if(!rp || !rq || !aging) return;
 
   var byPartner = new Map();
-  projects.forEach(function(p){
+  for(var i=0;i<projects.length;i++){
+    var p = projects[i];
     var k=p.producer_name||'未填';
     var sum = Number(p.paid_amount||0);
     byPartner.set(k, (byPartner.get(k)||0)+sum);
-  });
+  }
   rp.innerHTML='';
   Array.from(byPartner.entries()).sort(function(a,b){return b[1]-a[1];}).forEach(function(pair){
     var k=pair[0], v=pair[1];
@@ -841,13 +813,13 @@ function renderFinance(){
   var start = new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
   var daysArr = Array.from({length:90},function(_,i){ return new Date(start.getTime()+i*86400000); });
   var map = new Map(daysArr.map(function(d){ return [d.toDateString(),0]; }));
-  projects.forEach(function(p){
-    var d = new Date(p.updated_at || p.created_at || Date.now()); d.setHours(0,0,0,0);
+  for(var j=0;j<projects.length;j++){
+    var d = new Date(projects[j].updated_at || projects[j].created_at || Date.now()); d.setHours(0,0,0,0);
     if(d>=start){
       var k = d.toDateString();
-      map.set(k, (map.get(k)||0) + Number(p.paid_amount||0));
+      map.set(k, (map.get(k)||0) + Number(projects[j].paid_amount||0));
     }
-  });
+  }
   var series = daysArr.map(function(d){ return map.get(d.toDateString())||0; });
   drawTrend(document.getElementById('trend'), series);
 }
@@ -856,20 +828,20 @@ function drawTrend(container, arr){
   container.innerHTML='';
   var w=container.clientWidth||800, h=container.clientHeight||180, pad=10;
   var max=Math.max.apply(null, arr.concat([1])), step=(w-2*pad)/Math.max(arr.length-1,1);
-  var d=''; arr.forEach(function(v,i){ var x=pad+i*step, y=h-pad-(v/max)*(h-2*pad); d+=(i?'L':'M')+x+','+y+' '; });
+  var d=''; for(var i=0;i<arr.length;i++){ var x=pad+i*step, y=h-pad-(arr[i]/max)*(h-2*pad); d+=(i?'L':'M')+x+','+y+' '; }
   container.innerHTML = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="#0a84ff" stroke-width="2"/></svg>';
 }
 
-// ---- 导航绑定（避免 ?.） ----
+/* 导航绑定 */
 var goListBtn = document.getElementById('go-list');
 if(goListBtn){ goListBtn.addEventListener('click', function(){ showView('projects'); }); }
 if(nav.home)     nav.home.addEventListener('click', function(){ showView('home'); });
 if(nav.projects) nav.projects.addEventListener('click', function(){ showView('projects'); });
 if(nav.gallery)  nav.gallery.addEventListener('click', function(){ showView('gallery'); });
-if(nav.finance)  nav.finance.addEventListener('click', function(){ showView('finance'); });
+if(nav.finance)  nav.finance.addEventListener('click', function(){ showView('finance'); renderFinance(); });
 if(nav.schedule) nav.schedule.addEventListener('click', function(){ showView('schedule'); renderCalendar(); });
 
-// ---- 新建项目 ----
+/* 新建项目 */
 var mNew = document.getElementById('new-modal');
 var btnNew= document.getElementById('btn-new');
 var btnNewCancel = document.getElementById('new-cancel');
@@ -884,7 +856,7 @@ if(newForm){
     row.clips = Number(row.clips||1);
     row.quote_amount   = Number(row.quote_amount||0);
     row.paid_amount    = Number(row.paid_amount||0);
-    row.deposit_amount = 0;
+    row.deposit_amount = 0; /* v1.4.x：取消“定金” */
     row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' });
     supa.from('projects').insert(row).then(function(r){
       if(r.error){ alert(r.error.message); return; }
@@ -894,16 +866,17 @@ if(newForm){
   });
 }
 
-// ---- 渲染整页 ----
+/* 渲染整页 */
 function renderAll(){
   renderKpis();
   renderRecent();
   renderProjects();
   renderGallery();
   renderFinance();
+  renderCalendar(); /* 切页时也会再触发 */
 }
 
-// ---- 启动 ----
+/* 启动 */
 function boot(){
   supa.auth.getSession().then(function(s){
     if(!(s.data && s.data.session)){ showView('auth'); return; }
@@ -916,9 +889,4 @@ function boot(){
 function bootAfterAuth(){
   return fetchProjects().then(function(){ renderAll(); showView('home'); });
 }
-
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', boot);
-}else{
-  boot();
-}
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
