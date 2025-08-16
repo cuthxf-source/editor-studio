@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.3 -->
+<!-- editor-studio / index.html  v1.4.4 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.3" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.3" />
+  <link rel="icon" href="icon.png?v=v1.4.4" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.4" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <!-- 登录视图（未登录只显示此页） -->
+  <!-- 登录视图 -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -55,10 +55,17 @@
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
       </div>
-      <!-- 片数 KPI -->
+
+      <!-- 片数 KPI（新增统计截至日期） -->
       <div class="grid-2 kpi">
-        <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
-        <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
+        <div class="card kpi-card">
+          <div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div>
+          <div class="muted small asof-line">统计截至：<span id="asof-home-clips-1">—</span></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div>
+          <div class="muted small asof-line">统计截至：<span id="asof-home-clips-2">—</span></div>
+        </div>
       </div>
 
       <div class="card">
@@ -69,7 +76,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（支持多组合计价 & 合成复杂度） -->
+      <!-- 报价分析器 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -193,6 +200,7 @@
 
     <!-- 财务 -->
     <section id="view-finance" class="view hidden">
+      <div class="muted small asof-line" style="margin-bottom:10px">统计截至：<span id="asof-finance">—</span></div>
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
@@ -278,11 +286,11 @@
     </div>
   </div>
 
-  <!-- Supabase 配置（保持与 v1.4.2 一致） -->
+  <!-- Supabase 配置 -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.3" defer></script>
+  <script src="app.js?v=v1.4.4" defer></script>
 </body>
 </html>
