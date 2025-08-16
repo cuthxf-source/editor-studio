@@ -1,10 +1,10 @@
-/* app.js  v1.4.4-stable
- * - 承接 v1.4.3 全部功能 + v1.4.4 需求
- * - 继续移除可选链/逻辑赋值等新语法（兼容旧内核）
- * - 本地缓存回退，避免看起来像“数据丢失”
+/* app.js  v1.4.4-r2
+ * 基于 v1.4.3-stable，落实你备忘录 v1.4.4 的 7 条修改
+ * 修复：上版“修改内容”弹窗字符串少引号导致脚本中断 → 造成“按钮不可点/数据不显示”
+ * 兼容：不使用可选链/空值合并等新语法；提供本地缓存回退
  */
 
-var APP_VERSION = 'v1.4.4-stable';
+var APP_VERSION = 'v1.4.4-r2';
 
 /* 轻量提示（不遮挡点击） */
 (function () {
@@ -228,7 +228,7 @@ function fetchProjects(){
     });
 }
 
-/* 首页渲染（最近项目：靠未来最近节点排序；能量条更厚） */
+/* 首页渲染（最近项目：按未来最近节点排序；进度“能量条”更厚且内文） */
 function renderRecent(){
   var box = document.getElementById('recent-list'); if(!box) return; box.innerHTML='';
   var weighted = projects.map(function(p){
@@ -273,7 +273,7 @@ function renderRecent(){
   }
 }
 
-/* KPI & 财务（v1.4.4：增加“截至”日期） */
+/* KPI & 财务（v1.4.4：增加“截至”日期文案） */
 function renderKpis(){
   var total = projects.reduce(function(s,p){ return s + Number(p.quote_amount||0); },0);
   var paid  = projects.reduce(function(s,p){ return s + Number(p.paid_amount||0); },0);
@@ -403,7 +403,7 @@ function renderKpis(){
   calc();
 })();
 
-/* 通用编辑模态（含 v1.4.4：规格编辑布局细化；修改内容编辑器保留） */
+/* 通用编辑模态（含：规格编辑布局细化；修改内容编辑器） */
 var editorModal  = document.getElementById('editor-modal');
 var editorTitle  = document.getElementById('editor-title');
 var editorForm   = document.getElementById('editor-form');
@@ -483,12 +483,12 @@ function openEditorModal(kind, id){
         '<label class="pill"><input type="checkbox" name="A_DONE" '+(hasTag(p.notes,'#A_DONE')?'checked':'')+'><span>Acopy 完成</span></label>' +
         '<label class="pill"><input type="checkbox" name="B_DONE" '+(hasTag(p.notes,'#B_DONE')?'checked':'')+'><span>Bcopy 完成</span></label>' +
         '<label class="pill"><input type="checkbox" name="F_DONE" '+(hasTag(p.notes,'#F_DONE')?'checked':'')+'><span>Final 完成</span></label>' +
-      '</div>' +
+      </div>' +
       '<div class="h-row">' +
         '<label>Acopy 小版本<select name="ver_A">'+optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], d.versions.A||'v1')+'</select></label>' +
         '<label>Bcopy 小版本<select name="ver_B">'+optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], d.versions.B||'v1')+'</select></label>' +
         '<label>Final 小版本<select name="ver_F">'+optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], d.versions.F||'v1')+'</select></label>' +
-      '</div>';
+      </div>';
   }
   if(kind==='money'){
     editorTitle.textContent = '编辑 金额';
@@ -509,11 +509,12 @@ function openEditorModal(kind, id){
       var appVer = x.appVer ? ('APP '+x.appVer) : 'APP —';
       return '<div class="list-item"><div class="small muted">['+appVer+'] ['+x.phase+' · '+x.version+'] · '+time+'</div><div>'+String(x.text||'').replace(/</g,'&lt;')+'</div></div>';
     }).join('') : '<div class="muted small">暂无历史记录</div>';
+    /* ⚠️ 这里是之前出错的位置：务必保证每一段字符串都用引号包住 */
     editorForm.innerHTML =
       '<div class="h-row">' +
         '<label>关联阶段<select name="chg_phase">'+optionList(['Acopy','Bcopy','Final'], st.name==='完结'?'Final':st.name)+'</select></label>' +
         '<label>小版本号<select name="chg_version">'+optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)+'</select></label>' +
-        <label>系统版本（只读）<input type="text" value="'+APP_VERSION+'" disabled></label>' +
+        '<label>系统版本（只读）<input type="text" value="'+APP_VERSION+'" disabled></label>' +
       '</div>' +
       '<label class="pill"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>' +
       '<label style="margin-top:8px">修改内容（本次）<textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea></label>' +
@@ -679,7 +680,7 @@ function renderProjects(list){
   shrinkOverflowCells(tb);
 }
 
-/* 最近项目快速查看（不跳转列表） */
+/* 最近项目快速查看 */
 var quickModal = document.getElementById('quick-modal');
 var quickTitle = document.getElementById('quick-title');
 var quickBody  = document.getElementById('quick-body');
@@ -772,7 +773,7 @@ function renderCalendar(){
   }
 }
 
-/* 财务侧榜单 + 收入趋势 */
+/* 财务榜单 + 收入趋势 + 截至日期 */
 function renderFinance(){
   var rp=document.getElementById('rank-partner');
   var rq=document.getElementById('rank-project');
@@ -822,6 +823,9 @@ function renderFinance(){
   }
   var series = daysArr.map(function(d){ return map.get(d.toDateString())||0; });
   drawTrend(document.getElementById('trend'), series);
+
+  var asof=document.getElementById('asof-finance');
+  if(asof){ asof.textContent = todayStr(); }
 }
 function drawTrend(container, arr){
   if(!container) return;
