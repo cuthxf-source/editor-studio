@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.4 */
+/* editor-studio / styles.css  v1.6 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -51,7 +51,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .list.compact .list-item{padding:8px 0}
 
 /* 最近项目：四列对齐 */
-.recent-list .list-item{display:grid;grid-template-columns:1fr 120px 120px 180px;gap:12px;align-items:center}
+.recent-list .list-item{display:grid;grid-template-columns:1fr 120px 120px 200px;gap:12px;align-items:center}
 .recent-list .title-block{display:flex;flex-direction:column;gap:4px}
 @media (max-width:900px){
   .recent-list .list-item{grid-template-columns:1fr;gap:6px}
@@ -62,8 +62,6 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter)}
 .table thead th{background:#fafafa}
-
-/* —— 除“项目”列外文字缩小 —— */
 .table.smallify th:not(:first-child), .table.smallify td:not(:first-child){font-size:var(--fs-sm)}
 
 /* Pills / status */
@@ -74,6 +72,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .pill-yellow{color:#fff;background:var(--yellow);border-color:var(--yellow)}
 .pill-red{color:#fff;background:var(--red);border-color:var(--red)}
 .pill-purple{color:#fff;background:var(--purple);border-color:#7a5aff}
+
+/* Toggle pills for 完成 */
+.toggle-pill{
+  display:inline-block; padding:6px 12px; border-radius:var(--pill);
+  border:1px solid var(--line); background:#fff; font-size:var(--fs-sm);
+  cursor:pointer; user-select:none; line-height:1;
+}
+.toggle-pill.on{ background:var(--green); color:#fff; border-color:var(--green) }
 
 /* Chips */
 .chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -102,9 +108,10 @@ td[contenteditable="true"]:focus{outline-color:#cfe0ff;background:#f6faff}
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
-.modal-inner{width:min(920px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px}
+.modal-inner{width:min(920px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px;display:flex;flex-direction:column}
 .modal-inner-wide{width:min(1100px,96vw)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.modal-foot{margin-top:28px;padding-top:10px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
 
 /* Calendar */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:8px 0}
