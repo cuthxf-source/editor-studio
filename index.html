@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4 -->
+<!-- editor-studio / index.html  v1.6 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4" />
-  <link rel="stylesheet" href="styles.css?v=v1.4" />
+  <link rel="icon" href="icon.png?v=v1.6" />
+  <link rel="stylesheet" href="styles.css?v=v1.6" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <!-- 登录视图（未登录只显示此页） -->
+  <!-- 登录视图 -->
   <section id="view-auth" class="container auth-view hidden">
     <div class="card auth-card">
       <h2>登录 / 注册</h2>
@@ -192,10 +192,10 @@
     </section>
   </main>
 
-  <!-- 新建项目（保留） -->
+  <!-- 新建项目（保持） -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
-      <div class="modal-head"><h3>新建项目</h3></div>
+      <class class="modal-head"><h3>新建项目</h3></class>
       <form id="new-form" class="form">
         <div class="grid-2">
           <label>项目名<input name="title" required></label>
@@ -218,7 +218,7 @@
           <label>合作制片（姓名）<input name="producer_name"></label>
           <label>合作制片（联系方式）<input name="producer_contact"></label>
         </div>
-        <label>备注<textarea name="notes" rows="3" placeholder="系统会在内部追加结构化信息（请勿手动删除 ::PM::... 块）"></textarea></label>
+        <label>备注<textarea name="notes" rows="3" placeholder="自由备注"></textarea></label>
         <div class="modal-foot">
           <button type="button" class="ghost" id="new-cancel">取消</button>
           <button type="submit">保存</button>
@@ -247,6 +247,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4" defer></script>
+  <script src="app.js?v=v1.6" defer></script>
 </body>
 </html>
