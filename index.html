@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.3.1 -->
+<!-- editor-studio / index.html  v1.4.3 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.3.1" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.3.1" />
+  <link rel="icon" href="icon.png?v=v1.4.3" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.3" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -69,15 +69,16 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器 -->
+      <!-- 报价分析器（支持多组合计价 & 合成复杂度） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
-        <!-- 内容与 v1.4.3 相同，见 app.js 动态生成逻辑 -->
         <form id="quote-form" class="form">
           <div class="grid-2">
             <label>项目名<input id="qa-title" /></label>
             <label>制片<input id="qa-producer" /></label>
           </div>
+
+          <!-- 单组合模式 -->
           <div id="qa-single">
             <div class="grid-3">
               <label>影片类型
@@ -119,6 +120,7 @@
             </div>
           </div>
 
+          <!-- 多组合模式 -->
           <div class="muted small" style="margin:10px 0 6px">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
           <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
 
@@ -136,7 +138,9 @@
 
           <div class="muted small">
             *以上报价不含发票与税费及购买版权素材费用<br>
-            参与导演简述沟通会议...（略）
+            参与导演简述沟通会议，提供线上远程跟片及线下跟片；上门剪辑需项目前沟通；提供剪辑/基础调色/音效/简单合成<br>
+            【支付方式】执行前50%，提交FINAL后50%尾款（以B copy 起30天内结清）。对私：微信/支付宝/银行卡；对公：票面1%，类目剪辑服务，收6%<br>
+            【合作流程】1.确认合作&档期 → 2.项目简述&配合事项 → 3.按计划剪辑 → 4.修改限定4次，超出20%/次（大改60%）
           </div>
         </form>
       </div>
@@ -274,11 +278,11 @@
     </div>
   </div>
 
-  <!-- Supabase 配置 -->
+  <!-- Supabase 配置（保持与 v1.4.2 一致） -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.3.1" defer></script>
+  <script src="app.js?v=v1.4.3" defer></script>
 </body>
 </html>
