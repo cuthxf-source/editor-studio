@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.6 */
+/* editor-studio / styles.css  v1.3 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -7,7 +7,7 @@
   --r:16px; --pill:999px;
   --space:18px; --space-lg:22px;
   --fs:16px; --fs-sm:13px; --fs-lg:20px;
-  --lh:1.75; --letter:0.2px;
+  --lh:1.78; --letter:0.2px;
 }
 
 *{box-sizing:border-box}
@@ -38,7 +38,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .grid-1{display:grid;grid-template-columns:1fr;gap:18px}
 @media (max-width:980px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
 
-/* KPI */
+/* KPI with colors */
 .kpi-card{border-radius:24px}
 .kpi-label{font-size:var(--fs-sm);color:var(--muted);letter-spacing:var(--letter)}
 .kpi-num{font-weight:800;font-size:28px;letter-spacing:.3px}
@@ -46,23 +46,20 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-yellow .kpi-num{color:var(--yellow)}
 .kpi-red .kpi-num{color:var(--red)}
 
-/* Lists */
+/* Lists & table */
 .list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
 .list.compact .list-item{padding:8px 0}
-
-/* 最近项目：四列对齐 */
-.recent-list .list-item{display:grid;grid-template-columns:1fr 120px 120px 200px;gap:12px;align-items:center}
-.recent-list .title-block{display:flex;flex-direction:column;gap:4px}
-@media (max-width:900px){
-  .recent-list .list-item{grid-template-columns:1fr;gap:6px}
-}
-
-/* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:#fff}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter)}
 .table thead th{background:#fafafa}
-.table.smallify th:not(:first-child), .table.smallify td:not(:first-child){font-size:var(--fs-sm)}
+
+/* 最近项目：统一四列栅格防止错位 */
+.recent .list-item{display:grid;grid-template-columns:1fr 120px 120px 160px;gap:12px;align-items:center}
+.recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
+.recent .count{text-align:center}
+.recent .status{text-align:center}
+.recent .due{text-align:right}
 
 /* Pills / status */
 .pill{display:inline-block;padding:6px 10px;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm)}
@@ -71,15 +68,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .pill-gold{color:#fff;background:var(--gold);border-color:var(--gold)}
 .pill-yellow{color:#fff;background:var(--yellow);border-color:var(--yellow)}
 .pill-red{color:#fff;background:var(--red);border-color:var(--red)}
-.pill-purple{color:#fff;background:var(--purple);border-color:#7a5aff}
-
-/* Toggle pills for 完成 */
-.toggle-pill{
-  display:inline-block; padding:6px 12px; border-radius:var(--pill);
-  border:1px solid var(--line); background:#fff; font-size:var(--fs-sm);
-  cursor:pointer; user-select:none; line-height:1;
-}
-.toggle-pill.on{ background:var(--green); color:#fff; border-color:var(--green) }
+.pill-purple{color:#fff;background:var(--purple);border-color:#dfd3ff}
 
 /* Chips */
 .chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -95,23 +84,19 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .auth-form button{width:100%;padding:12px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
 
 .form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);letter-spacing:var(--letter)}
-.form.spacious label{line-height:2.0}
+.form label{line-height:1.9}
 .btn,.btn-ghost,.ghost{padding:10px 14px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
 .btn-ghost,.ghost{background:#fff}
-.cell-edit{padding:4px 10px;border-radius:var(--pill);border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer}
+.cell-actions{display:flex;gap:8px;align-items:center}
+.cell-edit{padding:6px 12px;border-radius:var(--pill);border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer}
 .cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-/* Editable cell states */
-td[contenteditable="true"]{outline:2px dashed transparent}
-td[contenteditable="true"]:focus{outline-color:#cfe0ff;background:#f6faff}
 
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
-.modal-inner{width:min(920px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px;display:flex;flex-direction:column}
-.modal-inner-wide{width:min(1100px,96vw)}
+.modal-inner{width:min(920px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px}
+.modal-inner-wide{width:min(1060px,96vw)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.modal-foot{margin-top:28px;padding-top:10px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
 
 /* Calendar */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:8px 0}
