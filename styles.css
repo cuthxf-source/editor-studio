@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v0.3 */
+/* editor-studio / styles.css  v1.1 (based on your v0.3) */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -21,6 +21,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
 .nav-wrap{display:flex;align-items:center;gap:12px;height:68px}
 .brand{font-weight:600;letter-spacing:.2px}
+.brand-gold{color:var(--gold);font-weight:700}
 .nav-center{margin-left:auto;margin-right:auto;display:flex;gap:10px}
 .nav-right{display:flex}
 .nav-btn{padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:var(--pill);letter-spacing:.2px}
@@ -62,7 +63,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .pill-red{color:#fff;background:var(--red);border-color:var(--red)}
 .pill-purple{color:#fff;background:var(--purple);border-color:var(--purple)}
 
-/* Chips for A/B/Final */
+/* Chips for Acopy/Bcopy/Final */
 .chips{display:flex;gap:8px}
 .chip{display:inline-block;padding:4px 10px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
 .chip-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
@@ -79,7 +80,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .btn,.btn-ghost,.ghost{padding:10px 14px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
 .btn-ghost,.ghost{background:#fff}
 
-/* Editable cell */
+/* Editable cell states */
 td[contenteditable="true"]{outline:2px dashed transparent}
 td[contenteditable="true"]:focus{outline-color:#cfe0ff;background:#f6faff}
 
@@ -115,3 +116,26 @@ td[contenteditable="true"]:focus{outline-color:#cfe0ff;background:#f6faff}
 
 /* Toolbar */
 .toolbar{display:flex;gap:10px;align-items:center}
+
+/* ===== v1.1 新增：项目列表交互小面板 ===== */
+.cell-pop{
+  position:relative;display:inline-block;
+}
+.cell-pop .pop{
+  position:absolute;z-index:10;top:120%;left:0;background:#fff;border:1px solid var(--line);
+  border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:12px;min-width:280px;
+}
+.pop .row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.pop label{font-size:13px;color:#444}
+.pop input[type="number"], .pop input[type="date"], .pop select{
+  padding:8px;border-radius:12px;border:1px solid var(--line)
+}
+.pop .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.pop .btn-xs{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px}
+
+/* 支付状态下拉（彩色胶囊） */
+.pay-pill{cursor:pointer}
+.pay-menu{position:absolute;z-index:10;top:120%;left:0;background:#fff;border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);overflow:hidden}
+.pay-menu button{display:block;width:100%;text-align:left;padding:8px 12px;border:0;background:#fff}
+.pay-menu button:hover{background:#f6f6f6}
