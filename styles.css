@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.1 */
+/* editor-studio / styles.css  v1.5.2 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -50,8 +50,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-red .kpi-num{color:var(--red)}
 .asof{margin-top:6px}
 #view-home .asof{display:none} /* 首页不显示截至时间 */
+#view-finance .asof{display:none} /* 财务页也不显示 */
 
-/* 表格（满足：整体更宽；修改内容列缩小 50%） */
+/* 表格（满足：整体更宽；修改内容列缩小 50%；三列收紧到内容宽） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
@@ -59,6 +60,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
 .table td .text-cell{white-space:normal}
 .table td.shrink{font-size:var(--fs-xs)}
+/* 关键三列：按内容宽度收紧 */
 .col-upload{min-width:unset;width:1%;white-space:nowrap}
 .col-priority{min-width:unset;width:1%;white-space:nowrap}
 .col-pay{min-width:unset;width:1%;white-space:nowrap}
@@ -71,7 +73,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 #view-projects .projects-table th:nth-child(8), 
 #view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
-/* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
+/* 最近项目（含能量条） */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:260px}
@@ -84,6 +86,12 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .prog{position:relative;height:12px;border-radius:999px;background:color-mix(in oklab, var(--panel), #000 7%);border:1px solid var(--line);overflow:hidden}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055)}
 .prog-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
+
+/* 报价分析器横排 */
+.quote-horizontal .qh-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.quote-horizontal .qh-block{min-width:220px}
+.quote-horizontal .qh-result{display:flex;gap:18px;margin-top:10px}
+.price-box .price{font-weight:800;font-size:20px}
 
 /* 状态 / 优先级 / 支付状态（椭圆胶囊） */
 .pill{display:inline-block;border-radius:999px;border:1px solid var(--line);font-size:var(--fs-sm);padding:4px 10px}
@@ -119,7 +127,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .tiny-thumb{width:28px;height:18px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
 .thumb-list{display:flex;gap:6px;align-items:center}
 
-/* 日历：色块内展示项目名+版本（加高） */
+/* 日历：仅边框、无填充、按项目多色 */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin:8px 0}
 .cal-grid-head span{text-align:center;font-weight:700;padding:6px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--line)}
@@ -127,13 +135,11 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .cal-cell:nth-child(7n){border-right:none}
 .cal-day{font-weight:700;margin-bottom:6px}
 .span-piece{position:relative;height:24px;border:2px solid var(--line);background:transparent;overflow:hidden}
-.span-a,.span-b,.span-f{background:transparent}
 .span-start{border-top-left-radius:6px;border-bottom-left-radius:6px}
 .span-end{border-top-right-radius:6px;border-bottom-right-radius:6px}
 .bar-line{position:relative;display:block;margin-top:8px}
 .span-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
-[data-theme="dark"] .span-text{color:var(--text)}
-
+/* 项目颜色调色板（8 色循环） */
 .span-piece.c0{border-color:#58a6ff}
 .span-piece.c1{border-color:#f778ba}
 .span-piece.c2{border-color:#8b949e}
@@ -143,18 +149,18 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .span-piece.c6{border-color:#a371f7}
 .span-piece.c7{border-color:#1f6feb}
 
-/* 作品合集：更大 + 直角 + 不规则组合（CSS Grid 密集排布） */
-.mag-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(560px, 1fr)); /* 大约比之前大 2 倍 */
-  gap:18px;
-  grid-auto-flow:dense;
-}
-.mag-card{
-  display:block; position:relative; background:#f6f6f6;
-  border:1px solid var(--line); border-radius:0; /* 直角 */
-  overflow:hidden;
-}
+/* 作品合集：更大 + 直角 + 不规则组合 */
+.mag-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(560px, 1fr));gap:18px;grid-auto-flow:dense}
+.mag-card{display:block;position:relative;background:#f6f6f6;border:1px solid var(--line);border-radius:0;overflow:hidden}
 .mag-cover{width:100%;height:auto;display:block}
 .mag-cap{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:6px}
-.mag-span2{grid-column:span 2} /* 允许部分海报跨两列，形成不规则贴合 */
+.mag-span2{grid-column:span 2}
+
+/* 财务榜单：更紧凑 + 折叠 */
+.list.compact .list-item{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);padding:8px 10px;border-bottom:1px solid var(--line)}
+.fold{max-height:360px;overflow:hidden;position:relative}
+.fold.expanded{max-height:none}
+.fold-btn{border-radius:999px}
+.season-tags{display:flex;gap:8px;align-items:center}
+.badge-season{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted)}
+.trend{height:240px;border:1px dashed var(--line);border-radius:12px;padding:6px}
