@@ -51,7 +51,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .asof{margin-top:6px}
 #view-home .asof{display:none} /* 首页不显示截至时间 */
 
-/* 表格（满足：整体更宽；修改内容列缩小 50%） */
+/* 表格（满足：整体更宽；修改内容列缩小 50%；三列收紧到内容宽） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
@@ -59,8 +59,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
 .table td .text-cell{white-space:normal}
 .table td.shrink{font-size:var(--fs-xs)}
-.col-upload{min-width:140px}
-.col-priority{min-width:110px}
+.col-upload{min-width:unset;width:1%;white-space:nowrap}
+.col-priority{min-width:unset;width:1%;white-space:nowrap}
+.col-pay{min-width:unset;width:1%;white-space:nowrap}
 
 /* 项目页：表整体加宽到 150%（未完成与已完成两个窗口） */
 #view-projects .projects-table{table-layout:fixed;width:150%}
@@ -118,35 +119,39 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .tiny-thumb{width:28px;height:18px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
 .thumb-list{display:flex;gap:6px;align-items:center}
 
-/* 日历：色块内展示项目名+版本（加高） */
+/* 日历：色块内展示项目名+版本（加高）——改为仅边框、无填充、按项目多色 */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin:8px 0}
 .cal-grid-head span{text-align:center;font-weight:700;padding:6px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--line)}
 .cal-cell{position:relative;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:110px;padding:8px}
 .cal-cell:nth-child(7n){border-right:none}
 .cal-day{font-weight:700;margin-bottom:6px}
-.span-piece{position:relative;height:22px;border:1px solid var(--line);background:#e7f0ff;overflow:hidden}
-.span-a{background:#e7f0ff;border-color:#cfe0ff}
-.span-b{background:#efe7ff;border-color:#dfd3ff}
-.span-f{background:#fff4e5;border-color:#ffe2b8}
+.span-piece{position:relative;height:24px;border:2px solid var(--line);background:transparent;overflow:hidden}
+.span-a,.span-b,.span-f{background:transparent}
 .span-start{border-top-left-radius:6px;border-bottom-left-radius:6px}
 .span-end{border-top-right-radius:6px;border-bottom-right-radius:6px}
 .bar-line{position:relative;display:block;margin-top:8px}
-.span-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#222}
-[data-theme="dark"] .span-text{color:#111}
+.span-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+[data-theme="dark"] .span-text{color:var(--text)}
+/* 项目颜色调色板（8 色循环） */
+.span-piece.c0{border-color:#58a6ff}
+.span-piece.c1{border-color:#f778ba}
+.span-piece.c2{border-color:#8b949e}
+.span-piece.c3{border-color:#3fb950}
+.span-piece.c4{border-color:#ff7b72}
+.span-piece.c5{border-color:#d29922}
+.span-piece.c6{border-color:#a371f7}
+.span-piece.c7{border-color:#1f6feb}
 
 /* 作品合集：更大 + 直角 + 不规则组合（CSS Grid 密集排布） */
 .mag-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(560px, 1fr)); /* 大约比之前大 2 倍 */
+  grid-template-columns:repeat(auto-fill, minmax(560px, 1fr));
   gap:18px;
   grid-auto-flow:dense;
 }
-.mag-card{
-  display:block; position:relative; background:#f6f6f6;
-  border:1px solid var(--line); border-radius:0; /* 直角 */
-  overflow:hidden;
-}
+.mag-card{display:block; position:relative; background:#f6f6f6;
+  border:1px solid var(--line); border-radius:0; overflow:hidden;}
 .mag-cover{width:100%;height:auto;display:block}
 .mag-cap{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:6px}
-.mag-span2{grid-column:span 2} /* 允许部分海报跨两列，形成不规则贴合 */
+.mag-span2{grid-column:span 2}
