@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.8 -->
+<!-- editor-studio / index.html  v1.4.5 + poster/video upload -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,9 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.8" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.8" />
-  <!-- Supabase UMD（必须在 app.js 前） -->
+  <link rel="icon" href="icon.png?v=v1.4.5" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.5" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -28,7 +27,6 @@
         <button id="btn-finance" class="nav-btn">财务</button>
       </nav>
       <div class="nav-right">
-        <button id="btn-theme" class="nav-btn ghost" title="切换主题">🌗 主题</button>
         <button id="btn-logout" class="nav-btn ghost">退出登录</button>
       </div>
     </div>
@@ -69,7 +67,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（原有功能保留） -->
+      <!-- 报价分析器（原样保留） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -124,7 +122,9 @@
 
           <div id="qa-multi" class="hidden">
             <div id="qa-mc-list"></div>
-            <div style="margin-top:10px"><button type="button" id="qa-mc-add" class="cell-edit">新增组合</button></div>
+            <div style="margin-top:10px">
+              <button type="button" id="qa-mc-add" class="cell-edit">新增组合</button>
+            </div>
           </div>
 
           <div class="grid-2" style="margin-top:10px">
@@ -150,47 +150,26 @@
           <button id="btn-new" class="btn">新建项目</button>
         </div>
       </div>
-
-      <!-- 未完结（上方） -->
       <div id="projects-wrap" class="table-wrap">
         <table class="table">
           <thead>
             <tr>
               <th>项目</th>
-              <th class="col-prio">优先级</th>
               <th>合作制片</th>
               <th>影片类型&条数&规格</th>
               <th>进度</th>
               <th>支付状态</th>
               <th>总金额</th>
               <th>修改内容</th>
+              <th>上传</th><!-- 新增列 -->
             </tr>
           </thead>
           <tbody id="projects-body"></tbody>
         </table>
       </div>
-
-      <!-- 已完结（下方） -->
-      <div class="card" style="margin-top:16px">
-        <div class="section-head"><h3>已完结项目（以已收尾款为准）</h3></div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>项目</th>
-                <th>合作制片</th>
-                <th>Final 日期</th>
-                <th>收款状态</th>
-                <th>金额</th>
-              </tr>
-            </thead>
-            <tbody id="done-paid-body"></tbody>
-          </table>
-        </div>
-      </div>
     </section>
 
-    <!-- 档期（周行 + 贯穿长条） -->
+    <!-- 档期 -->
     <section id="view-schedule" class="view hidden">
       <div class="section-head center">
         <button id="cal-prev" class="ghost">上一月</button>
@@ -200,7 +179,7 @@
       <div class="cal-grid-head">
         <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
       </div>
-      <div id="cal-grid" class="cal-month"></div>
+      <div id="cal-grid" class="cal-grid"></div>
     </section>
 
     <!-- 作品合集 -->
@@ -221,8 +200,7 @@
       <div class="grid-3">
         <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
         <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
-        <div class="card">
-          <div class="section-head"><h3>已完结未结款</h3></div>
+        <div class="card"><div class="section-head"><h3>已完结未结款</h3>
           <div class="list compact">
             <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
             <div id="aging"></div>
@@ -292,9 +270,40 @@
         <h3 id="quick-title">项目详情</h3>
         <button id="quick-close" class="ghost">关闭</button>
       </div>
-      <div id="quick-body" class="form"></div>
+        <div id="quick-body" class="form"></div>
       <div class="modal-foot">
         <button type="button" id="quick-final-done" class="btn">标记 Final 完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 上传小窗（海报 / 成片） -->
+  <div id="upload-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3>上传海报 / 成片</h3>
+        <button id="upload-close" class="ghost">关闭</button>
+      </div>
+      <div id="upload-body" class="form">
+        <div class="upload-grid">
+          <div>
+            <div class="small muted">海报（支持拖拽/粘贴，jpg/png/webp）</div>
+            <div id="poster-drop" class="dropzone">将图片拖拽到此处，或粘贴，或点击选择</div>
+            <input id="poster-file" type="file" accept="image/*" class="hidden">
+            <button id="btn-upload-poster" class="btn" type="button">上传海报</button>
+            <div id="poster-status" class="small muted"></div>
+          </div>
+          <div>
+            <div class="small muted">成片视频（mp4/mov 等常见格式）</div>
+            <div id="final-drop" class="dropzone">将视频拖拽到此处，或点击选择</div>
+            <input id="final-file" type="file" accept="video/*" class="hidden">
+            <button id="btn-upload-final" class="btn" type="button">上传成片</button>
+            <div id="final-status" class="small muted"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="upload-cancel" class="ghost" type="button">关闭</button>
       </div>
     </div>
   </div>
@@ -304,6 +313,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.8" defer></script>
+  <script src="app.js?v=v1.4.5" defer></script>
 </body>
 </html>
