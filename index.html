@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.5 -->
+<!-- editor-studio / index.html  v1.4.6 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.5" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.5" />
+  <link rel="icon" href="icon.png?v=v1.4.6" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.6" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -28,6 +28,7 @@
         <button id="btn-finance" class="nav-btn">财务</button>
       </nav>
       <div class="nav-right">
+        <button id="btn-theme" class="nav-btn ghost" title="切换主题">🌗 主题</button>
         <button id="btn-logout" class="nav-btn ghost">退出登录</button>
       </div>
     </div>
@@ -60,7 +61,7 @@
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
-      <!-- 截至日期（新增） -->
+      <!-- 截至日期 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -71,7 +72,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（支持多组合计价 & 合成复杂度） -->
+      <!-- 报价分析器（保持你现有逻辑） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -156,11 +157,32 @@
           <button id="btn-new" class="btn">新建项目</button>
         </div>
       </div>
+
+      <!-- 已完结项目（固定窗口，不影响未完成排序） -->
+      <div class="card">
+        <div class="section-head"><h3>已完结项目</h3></div>
+        <div id="done-wrap" class="table-wrap fixed-pane">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>合作制片</th>
+                <th>Final 日期</th>
+                <th>收款状态</th>
+                <th>金额</th>
+              </tr>
+            </thead>
+            <tbody id="done-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="projects-wrap" class="table-wrap">
         <table class="table">
           <thead>
             <tr>
               <th>项目</th>
+              <th>优先级</th>
               <th>合作制片</th>
               <th>影片类型&条数&规格</th>
               <th>进度</th>
@@ -200,13 +222,14 @@
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
       </div>
-      <!-- 截至日期（新增） -->
+      <!-- 截至日期 -->
       <div id="f-asof" class="muted small asof"></div>
 
       <div class="grid-3">
         <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
         <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
-        <div class="card"><div class="section-head"><h3>已完结未结款</h3></div>
+        <div class="card">
+          <div class="section-head"><h3>已完结未结款</h3></div>
           <div class="list compact">
             <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
             <div id="aging"></div>
@@ -288,6 +311,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.5" defer></script>
+  <script src="app.js?v=v1.4.6" defer></script>
 </body>
 </html>
