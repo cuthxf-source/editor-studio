@@ -959,4 +959,137 @@ document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classLis
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
 document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const fd = new FormData(e.target); const row = Object.fromEntries(fd
+  const fd = new FormData(e.target); const row = Object.fromEntries(fd.entries());
+  row.clips = Number(row.clips||1);
+  row.quote_amount   = Number(row.quote_amount||0);
+  row.paid_amount    = Number(row.paid_amount||0);
+  row.deposit_amount = 0;
+  if(row.spec){ row.spec = row.spec; }
+  row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' });
+  const { error } = await supa.from('projects').insert(row);
+  if(error){ alert(error.message); return; }
+  mNew.classList.remove('show');
+  await fetchProjects(); renderAll();
+});
+
+// ============== 上传小窗（海报 / 成片） ==============
+const upModal = document.getElementById('upload-modal');
+const upClose = document.getElementById('upload-close');
+const upCancel= document.getElementById('upload-cancel');
+const posterDrop = document.getElementById('poster-drop');
+const finalDrop  = document.getElementById('final-drop');
+const posterFile = document.getElementById('poster-file');
+const finalFile  = document.getElementById('final-file');
+const btnPoster  = document.getElementById('btn-upload-poster');
+const btnFinal   = document.getElementById('btn-upload-final');
+const posterStatus = document.getElementById('poster-status');
+const finalStatus  = document.getElementById('final-status');
+let currentUploadId = null;
+
+function openUploadModal(id){
+  currentUploadId = id;
+  posterStatus.textContent = '';
+  finalStatus.textContent  = '';
+  upModal.classList.add('show');
+}
+function closeUpload(){ upModal.classList.remove('show'); }
+upClose?.addEventListener('click', closeUpload);
+upCancel?.addEventListener('click', closeUpload);
+upModal?.addEventListener('mousedown', (e)=>{ if(e.target===upModal) closeUpload(); });
+
+function extFromName(n){ const a=n.split('.'); return a.length>1? a.pop().toLowerCase() : ''; }
+function filenameSafe(s){ return String(s||'file').replace(/[^\w.-]+/g,'_'); }
+
+function hookDropZone(zoneEl, inputEl, onPasteImage=false){
+  zoneEl.addEventListener('click', ()=> inputEl.click());
+  ;['dragenter','dragover'].forEach(ev=>{
+    zoneEl.addEventListener(ev, e=>{ e.preventDefault(); zoneEl.classList.add('drag'); });
+  });
+  ;['dragleave','drop'].forEach(ev=>{
+    zoneEl.addEventListener(ev, e=>{ e.preventDefault(); zoneEl.classList.remove('drag'); });
+  });
+  zoneEl.addEventListener('drop', e=>{
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if(f){ const dt=new DataTransfer(); dt.items.add(f); inputEl.files = dt.files; zoneEl.textContent = f.name; }
+  });
+  if(onPasteImage){
+    zoneEl.addEventListener('paste', e=>{
+      const items = e.clipboardData?.items || [];
+      for(const it of items){
+        if(it.type && it.type.startsWith('image/')){
+          const f = it.getAsFile();
+          const dt=new DataTransfer(); dt.items.add(f); inputEl.files = dt.files; zoneEl.textContent = f.name;
+          e.preventDefault();
+          break;
+        }
+      }
+    });
+  }
+}
+hookDropZone(posterDrop, posterFile, true);
+hookDropZone(finalDrop,  finalFile,  false);
+
+async function uploadToBucket(path, file){
+  // upsert: 可覆盖同名文件
+  const { error } = await supa.storage.from('attachments').upload(path, file, { upsert:true });
+  if(error) throw error;
+  const { data: { publicUrl } } = supa.storage.from('attachments').getPublicUrl(path);
+  return publicUrl;
+}
+
+btnPoster?.addEventListener('click', async ()=>{
+  try{
+    if(!currentUploadId){ alert('无项目ID'); return; }
+    const file = posterFile.files?.[0];
+    if(!file){ alert('请选择或粘贴一张图片'); return; }
+    posterStatus.textContent = '上传中…';
+    const p = projects.find(x=>String(x.id)===String(currentUploadId));
+    const base = `projects/${currentUploadId}/poster_${filenameSafe(p?.title||'poster')}.${extFromName(file.name)||'jpg'}`;
+    const url = await uploadToBucket(base, file);
+    await supa.from('projects').update({ poster_url: url }).eq('id', currentUploadId);
+    posterStatus.textContent = '已上传并保存';
+    await fetchProjects(); renderProjects(); renderGallery();
+  }catch(err){
+    console.error(err); posterStatus.textContent = '上传失败：' + (err.message||err);
+  }
+});
+
+btnFinal?.addEventListener('click', async ()=>{
+  try{
+    if(!currentUploadId){ alert('无项目ID'); return; }
+    const file = finalFile.files?.[0];
+    if(!file){ alert('请选择一个视频文件'); return; }
+    finalStatus.textContent = '上传中…（根据文件大小可能较久）';
+    const p = projects.find(x=>String(x.id)===String(currentUploadId));
+    const base = `projects/${currentUploadId}/final_${filenameSafe(p?.title||'final')}.${extFromName(file.name)||'mp4'}`;
+    const url = await uploadToBucket(base, file);
+    await supa.from('projects').update({ final_link: url }).eq('id', currentUploadId);
+    finalStatus.textContent = '已上传并保存';
+    await fetchProjects(); renderProjects(); renderGallery();
+  }catch(err){
+    console.error(err); finalStatus.textContent = '上传失败：' + (err.message||err);
+  }
+});
+
+// ============== 渲染整页 ==============
+function renderAll(){
+  renderKpis();
+  renderRecent();
+  renderProjects();
+  renderGallery();
+  renderFinance();
+}
+
+// ============== 启动 ==============
+async function boot(){
+  const { data:{ session } } = await supa.auth.getSession();
+  if(!session){ showView('auth'); return; }
+  await bootAfterAuth();
+}
+async function bootAfterAuth(){
+  await fetchProjects();
+  renderAll();
+  showView('home');
+}
+boot();
