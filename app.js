@@ -1,7 +1,8 @@
-/* editor-studio / app.js  v1.4.3 */
+=== app.js (v1.4.5) ===
+/* editor-studio / app.js  v1.4.5 */
 
 // ============== App 版本（用于修改记录） ==============
-const APP_VERSION = 'v1.4.3';
+const APP_VERSION = 'v1.4.5';
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -276,7 +277,8 @@ function renderKpis(){
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 
   // 新增：截至日期文字
-  const todayStr = new Date().toISOString().slice(0,10);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const homeAsof = document.getElementById('home-asof');
   if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
   const fAsof = document.getElementById('f-asof');
@@ -907,7 +909,7 @@ function renderFinance(){
   const byPartner = new Map();
   projects.forEach(p=>{
     const k=p.producer_name||'未填';
-    const sum = Number(p.paid_amount||0); // v1.4.3：只按“已收款”统计
+    const sum = Number(p.paid_amount||0); // v1.4.4：只按“已收款”统计
     byPartner.set(k, (byPartner.get(k)||0)+sum);
   });
   const rp=document.getElementById('rank-partner'); rp.innerHTML='';
@@ -973,7 +975,7 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.clips = Number(row.clips||1);
   row.quote_amount   = Number(row.quote_amount||0);
   row.paid_amount    = Number(row.paid_amount||0);
-  row.deposit_amount = 0; // v1.4.3：不再使用定金，置0以兼容旧表结构
+  row.deposit_amount = 0; // v1.4.4：不再使用定金，置0以兼容旧表结构
   if(row.spec){ row.spec = row.spec; }
   // 初始化 notes 为 JSON
   row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' });
