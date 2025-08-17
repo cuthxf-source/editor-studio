@@ -1,163 +1,293 @@
+<!-- editor-studio / index.html  v1.4.5 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文本编辑器系统</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <title>剪辑师项目管理系统 · Life_HAN</title>
+  <link rel="icon" href="icon.png?v=v1.4.5" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.5" />
+  <!-- Supabase UMD（必须在 app.js 前） -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <ul class="nav">
-            <li data-section="home">首页</li>
-            <li data-section="projects">项目列表</li>
-            <li data-section="finance">财务</li>
-            <li data-section="quote">报价分析</li>
-        </ul>
-    </nav>
 
-    <!-- Home Dashboard Section -->
-    <section id="home">
-        <h1>仪表盘</h1>
-        <div class="stats">
-            <!-- Completed pieces module -->
-            <div class="stat-card">
-                <div class="stat-label">已完成片数（截至目前日期）</div>
-                <div class="stat-value" id="completed-count">0</div>
-            </div>
-            <!-- Incomplete pieces module -->
-            <div class="stat-card">
-                <div class="stat-label">未完成片数（截至目前日期）</div>
-                <div class="stat-value" id="incomplete-count">0</div>
-            </div>
-            <!-- Financial amount module -->
-            <div class="stat-card">
-                <div class="stat-label">金额（截至目前日期）</div>
-                <div class="stat-value" id="finance-amount">¥0</div>
-            </div>
+  <!-- 顶部导航 -->
+  <header class="site-header">
+    <div class="nav-wrap container">
+      <div class="brand">剪辑师项目管理系统 <span class="brand-gold">· Life_HAN</span></div>
+      <nav class="nav-center">
+        <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
+        <button id="btn-projects" class="nav-btn">项目</button>
+        <button id="btn-schedule" class="nav-btn">档期</button>
+        <button id="btn-gallery" class="nav-btn">作品合集</button>
+        <button id="btn-finance" class="nav-btn">财务</button>
+      </nav>
+      <div class="nav-right">
+        <button id="btn-logout" class="nav-btn ghost">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 登录视图（未登录只显示此页） -->
+  <section id="view-auth" class="container auth-view hidden">
+    <div class="card auth-card">
+      <h2>登录 / 注册</h2>
+      <form id="auth-form" class="auth-form">
+        <input id="email" type="email" required placeholder="邮箱" />
+        <input id="password" type="password" required placeholder="密码" />
+        <button type="submit">进入系统</button>
+      </form>
+      <p id="auth-tip" class="muted small"></p>
+    </div>
+  </section>
+
+  <main class="container main-wrap">
+    <!-- 首页 -->
+    <section id="view-home" class="view">
+      <!-- 金额 KPI -->
+      <div class="grid-3 kpi">
+        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
+      </div>
+      <!-- 片数 KPI -->
+      <div class="grid-2 kpi">
+        <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
+        <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
+      </div>
+      <!-- 截至日期（新增） -->
+      <div id="home-asof" class="muted small asof"></div>
+
+      <div class="card">
+        <div class="section-head">
+          <h3>最近项目</h3>
+          <button id="go-list" class="btn-ghost">查看全部</button>
         </div>
-        <!-- Recent Projects Area -->
-        <h2>最近项目</h2>
-        <div id="recent-projects"><!-- Recent projects list will be inserted here --></div>
+        <div id="recent-list" class="list recent"></div>
+      </div>
+
+      <!-- 报价分析器（支持多组合计价 & 合成复杂度） -->
+      <div class="card">
+        <div class="section-head"><h3>报价分析器</h3></div>
+        <form id="quote-form" class="form">
+          <div class="grid-2">
+            <label>项目名<input id="qa-title" /></label>
+            <label>制片<input id="qa-producer" /></label>
+          </div>
+
+          <!-- 单组合模式 -->
+          <div id="qa-single">
+            <div class="grid-3">
+              <label>影片类型
+                <select id="qa-type">
+                  <option value="LookBook">LookBook</option>
+                  <option value="形象片">形象片</option>
+                  <option value="TVC">TVC</option>
+                  <option value="纪录片">纪录片</option>
+                  <option value="微电影">微电影</option>
+                </select>
+              </label>
+              <label>基础价格（可自填）<input id="qa-base" type="number" min="0" step="1" placeholder="留空用默认"></label>
+              <label>影片时长（秒）<input id="qa-secs" type="number" min="0" step="1" value="0"></label>
+            </div>
+            <div class="center pill-group">
+              <label class="pill"><input type="checkbox" class="qa-task" value="edit" checked><span>剪辑</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="color" checked><span>调色</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="mix" checked><span>混音</span></label>
+              <label class="pill"><input type="checkbox" class="qa-task" value="comp"><span>合成</span></label>
+            </div>
+            <div id="qa-comp-row" class="h-row hidden">
+              <label style="min-width:280px">合成复杂度（%）
+                <input id="qa-comp" type="range" min="0" max="100" step="10" value="0">
+                <span id="qa-comp-val" class="muted small">0%</span>
+              </label>
+            </div>
+            <div class="h-row">
+              <label>创意密度（%）
+                <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
+                <span id="qa-creative-val" class="muted small">30%</span>
+              </label>
+              <label>紧急系数（%）
+                <input id="qa-urgent" type="range" min="0" max="100" step="10" value="0">
+                <span id="qa-urgent-val" class="muted small">0%</span>
+              </label>
+              <label>修改次数
+                <input id="qa-rev" type="number" min="0" step="1" value="4">
+              </label>
+            </div>
+          </div>
+
+          <!-- 多组合模式 -->
+          <div class="muted small" style="margin:10px 0 6px">启用多组合计价后，可添加多组「类型 × 条数 × 时长」并自动汇总。</div>
+          <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
+
+          <div id="qa-multi" class="hidden">
+            <div id="qa-mc-list"></div>
+            <div style="margin-top:10px">
+              <button type="button" id="qa-mc-add" class="cell-edit">新增组合</button>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:10px">
+            <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
+            <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
+          </div>
+
+          <div class="muted small">
+            *以上报价不含发票与税费及购买版权素材费用<br>
+            参与导演简述沟通会议，提供线上远程跟片及线下跟片；上门剪辑需项目前沟通；提供剪辑/基础调色/音效/简单合成<br>
+            【支付方式】执行前50%，提交FINAL后50%尾款（以B copy 起30天内结清）。对私：微信/支付宝/银行卡；对公：票面1%，类目剪辑服务，收6%<br>
+            【合作流程】1.确认合作&档期 → 2.项目简述&配合事项 → 3.按计划剪辑 → 4.修改限定4次，超出20%/次（大改60%）
+          </div>
+        </form>
+      </div>
     </section>
 
-    <!-- Project List Section -->
-    <section id="projects" style="display:none;">
+    <!-- 项目列表 -->
+    <section id="view-projects" class="view hidden">
+      <div class="section-head">
         <h2>项目列表</h2>
-        <!-- Toolbar with search and filters -->
         <div class="toolbar">
-            <input id="project-search" class="search-input" type="text" placeholder="搜索: 项目 / 制片 / 联系方式">
-            <select id="filter-stage" title="阶段">
-                <option>全部阶段</option>
-                <option>Acopy</option>
-                <option>Bcopy</option>
-                <option>Final</option>
-                <option>完成</option>
-                <option>遗留</option>
-            </select>
-            <select id="filter-pay" title="支付状态">
-                <option>全部款项</option>
-                <option>未收款</option>
-                <option>已收定金</option>
-                <option>已收全款</option>
-            </select>
-            <button id="btn-export-csv" class="btn-ghost">导出 CSV</button>
-            <button id="btn-new" class="btn">新建项目</button>
+          <button id="btn-new" class="btn">新建项目</button>
         </div>
-        <!-- Projects table -->
-        <table id="project-table" class="project-table">
-            <thead>
-                <tr>
-                    <th>项目名称</th>
-                    <th>制片人</th>
-                    <th>联系方式</th>
-                    <th>阶段</th>
-                    <th>款项状态</th>
-                    <th>影片类型 & 条数 & 规格</th>
-                    <th>修改内容</th>
-                </tr>
-            </thead>
-            <tbody id="project-tbody">
-                <!-- Project rows will be inserted here dynamically -->
-            </tbody>
+      </div>
+      <div id="projects-wrap" class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th>合作制片</th>
+              <th>影片类型&条数&规格</th>
+              <th>进度</th>
+              <th>支付状态</th>
+              <th>总金额</th>
+              <th>修改内容</th>
+            </tr>
+          </thead>
+          <tbody id="projects-body"></tbody>
         </table>
+      </div>
     </section>
 
-    <!-- Finance Section -->
-    <section id="finance" style="display:none;">
-        <h2>财务统计</h2>
-        <!-- Financial summary -->
-        <p>总金额: <span id="total-finance">¥0</span> <span class="note">(截至目前日期)</span></p>
-        <!-- Other financial details... -->
+    <!-- 档期 -->
+    <section id="view-schedule" class="view hidden">
+      <div class="section-head center">
+        <button id="cal-prev" class="ghost">上一月</button>
+        <h2 id="cal-label" class="cal-title">2025年 8月</h2>
+        <button id="cal-next" class="ghost">下一月</button>
+      </div>
+      <div class="cal-grid-head">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
     </section>
 
-    <!-- Quote Analysis Section -->
-    <section id="quote" style="display:none;">
-        <h2>报价分析</h2>
-        <!-- Quote analysis content placeholder -->
-        <p>报价分析器内容。</p>
+    <!-- 作品合集 -->
+    <section id="view-gallery" class="view hidden">
+      <div class="section-head"><h2>作品合集</h2></div>
+      <div id="gallery-grid" class="poster-grid"></div>
     </section>
 
-    <!-- New Project Modal -->
-    <div id="new-project-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>新建项目</h3>
-            <label>项目名称: <input type="text" id="new-project-name"></label><br>
-            <label>制片人: <input type="text" id="new-project-producer"></label><br>
-            <label>联系方式: <input type="text" id="new-project-contact"></label><br>
-            <!-- Film Type & Count & Spec area -->
-            <div class="film-spec-list" id="film-spec-list">
-                <div class="film-spec-item">
-                    <label>类型:</label>
-                    <select class="film-type-select">
-                        <option value="">选择类型</option>
-                        <option>宣传片</option>
-                        <option>正片</option>
-                        <option>花絮</option>
-                        <!-- more types as needed -->
-                    </select>
-                    <label>条数:</label>
-                    <input type="number" class="film-count-input" value="1" min="1" style="width:50px;">
-                    <label>分辨率:</label>
-                    <select class="film-res-select">
-                        <option value="">选择分辨率</option>
-                        <option>1080p</option>
-                        <option>4K</option>
-                        <!-- more resolutions if needed -->
-                    </select>
-                    <button type="button" class="add-combo">+</button>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button id="btn-save-project" class="btn">保存</button>
-                <button id="btn-cancel-project" class="btn-ghost">取消</button>
-            </div>
+    <!-- 财务 -->
+    <section id="view-finance" class="view hidden">
+      <div class="grid-3 kpi">
+        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
+      </div>
+      <!-- 截至日期（新增） -->
+      <div id="f-asof" class="muted small asof"></div>
+
+      <div class="grid-3">
+        <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
+        <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
+        <div class="card"><div class="section-head"><h3>已完结未结款</h3></div>
+          <div class="list compact">
+            <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
+            <div id="aging"></div>
+          </div>
         </div>
-    </div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3>收入趋势（90 天）</h3></div>
+        <div id="trend" class="trend"></div>
+      </div>
+    </section>
+  </main>
 
-    <!-- Edit Modification Modal -->
-    <div id="edit-mod-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>修改内容</h3>
-            <!-- Top part: stage & version and input for this modification -->
-            <p>阶段: <span id="mod-stage"></span> | 当前版本: <span id="mod-version"></span></p>
-            <div>
-                <label>本次修改说明:</label><br>
-                <textarea id="mod-desc" rows="3" style="width:100%;"></textarea>
-            </div>
-            <!-- Bottom part: history of modifications -->
-            <div class="mod-history">
-                <h4>历史记录:</h4>
-                <ul id="mod-history-list"></ul>
-            </div>
-            <div class="modal-actions">
-                <button id="btn-save-mod" class="btn">保存</button>
-                <button id="btn-cancel-mod" class="btn-ghost">取消</button>
-            </div>
+  <!-- 新建项目 -->
+  <div id="new-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head"><h3>新建项目</h3></div>
+      <form id="new-form" class="form">
+        <div class="grid-2">
+          <label>项目名<input name="title" required></label>
+          <label>品牌<input name="brand"></label>
         </div>
+        <div class="grid-3">
+          <label>类型<select name="type">
+            <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
+            <option>宣传片</option><option>纪录片</option><option>花絮</option>
+          </select></label>
+          <label>输出规格<select name="spec"><option>1080p</option><option>2k</option><option>4k</option></select></label>
+          <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
+        </div>
+        <div class="grid-2">
+          <label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label>
+          <label>总金额<input name="quote_amount" type="number" min="0" step="0.01"></label>
+        </div>
+        <div class="grid-2">
+          <label>合作制片（姓名）<input name="producer_name"></label>
+          <label>合作制片（联系方式）<input name="producer_contact"></label>
+        </div>
+        <label class="hidden">备注<textarea name="notes" rows="3"></textarea></label>
+        <div class="modal-foot">
+          <button type="button" class="ghost" id="new-cancel">取消</button>
+          <button type="submit">保存</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <script src="app.js"></script>
+  <!-- 通用编辑模态 -->
+  <div id="editor-modal" class="modal">
+    <div class="modal-inner modal-inner-wide">
+      <div class="modal-head">
+        <h3 id="editor-title">编辑</h3>
+        <button id="editor-close" class="ghost">关闭</button>
+      </div>
+      <form id="editor-form" class="form"></form>
+      <div class="modal-foot">
+        <button type="button" class="ghost" id="editor-cancel">取消</button>
+        <button type="submit" form="editor-form" class="btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最近项目·快速查看小窗 -->
+  <div id="quick-modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h3 id="quick-title">项目详情</h3>
+        <button id="quick-close" class="ghost">关闭</button>
+      </div>
+      <div id="quick-body" class="form"></div>
+      <div class="modal-foot">
+        <button type="button" id="quick-final-done" class="btn">标记 Final 完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase 配置 -->
+  <script>
+    window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
+  </script>
+  <script src="app.js?v=v1.4.5" defer></script>
 </body>
 </html>
