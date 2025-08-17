@@ -15,8 +15,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-.container{width:100%;max-width:1360px;margin:auto;padding:0 24px}
-@media (min-width:1600px){ .container{max-width:1460px} }
+.container{width:100%;max-width:1500px;margin:auto;padding:0 24px}
+@media (min-width:1600px){ .container{max-width:1680px} }
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -46,6 +46,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-gold .kpi-num{color:var(--gold)}
 .kpi-yellow .kpi-num{color:var(--yellow)}
 .kpi-red .kpi-num{color:var(--red)}
+.asof{margin-top:6px}
 
 /* Lists & table */
 .list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
@@ -60,6 +61,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table th:nth-child(7), .table td:nth-child(7){min-width:520px}
 /* 溢出时缩小文字而非撑开格子 */
 .table td.shrink{font-size:var(--fs-xs)}
+/* 规格多组合换行显示 */
+.table td .text-cell{white-space:normal}
 
 /* 最近项目：三列栅格（把进度条移到标题右侧并放大） */
 .recent .list-item{display:grid;grid-template-columns:1fr 140px 180px;gap:12px;align-items:center}
@@ -71,11 +74,18 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .recent .due{text-align:right}
 
 /* 进度条 */
-.prog{height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
+.prog{position:relative;height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);}
+/* 首页“最近项目”进度条更厚 + 百分比文本居中 */
+.recent .prog{height:20px}
+.prog-text{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
+  pointer-events:none;
+}
 
 /* Badge（阶段颜色块） */
-.badge{display:inline-block;padding:4px 10px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
 .badge-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
 .badge-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
 .badge-f{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
@@ -148,3 +158,5 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 /* 规格编辑行（横行 & 呼吸空间） */
 .combo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:8px 0}
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
+/* 多选比例右上对齐（与类型/分辨率一行） */
+.ratios-inline{display:flex;gap:12px;align-items:center;margin-left:auto}
