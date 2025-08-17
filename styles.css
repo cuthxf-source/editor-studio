@@ -1,29 +1,32 @@
-/* editor-studio / styles.css  v1.4.6 */
+/* editor-studio / styles.css  v1.4.7 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
   --line:#e5e5ea; --brand:#0a84ff;
-  --gold:#b9812b; --yellow:#d6a300; --red:#e23d2f; --green:#1b9e67; --blue:#2b78ff; --purple:#7a5aff;
+  --gold:#b9812b; --yellow:#d6a300; --red:#e23d2f; --green:#1b9e67; --blue:#2b78ff; --purple:#7a5aff; --gray:#8b949e;
   --r:16px; --pill:999px;
   --space:18px; --space-lg:22px;
   --fs:16px; --fs-sm:13px; --fs-xs:12px; --fs-lg:20px;
   --lh:1.78; --letter:0.2px;
 }
 
-/* === GitHub 风格·深色模式变量覆盖 === */
+/* GitHub 风格·深色模式 */
 .theme-dark{
   --bg:#0d1117; --panel:#161b22; --text:#c9d1d9; --muted:#8b949e;
   --line:#30363d; --brand:#58a6ff;
-  --gold:#e3b341; --yellow:#d29922; --red:#f85149; --green:#3fb950; --blue:#58a6ff; --purple:#a371f7;
+  --gold:#e3b341; --yellow:#d29922; --red:#f85149; --green:#3fb950; --blue:#58a6ff; --purple:#a371f7; --gray:#78808a;
 }
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/var(--lh) -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Arial}
+
+/* 容器更宽，显示更多内容 */
+.container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
+@media (min-width:1900px){ .container{max-width:1920px} }
+
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-.container{width:100%;max-width:1500px;margin:auto;padding:0 24px}
-@media (min-width:1600px){ .container{max-width:1680px} }
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -46,9 +49,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
 .grid-1{display:grid;grid-template-columns:1fr;gap:18px}
-@media (max-width:980px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
+@media (max-width:1100px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
 
-/* KPI with colors */
+/* KPI */
 .kpi-card{border-radius:24px}
 .kpi-label{font-size:var(--fs-sm);color:var(--muted);letter-spacing:var(--letter)}
 .kpi-num{font-weight:800;font-size:28px;letter-spacing:.3px}
@@ -57,47 +60,48 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-red .kpi-num{color:var(--red)}
 .asof{margin-top:6px}
 
-/* Lists & table */
+/* 列表/表格 */
 .list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
 .list.compact .list-item{padding:8px 0}
+
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:#fff}
 .theme-dark .table-wrap{background:var(--panel)}
 .table{width:100%;border-collapse:collapse;table-layout:auto}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter);vertical-align:middle}
 .table thead th{background:#fafafa}
 .theme-dark .table thead th{background:#0f141a}
-/* 表格：除第一列外统一小号字 */
+
+/* 统一小号字（第一列除外） */
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-/* 修改内容列加宽（新增优先级列后为第8列） */
-.table th:nth-child(8), .table td:nth-child(8){min-width:520px}
-/* 溢出时缩小文字而非撑开格子 */
+
+/* 优先级列更窄 */
+.col-prio{width:120px;min-width:120px}
+
+/* “修改内容”列更宽（第8列） */
+.table th:nth-child(8), .table td:nth-child(8){min-width:680px}
+
+/* 表格溢出时缩小文字 */
 .table td.shrink{font-size:var(--fs-xs)}
-/* 规格多组合换行显示 */
 .table td .text-cell{white-space:normal}
 
-/* 最近项目：三列栅格（进度条更厚，去除版本徽标） */
+/* 最近项目：进度条更厚，右侧信息居中 */
 .recent .list-item{display:grid;grid-template-columns:1fr 140px 180px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:240px}
 .recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
 .recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:8px;align-items:center}
 .recent .count{text-align:center}
-.recent .due{text-align:center} /* 居中 */
+.recent .due{text-align:center}
 
 /* 进度条 */
 .prog{position:relative;height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
 .theme-dark .prog{background:#0f141a}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);}
 .theme-dark .prog-bar{background:linear-gradient(90deg,var(--gold),#d4a94a)}
-/* 首页“最近项目”进度条更厚 + 百分比文本居中 */
 .recent .prog{height:24px}
-.prog-text{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
-  pointer-events:none;
-}
+.prog-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
 
-/* Badge（阶段颜色块） */
+/* 阶段 Badge */
 .badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
 .badge-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
 .badge-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
@@ -108,13 +112,32 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .theme-dark .badge-f{background:#2d2416;color:#e3b341;border-color:#3a2f1e}
 .theme-dark .badge-done{background:#10251a;color:#3fb950;border-color:#203826}
 
-/* Pills / status */
+/* 状态 pills */
 .pill{display:inline-block;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm)}
 .pill-blue{color:#fff;background:var(--blue);border-color:var(--blue)}
 .pill-green{color:#fff;background:var(--green);border-color:var(--green)}
 .pill-gold{color:#fff;background:var(--gold);border-color:var(--gold)}
 .pill-yellow{color:#fff;background:var(--yellow);border-color:var(--yellow)}
 .pill-red{color:#fff;background:var(--red);border-color:var(--red)}
+
+/* 优先级 pill（四象限） */
+.prio-pill{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;border:1px solid var(--line);cursor:pointer;user-select:none}
+.prio-q1{background:#ffe9e7;color:#b21e12;border-color:#ffd7d3} /* 高紧急·高价值 */
+.prio-q2{background:#fff4e5;color:#b36b00;border-color:#ffe2b8} /* 低紧急·高价值 */
+.prio-q3{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff} /* 高紧急·低价值 */
+.prio-q4{background:#f2f4f6;color:#555;border-color:#e0e4ea}    /* 低低 */
+
+.theme-dark .prio-q1{background:#3a1b1b;color:#f85149;border-color:#562222}
+.theme-dark .prio-q2{background:#2d2416;color:#e3b341;border-color:#3a2f1e}
+.theme-dark .prio-q3{background:#17233a;color:#58a6ff;border-color:#1f2b44}
+.theme-dark .prio-q4{background:#1b222a;color:#c9d1d9;border-color:#2a333d}
+
+/* 优先级弹窗 */
+.prio-cell{position:relative}
+.prio-pop{position:absolute;z-index:5;top:36px;left:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:8px;min-width:220px}
+.prio-pop .opt{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;cursor:pointer}
+.prio-pop .opt:hover{background:rgba(0,0,0,.04)}
+.theme-dark .prio-pop .opt:hover{background:rgba(255,255,255,.06)}
 
 /* 表单与按钮 */
 .auth-view{padding:44px 0}
@@ -150,7 +173,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
 
-/* 横行排序（选择项） */
+/* 横行行 */
 .h-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .h-row > label{min-width:180px}
 
@@ -183,13 +206,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .theme-dark .trend{background:var(--panel)}
 .trend svg{width:100%;height:100%}
 
-/* Toolbar */
-.toolbar{display:flex;gap:10px;align-items:center}
-
 /* 规格编辑行 */
 .combo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:8px 0}
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
 .ratios-inline{display:flex;gap:12px;align-items:center;margin-left:auto}
-
-/* 已完结窗口 */
-.fixed-pane{max-height:260px;overflow:auto}
