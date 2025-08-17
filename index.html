@@ -1,223 +1,81 @@
-<!-- editor-studio / index.html  v1.4.9 -->
-<!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <meta name="color-scheme" content="light dark" />
-  <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.9" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.9" />
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-</head>
-<body>
-  <header class="site-header">
-    <div class="nav-wrap container">
-      <div class="brand">剪辑师项目管理系统 <span class="brand-gold">· Life_HAN</span></div>
-      <nav class="nav-center">
-        <button id="btn-home" class="nav-btn" aria-current="page">首页</button>
-        <button id="btn-projects" class="nav-btn">项目</button>
-        <button id="btn-schedule" class="nav-btn">档期</button>
-        <button id="btn-gallery" class="nav-btn">作品合集</button>
-        <button id="btn-finance" class="nav-btn">财务</button>
-      </nav>
-      <div class="nav-right">
-        <button id="btn-theme" class="nav-btn ghost" title="切换深色/浅色">深色</button>
-        <button id="btn-logout" class="nav-btn ghost">退出登录</button>
-      </div>
-    </div>
-  </header>
-
-  <!-- 登录 -->
-  <section id="view-auth" class="container auth-view hidden">
-    <div class="card auth-card">
-      <h2>登录 / 注册</h2>
-      <form id="auth-form" class="auth-form">
-        <input id="email" type="email" required placeholder="邮箱" />
-        <input id="password" type="password" required placeholder="密码" />
-        <button type="submit">进入系统</button>
-      </form>
-      <p id="auth-tip" class="muted small"></p>
-    </div>
-  </section>
-
-  <main class="container main-wrap">
-    <!-- 首页 -->
-    <section id="view-home" class="view">
-      <div class="grid-3 kpi">
-        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
-      </div>
-      <div class="grid-2 kpi">
-        <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
-        <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
-      </div>
-      <div id="home-asof" class="muted small asof"></div>
-
-      <div class="card">
-        <div class="section-head">
-          <h3>最近项目</h3>
-          <button id="go-list" class="btn-ghost">查看全部</button>
-        </div>
-        <div id="recent-list" class="list recent"></div>
-      </div>
-
-      <!-- 报价分析器（默认多组合，保持原逻辑） -->
-      <div class="card">
-        <div class="section-head"><h3>报价分析器</h3></div>
-        <form id="quote-form" class="form">
-          <div class="grid-2">
-            <label>项目名<input id="qa-title" /></label>
-            <label>制片<input id="qa-producer" /></label>
-          </div>
-          <div class="muted small" style="margin:10px 0 6px">多组合模式：添加多组「类型 × 条数 × 时长」，每组可设置合成复杂度/创意/紧急/修改次数/基础价。</div>
-          <div class="pill-group">
-            <label class="pill"><input type="checkbox" id="qa-multi-toggle" checked><span>启用多组合计价</span></label>
-            <label class="pill"><input type="checkbox" id="qa-advanced-toggle" checked><span>显示每组难度选项</span></label>
-          </div>
-          <div id="qa-single" class="hidden"></div>
-          <div id="qa-multi">
-            <div id="qa-mc-list"></div>
-            <div style="margin-top:10px"><button type="button" id="qa-mc-add" class="cell-edit">新增组合</button></div>
-          </div>
-          <div class="grid-2" style="margin-top:10px">
-            <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
-            <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- 项目列表：未完成 + 已完成 -->
-    <section id="view-projects" class="view hidden">
-      <div class="section-head">
-        <h2>项目列表</h2>
-        <div class="toolbar"><button id="btn-new" class="btn">新建项目</button></div>
-      </div>
-
-      <div class="card">
-        <div class="section-head"><h3>未完成项目</h3></div>
-        <div id="projects-wrap" class="table-wrap">
-          <table class="table projects-table">
-            <thead>
-              <tr>
-                <th>项目</th>
-                <th>合作制片</th>
-                <th>影片类型&条数&规格</th>
-                <th>进度</th>
-                <th>优先级</th>
-                <th>支付状态</th>
-                <th>总金额</th>
-                <th class="col-changes">修改内容</th>
-                <th class="col-upload">上传</th>
-              </tr>
-            </thead>
-            <tbody id="projects-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="section-head"><h3>已完成项目（支付状态=已收尾款）</h3></div>
-        <div id="completed-wrap" class="table-wrap table-fixed">
-          <table class="table projects-table">
-            <thead>
-              <tr>
-                <th>项目</th>
-                <th>合作制片</th>
-                <th>影片类型&条数&规格</th>
-                <th>进度</th>
-                <th>优先级</th>
-                <th>支付状态</th>
-                <th>总金额</th>
-                <th class="col-changes">修改内容</th>
-                <th class="col-upload">上传</th>
-              </tr>
-            </thead>
-            <tbody id="completed-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- 档期 / 作品合集 / 财务（与现版一致） -->
-    <section id="view-schedule" class="view hidden">
-      <div class="section-head center">
-        <button id="cal-prev" class="ghost">上一月</button>
-        <h2 id="cal-label" class="cal-title">2025年 8月</h2>
-        <button id="cal-next" class="ghost">下一月</button>
-      </div>
-      <div class="cal-grid-head"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
-      <div id="cal-grid" class="cal-grid"></div>
-    </section>
-
-    <section id="view-gallery" class="view hidden">
-      <div class="section-head"><h2>作品合集</h2></div>
-      <div id="gallery-grid" class="poster-grid"></div>
-    </section>
-
-    <section id="view-finance" class="view hidden">
-      <div class="grid-3 kpi">
-        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
-        <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
-      </div>
-      <div id="f-asof" class="muted small asof"></div>
-      <div class="grid-3">
-        <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
-        <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
-        <div class="card"><div class="section-head"><h3>已完结未结款</h3></div>
-          <div class="list compact">
-            <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
-            <div id="aging"></div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="section-head"><h3>收入趋势（90 天）</h3></div>
-        <div id="trend" class="trend"></div>
-      </div>
-    </section>
-  </main>
-
-  <!-- 弹窗（与现版一致，仅“修改内容”内部结构有调整为粘贴模式） -->
-  <div id="new-modal" class="modal">
-    <div class="modal-inner">
-      <div class="modal-head"><h3>新建项目</h3></div>
-      <form id="new-form" class="form">
-        <div class="grid-2"><label>项目名<input name="title" required></label><label>品牌<input name="brand"></label></div>
-        <div class="grid-3">
-          <label>类型<select name="type">
-            <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
-            <option>宣传片</option><option>纪录片</option><option>花絮</option>
-          </select></label>
-          <label>输出规格<select name="spec"><option>1080p</option><option>2k</option><option>4k</option></select></label>
-          <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
-        </div>
-        <div class="grid-2"><label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label><label>总金额<input name="quote_amount" type="number" min="0" step="0.01"></label></div>
-        <div class="grid-2"><label>合作制片（姓名）<input name="producer_name"></label><label>合作制片（联系方式）<input name="producer_contact"></label></div>
-        <label class="hidden">备注<textarea name="notes" rows="3"></textarea></label>
-        <div class="modal-foot"><button type="button" class="ghost" id="new-cancel">取消</button><button type="submit">保存</button></div>
-      </form>
+<section id="view-projects" class="view hidden">
+  <div class="section-head">
+    <h2>项目列表</h2>
+    <div class="toolbar">
+      <button id="btn-new" class="btn">新建项目</button>
     </div>
   </div>
 
-  <div id="editor-modal" class="modal"><div class="modal-inner modal-inner-wide"><div class="modal-head"><h3 id="editor-title">编辑</h3><button id="editor-close" class="ghost">关闭</button></div><form id="editor-form" class="form"></form><div class="modal-foot"><button type="button" class="ghost" id="editor-cancel">取消</button><button type="submit" form="editor-form" class="btn">保存</button></div></div></div>
-  <div id="quick-modal" class="modal"><div class="modal-inner"><div class="modal-head"><h3 id="quick-title">项目详情</h3><button id="quick-close" class="ghost">关闭</button></div><div id="quick-body" class="form"></div><div class="modal-foot"><button id="quick-final-done" class="btn">标记 Final 完成</button></div></div></div>
+  <!-- 未完成项目窗口 -->
+  <div class="card">
+    <div class="section-head"><h3>未完成项目</h3></div>
+    <div id="projects-wrap" class="table-wrap">
+      <table class="table projects-table">
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>合作制片</th>
+            <th>影片类型&条数&规格</th>
+            <th>进度</th>
+            <th>优先级</th>
+            <th>支付状态</th>
+            <th>总金额</th>
+            <th class="col-changes">修改内容</th>
+            <th class="col-upload">上传</th>
+          </tr>
+        </thead>
+        <tbody id="projects-body"></tbody>
+      </table>
+    </div>
+  </div>
 
-  <div id="upload-modal" class="modal"><div class="modal-inner"><div class="modal-head"><h3>上传海报 / 成片</h3><button id="upload-close" class="ghost">关闭</button></div><form id="upload-form" class="form" data-id=""><div class="grid-2"><label>海报图片（JPG/PNG，≤10MB）<input type="file" id="up-poster" accept="image/*"></label><label>成片视频（MP4/MOV，≤2GB）<input type="file" id="up-video" accept="video/*"></label></div><div class="upload-paste"><div class="muted small">也可把图片直接粘贴到下方作为海报：</div><textarea id="paste-box" rows="3" placeholder="在这里 ⌘V / Ctrl+V 粘贴图片"></textarea></div><div class="h-row"><div class="prog" id="up-progress" style="flex:1"><div class="prog-bar" style="width:0%"></div><span class="prog-text">0%</span></div><span id="up-tip" class="small muted"></span></div><div class="modal-foot"><button type="button" class="ghost" id="upload-cancel">取消</button><button type="submit" class="btn">开始上传</button></div></form></div></div>
+  <!-- 已完成项目窗口 -->
+  <div class="card">
+    <div class="section-head"><h3>已完成项目（支付状态=已收尾款）</h3></div>
+    <div id="completed-wrap" class="table-wrap table-fixed">
+      <table class="table projects-table">
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>合作制片</th>
+            <th>影片类型&条数&规格</th>
+            <th>进度</th>
+            <th>优先级</th>
+            <th>支付状态</th>
+            <th>总金额</th>
+            <th class="col-changes">修改内容</th>
+            <th class="col-upload">上传</th>
+          </tr>
+        </thead>
+        <tbody id="completed-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
-  <div id="imgbox" class="modal"><div class="modal-inner" style="max-width:min(96vw,1100px)"><div class="modal-head"><h3>图片预览</h3><button id="imgbox-close" class="ghost">关闭</button></div><div style="text-align:center"><img id="imgbox-img" style="max-width:100%;border-radius:12px"/></div></div></div>
+<!-- 作品合集展示 -->
+<section id="view-gallery" class="view hidden">
+  <div class="section-head"><h2>作品合集</h2></div>
+  <div id="gallery-grid" class="poster-grid"></div>
+</section>
 
-  <!-- Supabase -->
-  <script>
-    window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
-    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
-  </script>
-  <script src="app.js?v=v1.4.9" defer></script>
-</body>
-</html>
+<!-- 报价分析器 -->
+<div class="card">
+  <div class="section-head"><h3>报价分析器</h3></div>
+  <form id="quote-form" class="form">
+    <div class="grid-4">
+      <label>项目名<input id="qa-title" /></label>
+      <label>制片<input id="qa-producer" /></label>
+      <label>时长<input id="qa-secs" type="number" /></label>
+      <label>基础价<input id="qa-base" type="number" /></label>
+    </div>
+    <div class="pill-group">
+      <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
+    </div>
+    <div id="qa-single" class="hidden"></div>
+    <div id="qa-multi">
+      <div id="qa-mc-list"></div>
+      <button type="button" id="qa-mc-add" class="cell-edit">新增组合</button>
+    </div>
+  </form>
+</div>
