@@ -1,7 +1,7 @@
-/* editor-studio / app.js  v1.4.5 + poster/video upload */
+/* editor-studio / app.js  v1.4.6 */
 
-// ============== App 版本 ==============
-const APP_VERSION = 'v1.4.5';
+// ============== App 版本（用于修改记录） ==============
+const APP_VERSION = 'v1.4.6';
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -10,7 +10,7 @@ const supa = window.supabase.createClient(
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-// ============== 视图管理 ==============
+// ============== 视图管理（保留） ==============
 const views = {
   auth:      document.getElementById('view-auth'),
   home:      document.getElementById('view-home'),
@@ -34,7 +34,7 @@ function showView(name){
   ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
 
-// ============== 登录/注册 ==============
+// ============== 登录 ==============
 const authForm = document.getElementById('auth-form');
 const authTip  = document.getElementById('auth-tip');
 nav.logout.addEventListener('click', async ()=>{
@@ -66,7 +66,7 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-// ============== Notes & 工具 ==============
+// ============== Notes（保留） ==============
 function parseNotes(notes){
   const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' };
   if(!notes) return base;
@@ -94,28 +94,21 @@ function stringifyNotes(obj){
 }
 function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
 
+// ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
-function bumpVersion(ver){
-  const n = parseInt(String(ver||'v1').replace(/[^\d]/g,''), 10) || 1;
-  const next = Math.min(n + 1, 8);
-  return 'v' + next;
-}
+function bumpVersion(ver){ const n=parseInt(String(ver||'v1').replace(/[^\d]/g,''),10)||1; return 'v'+Math.min(n+1,8); }
 
-// 规格解析（原样保留，略）
 function parseSpec(specStr){
   const s = specStr || '';
   let json = null;
-  try{
-    if((s.trim().startsWith('{') || s.trim().startsWith('['))) json = JSON.parse(s);
-  }catch(e){ json = null; }
+  try{ if((s.trim().startsWith('{') || s.trim().startsWith('['))) json = JSON.parse(s); }catch(e){ json=null; }
   if(json){
     const combos = Array.isArray(json) ? json : (json.combos||[]);
     return { json: true, combos };
   }
   const raw = s.split('·').map(x=>x.trim());
-  let res = raw[0] || '';
-  let ratio = raw[1] || '';
+  let res = raw[0] || ''; let ratio = raw[1] || '';
   if(!ratio && res.includes(':')){ ratio=res; res=''; }
   return { json:false, combos:[{ type:'', clips:1, res, ratios: ratio? [ratio]: [] }] };
 }
@@ -160,9 +153,7 @@ function totalClipsOf(p){
   if(parsed.json) return parsed.combos.reduce((s,c)=>s+Number(c.clips||0),0) || Number(p.clips||0) || 0;
   return Number(p.clips||0) || 0;
 }
-function unpaidAmt(p){
-  return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0);
-}
+function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
 function payBadgePill(st){
   if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
   if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
@@ -267,15 +258,14 @@ function renderKpis(){
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 
+  // 截至日期
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const homeAsof = document.getElementById('home-asof');
-  if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
-  const fAsof = document.getElementById('f-asof');
-  if(fAsof) fAsof.textContent = `截至 ${todayStr}`;
+  document.getElementById('home-asof').textContent = `截至 ${todayStr}`;
+  document.getElementById('f-asof').textContent    = `截至 ${todayStr}`;
 }
 
-// 报价分析器（原逻辑保留）
+// 报价分析器（保留）
 (function initQuote(){
   const typeBase = {
     'LookBook': {price:100,  baseSec:15,  secRate:0.01},
@@ -311,6 +301,7 @@ function renderKpis(){
     elComp.addEventListener(ev,refreshLabels);
   });
   refreshLabels();
+
   function toggleCompRow(){ elCompRow.classList.toggle('hidden', !elCompCk.checked); }
   elCompCk.addEventListener('change', ()=>{ toggleCompRow(); calc(); });
   toggleCompRow();
@@ -321,23 +312,20 @@ function renderKpis(){
     const over = Math.max(0, Number(secs||0) - def.baseSec);
     const secFactor = over>0 ? Math.pow(1+def.secRate, over) : 1;
     let price = basePrice * secFactor;
-    if(elCompCk.checked){
-      const c = Number(elComp.value||0);
-      price *= (1 + c/100);
-    }
+    if(elCompCk.checked){ price *= (1 + Number(elComp.value||0)/100); }
     price *= (1 + Number(elCreative.value||0)/100);
     price *= (1 + (Number(elUrgent.value||0)/10) * 0.03);
-    const rev = Number(elRev.value||0);
-    const extraRev = Math.max(0, rev - 4);
+    const extraRev = Math.max(0, Number(elRev.value||0) - 4);
     price *= (1 + extraRev*0.20);
     return Math.round(price);
   }
+
   function calcSingle(){
     const net = unitPriceBy(elType.value, Number(elSecs.value||0), elBase.value||undefined);
-    const gross = Math.round(net * 1.06);
     document.getElementById('qa-net').textContent   = money(net);
-    document.getElementById('qa-gross').textContent = money(gross);
+    document.getElementById('qa-gross').textContent = money(Math.round(net*1.06));
   }
+
   function mcRowHTML(idx, c){
     return `
       <div class="h-row" data-idx="${idx}" style="margin-top:10px">
@@ -372,10 +360,10 @@ function renderKpis(){
       const secs = Number(row.querySelector('.mc-secs').value||0);
       return sum + count * unitPriceBy(type, secs);
     },0);
-    const gross = Math.round(totalNet * 1.06);
     document.getElementById('qa-net').textContent   = money(totalNet);
-    document.getElementById('qa-gross').textContent = money(gross);
+    document.getElementById('qa-gross').textContent = money(Math.round(totalNet*1.06));
   }
+
   function calc(){ if(elMultiToggle.checked) calcMulti(); else calcSingle(); }
   elMultiToggle.addEventListener('change', ()=>{
     document.getElementById('qa-single').classList.toggle('hidden', elMultiToggle.checked);
@@ -386,7 +374,7 @@ function renderKpis(){
   calc();
 })();
 
-// ============== 通用编辑模态 ==============
+// ============== 通用编辑模态（保留） ==============
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
@@ -622,12 +610,10 @@ editorForm?.addEventListener('submit', async (e)=>{
   if(kind==='changes'){
     const row = projects.find(x=>String(x.id)===String(id));
     let d = parseNotes(row?.notes||'');
-
     const phase = (fd.get('chg_phase')||'Final').toString();
     const version = (fd.get('chg_version')||'v1').toString();
     const text = (fd.get('chg_text')||'').toString().trim();
     const autoBump = !!fd.get('auto_bump');
-
     if(text){
       const chg = { phase, version, text, ts: Date.now(), appVer: APP_VERSION };
       d.changes = Array.isArray(d.changes)? d.changes : [];
@@ -647,7 +633,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表 ==============
+// ============== 项目列表（新增上传列） ==============
 function formatProgressCell(p){
   const vers = parseNotes(p.notes).versions;
   const near = nearestMilestone(p);
@@ -673,19 +659,17 @@ function renderProjects(list=projects){
     const tr = document.createElement('tr');
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
     const moneyText = `${money(p.quote_amount)} / ${money(p.paid_amount)}`;
-
     const d = parseNotes(p.notes);
     const last = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
     const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,60)}${last.text.length>60?'…':''}` : '—';
 
     const posterOk = !!p.poster_url;
-    const finalOk  = !!p.final_link;
+    const videoOk  = !!p.final_link;
+    const upLabel  = (posterOk || videoOk) ? '已上传' : '未上传';
+    const upCls    = (posterOk || videoOk) ? 'pill-green' : 'pill-blue';
 
     tr.innerHTML = `
-      <!-- 项目 -->
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
-
-      <!-- 合作制片 -->
       <td>
         <div class="cell-summary">
           <span>${p.producer_name||'未填'}</span>
@@ -693,24 +677,18 @@ function renderProjects(list=projects){
           <button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button>
         </div>
       </td>
-
-      <!-- 影片类型&条数&规格 -->
       <td>
         <div class="cell-summary">
           <span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span>
           <button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button>
         </div>
       </td>
-
-      <!-- 进度 -->
       <td>
         <div class="cell-summary">
           <span class="text-cell">${formatProgressCell(p)}</span>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
       </td>
-
-      <!-- 支付状态 -->
       <td>
         <div class="cell-summary">
           <select class="pay-inline" data-id="${p.id}">
@@ -718,28 +696,21 @@ function renderProjects(list=projects){
           </select>
         </div>
       </td>
-
-      <!-- 金额 -->
       <td>
         <div class="cell-summary">
           <span class="muted text-cell">${moneyText}</span>
           <button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button>
         </div>
       </td>
-
-      <!-- 修改内容 -->
       <td>
         <div class="cell-summary">
           <span class="small text-cell">${lastText}</span>
           <button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button>
         </div>
       </td>
-
-      <!-- 上传（新列） -->
       <td>
         <div class="cell-summary">
-          <span class="pill ${posterOk?'pill-green':'pill-red'}">${posterOk?'海报·已上传':'海报·未上传'}</span>
-          <span class="pill ${finalOk?'pill-green':'pill-red'}">${finalOk?'成片·已上传':'成片·未上传'}</span>
+          <span class="pill ${upCls}">${upLabel}</span>
           <button class="cell-edit upload-btn" data-id="${p.id}">上传</button>
         </div>
       </td>
@@ -757,10 +728,10 @@ function renderProjects(list=projects){
     }, true);
 
     tb.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.edit-btn'); 
-      if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); return; }
-      const up = e.target.closest('.upload-btn');
-      if(up){ openUploadModal(up.getAttribute('data-id')); return; }
+      const btn1 = e.target.closest('.edit-btn'); 
+      const btn2 = e.target.closest('.upload-btn');
+      if(btn1){ openEditorModal(btn1.getAttribute('data-kind'), btn1.getAttribute('data-id')); }
+      if(btn2){ openUploadModal(btn2.getAttribute('data-id')); }
     });
 
     tb.addEventListener('change', async (e)=>{
@@ -774,15 +745,13 @@ function renderProjects(list=projects){
 
     tb._bound = true;
   }
-
   shrinkOverflowCells(tb);
 }
 
 function shrinkOverflowCells(tb){
   const cells = tb.querySelectorAll('td .text-cell');
   cells.forEach(el=>{
-    const td = el.closest('td');
-    if(!td) return;
+    const td = el.closest('td'); if(!td) return;
     if(td.scrollWidth > td.clientWidth || el.scrollWidth > td.clientWidth){
       td.classList.add('shrink');
     }else{
@@ -791,7 +760,107 @@ function shrinkOverflowCells(tb){
   });
 }
 
-// ============== 最近项目·小窗 ==============
+// ============== 上传海报/成片（新增） ==============
+const uploadModal   = document.getElementById('upload-modal');
+const uploadForm    = document.getElementById('upload-form');
+const uploadClose   = document.getElementById('upload-close');
+const uploadCancel  = document.getElementById('upload-cancel');
+const upPosterInput = document.getElementById('up-poster');
+const upVideoInput  = document.getElementById('up-video');
+const pasteBox      = document.getElementById('paste-box');
+const upProgEl      = document.getElementById('up-progress');
+const upProgBar     = upProgEl?.querySelector('.prog-bar');
+const upProgText    = upProgEl?.querySelector('.prog-text');
+const upTip         = document.getElementById('up-tip');
+
+let pastedPosterFile = null;
+
+function openUploadModal(id){
+  uploadForm.setAttribute('data-id', id);
+  upPosterInput.value = ''; upVideoInput.value = '';
+  pastedPosterFile = null;
+  setProgress(0); upTip.textContent = '';
+  uploadModal.classList.add('show');
+}
+function closeUploadModal(){ uploadModal.classList.remove('show'); }
+uploadClose?.addEventListener('click', closeUploadModal);
+uploadCancel?.addEventListener('click', closeUploadModal);
+uploadModal?.addEventListener('mousedown', (e)=>{ if(e.target===uploadModal) closeUploadModal(); });
+
+// 捕获粘贴图片
+pasteBox?.addEventListener('paste', (e)=>{
+  const items = e.clipboardData?.items || [];
+  for(const it of items){
+    if(it.type && it.type.startsWith('image/')){
+      const f = it.getAsFile();
+      if(f){ pastedPosterFile = new File([f], 'pasted.png', { type: f.type || 'image/png' }); upTip.textContent='已接收粘贴图片（将作为海报上传）'; }
+      e.preventDefault();
+      break;
+    }
+  }
+});
+
+function setProgress(p){
+  const pct = Math.max(0, Math.min(100, Math.round(p)));
+  if(upProgBar) upProgBar.style.width = pct + '%';
+  if(upProgText) upProgText.textContent = pct + '%';
+}
+
+// 简易“伪进度”（Supabase upload 无内建进度事件）
+function fakeProgressStart(){
+  let p = 5;
+  setProgress(p);
+  const t = setInterval(()=>{
+    p = Math.min(95, p + Math.random()*7);
+    setProgress(p);
+  }, 300);
+  return ()=>{ clearInterval(t); setProgress(100); };
+}
+
+async function uploadToBucket(path, file){
+  const { error } = await supa.storage.from('attachments').upload(path, file, { upsert:true, contentType:file.type||undefined });
+  if(error) throw error;
+  const { data } = supa.storage.from('attachments').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function extOf(name, fallback='dat'){ const i=name.lastIndexOf('.'); return i>=0? name.slice(i+1).toLowerCase(): fallback; }
+
+uploadForm?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const id = uploadForm.getAttribute('data-id');
+  const posterFile = upPosterInput.files?.[0] || pastedPosterFile || null;
+  const videoFile  = upVideoInput.files?.[0] || null;
+  if(!posterFile && !videoFile){ upTip.textContent='请选择文件或粘贴图片'; return; }
+  const stopFake = fakeProgressStart();
+  try{
+    let posterUrl = null, videoUrl = null;
+    if(posterFile){
+      const pth = `projects/${id}/poster-${Date.now()}.${extOf(posterFile.name,'png')}`;
+      posterUrl = await uploadToBucket(pth, posterFile);
+    }
+    if(videoFile){
+      const pth = `projects/${id}/final-${Date.now()}.${extOf(videoFile.name,'mp4')}`;
+      videoUrl = await uploadToBucket(pth, videoFile);
+    }
+    const patch = {};
+    if(posterUrl) patch.poster_url = posterUrl;
+    if(videoUrl)  patch.final_link = videoUrl;  // 复用既有 final_link 字段
+    if(Object.keys(patch).length){
+      await supa.from('projects').update(patch).eq('id', id);
+    }
+    stopFake();
+    upTip.textContent = '上传完成';
+    await fetchProjects(); renderAll();
+    setTimeout(closeUploadModal, 300);
+  }catch(err){
+    console.error(err);
+    stopFake();
+    upTip.textContent = '上传失败：' + (err?.message||'');
+  }
+});
+
+// ============== 最近项目·快速查看小窗（保留） ==============
 const quickModal = document.getElementById('quick-modal');
 const quickTitle = document.getElementById('quick-title');
 const quickBody  = document.getElementById('quick-body');
@@ -813,7 +882,7 @@ function openQuickModal(id){
       <div class="small muted">规格：${mergeTypeSpec(p)||'—'}</div>
       <div class="small muted">节点：${[p.a_copy?`Acopy ${p.a_copy}`:'', p.b_copy?`Bcopy ${p.b_copy}`:'', p.final_date?`Final ${p.final_date}`:''].filter(Boolean).join(' ｜ ')||'—'}</div>
       <div style="margin-top:8px" class="pmeta">
-        <div class="prog" style="flex:1"><div class="prog-bar" style="width:${st.percent}%"></div></div>
+        <div class="prog" style="flex:1"><div class="prog-bar" style="width:${st.percent}%"></div><span class="prog-text">${st.percent}%</span></div>
         ${stageBadgeHTML(st.name, st.version)}
       </div>
     </div>
@@ -828,29 +897,27 @@ function openQuickModal(id){
   quickModal.classList.add('show');
 }
 
-// ============== 作品合集 ==============
+// ============== 作品合集（使用 poster_url 作为背景） ==============
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); grid.innerHTML='';
-  const finals = projects.filter(p=>p.final_link || p.poster_url);
+  const finals = projects.filter(p=>p.final_link);
   if(finals.length===0){
     const ph = document.createElement('div');
     ph.className='poster';
-    ph.innerHTML = `<div class="caption">暂未上传成片，请在项目中点击“上传”</div>`;
+    ph.innerHTML = `<div class="caption">暂未上传成片，请在项目中上传海报与成片</div>`;
     grid.appendChild(ph);
     return;
   }
   finals.forEach(p=>{
     const a = document.createElement('a');
-    a.className='poster'; 
+    a.className='poster'; a.href=p.final_link; a.target='_blank';
     if(p.poster_url){ a.style.backgroundImage = `url('${p.poster_url}')`; }
-    a.href = p.final_link || p.poster_url; 
-    a.target='_blank';
     a.innerHTML = `<div class="caption">${p.title||'未命名'}${p.brand?` · ${p.brand}`:''}</div>`;
     grid.appendChild(a);
   });
 }
 
-// ============== 档期（原逻辑） ==============
+// ============== 档期（保留） ==============
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
 let calBase = new Date(); calBase.setDate(1);
@@ -892,7 +959,7 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务（原逻辑） ==============
+// ============== 财务（保留） ==============
 function renderFinance(){
   const byPartner = new Map();
   projects.forEach(p=>{
@@ -953,7 +1020,7 @@ nav.gallery.addEventListener('click',  ()=> showView('gallery'));
 nav.finance.addEventListener('click',  ()=> showView('finance'));
 nav.schedule.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
 
-// ============== 新建项目 ==============
+// ============== 新建项目（保留） ==============
 const mNew = document.getElementById('new-modal');
 document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classList.add('show'));
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
@@ -970,106 +1037,6 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
   await fetchProjects(); renderAll();
-});
-
-// ============== 上传小窗（海报 / 成片） ==============
-const upModal = document.getElementById('upload-modal');
-const upClose = document.getElementById('upload-close');
-const upCancel= document.getElementById('upload-cancel');
-const posterDrop = document.getElementById('poster-drop');
-const finalDrop  = document.getElementById('final-drop');
-const posterFile = document.getElementById('poster-file');
-const finalFile  = document.getElementById('final-file');
-const btnPoster  = document.getElementById('btn-upload-poster');
-const btnFinal   = document.getElementById('btn-upload-final');
-const posterStatus = document.getElementById('poster-status');
-const finalStatus  = document.getElementById('final-status');
-let currentUploadId = null;
-
-function openUploadModal(id){
-  currentUploadId = id;
-  posterStatus.textContent = '';
-  finalStatus.textContent  = '';
-  upModal.classList.add('show');
-}
-function closeUpload(){ upModal.classList.remove('show'); }
-upClose?.addEventListener('click', closeUpload);
-upCancel?.addEventListener('click', closeUpload);
-upModal?.addEventListener('mousedown', (e)=>{ if(e.target===upModal) closeUpload(); });
-
-function extFromName(n){ const a=n.split('.'); return a.length>1? a.pop().toLowerCase() : ''; }
-function filenameSafe(s){ return String(s||'file').replace(/[^\w.-]+/g,'_'); }
-
-function hookDropZone(zoneEl, inputEl, onPasteImage=false){
-  zoneEl.addEventListener('click', ()=> inputEl.click());
-  ;['dragenter','dragover'].forEach(ev=>{
-    zoneEl.addEventListener(ev, e=>{ e.preventDefault(); zoneEl.classList.add('drag'); });
-  });
-  ;['dragleave','drop'].forEach(ev=>{
-    zoneEl.addEventListener(ev, e=>{ e.preventDefault(); zoneEl.classList.remove('drag'); });
-  });
-  zoneEl.addEventListener('drop', e=>{
-    e.preventDefault();
-    const f = e.dataTransfer.files?.[0];
-    if(f){ const dt=new DataTransfer(); dt.items.add(f); inputEl.files = dt.files; zoneEl.textContent = f.name; }
-  });
-  if(onPasteImage){
-    zoneEl.addEventListener('paste', e=>{
-      const items = e.clipboardData?.items || [];
-      for(const it of items){
-        if(it.type && it.type.startsWith('image/')){
-          const f = it.getAsFile();
-          const dt=new DataTransfer(); dt.items.add(f); inputEl.files = dt.files; zoneEl.textContent = f.name;
-          e.preventDefault();
-          break;
-        }
-      }
-    });
-  }
-}
-hookDropZone(posterDrop, posterFile, true);
-hookDropZone(finalDrop,  finalFile,  false);
-
-async function uploadToBucket(path, file){
-  // upsert: 可覆盖同名文件
-  const { error } = await supa.storage.from('attachments').upload(path, file, { upsert:true });
-  if(error) throw error;
-  const { data: { publicUrl } } = supa.storage.from('attachments').getPublicUrl(path);
-  return publicUrl;
-}
-
-btnPoster?.addEventListener('click', async ()=>{
-  try{
-    if(!currentUploadId){ alert('无项目ID'); return; }
-    const file = posterFile.files?.[0];
-    if(!file){ alert('请选择或粘贴一张图片'); return; }
-    posterStatus.textContent = '上传中…';
-    const p = projects.find(x=>String(x.id)===String(currentUploadId));
-    const base = `projects/${currentUploadId}/poster_${filenameSafe(p?.title||'poster')}.${extFromName(file.name)||'jpg'}`;
-    const url = await uploadToBucket(base, file);
-    await supa.from('projects').update({ poster_url: url }).eq('id', currentUploadId);
-    posterStatus.textContent = '已上传并保存';
-    await fetchProjects(); renderProjects(); renderGallery();
-  }catch(err){
-    console.error(err); posterStatus.textContent = '上传失败：' + (err.message||err);
-  }
-});
-
-btnFinal?.addEventListener('click', async ()=>{
-  try{
-    if(!currentUploadId){ alert('无项目ID'); return; }
-    const file = finalFile.files?.[0];
-    if(!file){ alert('请选择一个视频文件'); return; }
-    finalStatus.textContent = '上传中…（根据文件大小可能较久）';
-    const p = projects.find(x=>String(x.id)===String(currentUploadId));
-    const base = `projects/${currentUploadId}/final_${filenameSafe(p?.title||'final')}.${extFromName(file.name)||'mp4'}`;
-    const url = await uploadToBucket(base, file);
-    await supa.from('projects').update({ final_link: url }).eq('id', currentUploadId);
-    finalStatus.textContent = '已上传并保存';
-    await fetchProjects(); renderProjects(); renderGallery();
-  }catch(err){
-    console.error(err); finalStatus.textContent = '上传失败：' + (err.message||err);
-  }
 });
 
 // ============== 渲染整页 ==============
