@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.5 -->
+<!-- editor-studio / index.html  v1.5.1 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5" />
-  <link rel="stylesheet" href="styles.css?v=v1.5" />
+  <link rel="icon" href="icon.png?v=v1.5.1" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.1" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -56,7 +56,7 @@
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
-      <!-- 按你的要求：首页不显示“截至”提示；保留元素但隐藏 -->
+      <!-- 首页不显示截至时间 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -67,7 +67,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器：横向布局；去掉每组难度按钮（仅保留全局调节） -->
+      <!-- 报价分析器：横向对齐，保留原有选项 + 底部说明 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form quote-horizontal">
@@ -107,7 +107,6 @@
             </div>
           </div>
 
-          <!-- 多组合：仅“类型/条数/时长”，不再显示每组难度按钮 -->
           <div id="qa-multi" class="hidden">
             <div id="qa-mc-list"></div>
             <div style="margin-top:10px"><button type="button" id="qa-mc-add" class="cell-edit">新增组合</button></div>
@@ -118,7 +117,7 @@
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
 
-          <div class="muted small qh-foot">*修改限定 4 次，超出 20%/次（大改 60%），不含税与版权素材费用。</div>
+          <div class="muted small qh-foot">* 修改限定 4 次，超出 20%/次（大改 60%）；时长超基准按秒进位；报价不含税与版权/素材费用。</div>
         </form>
       </div>
     </section>
@@ -186,10 +185,10 @@
       <div id="cal-grid" class="cal-grid"></div>
     </section>
 
-    <!-- 作品合集：改为超大海报 + 自动抽帧 + 杂志式排版 -->
+    <!-- 作品合集：超大海报 + 中间帧抽封面 + 不规则组合 -->
     <section id="view-gallery" class="view hidden">
       <div class="section-head"><h2>作品合集</h2></div>
-      <div id="gallery-grid" class="magazine-grid"></div>
+      <div id="gallery-grid" class="mag-grid"></div>
     </section>
 
     <!-- 财务 -->
@@ -218,7 +217,7 @@
     </section>
   </main>
 
-  <!-- 弹窗（与现版一致） -->
+  <!-- 弹窗 -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head"><h3>新建项目</h3></div>
@@ -245,13 +244,13 @@
 
   <div id="upload-modal" class="modal"><div class="modal-inner"><div class="modal-head"><h3>上传海报 / 成片</h3><button id="upload-close" class="ghost">关闭</button></div><form id="upload-form" class="form" data-id=""><div class="grid-2"><label>海报图片（JPG/PNG，≤10MB）<input type="file" id="up-poster" accept="image/*"></label><label>成片视频（MP4/MOV，≤2GB）<input type="file" id="up-video" accept="video/*"></label></div><div class="upload-paste"><div class="muted small">也可把图片直接粘贴到下方作为海报：</div><textarea id="paste-box" rows="3" placeholder="在这里 ⌘V / Ctrl+V 粘贴图片"></textarea></div><div class="h-row"><div class="prog" id="up-progress" style="flex:1"><div class="prog-bar" style="width:0%"></div><span class="prog-text">0%</span></div><span id="up-tip" class="small muted"></span></div><div class="modal-foot"><button type="button" class="ghost" id="upload-cancel">取消</button><button type="submit" class="btn">开始上传</button></div></form></div></div>
 
-  <div id="imgbox" class="modal"><div class="modal-inner" style="max-width:min(96vw,1100px)"><div class="modal-head"><h3>图片预览</h3><button id="imgbox-close" class="ghost">关闭</button></div><div style="text-align:center"><img id="imgbox-img" style="max-width:100%;border-radius:12px"/></div></div></div>
+  <div id="imgbox" class="modal"><div class="modal-inner" style="max-width:min(96vw,1100px)"><div class="modal-head"><h3>图片预览</h3><button id="imgbox-close" class="ghost">关闭</button></div><div style="text-align:center"><img id="imgbox-img" style="max-width:100%"/></div></div></div>
 
   <!-- Supabase -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5" defer></script>
+  <script src="app.js?v=v1.5.1" defer></script>
 </body>
 </html>
