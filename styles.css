@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.4.5 + upload UI */
+/* editor-studio / styles.css  v1.4.6 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -55,15 +55,12 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table{width:100%;border-collapse:collapse;table-layout:auto}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter);vertical-align:middle}
 .table thead th{background:#fafafa}
+/* 表格：除第一列外统一小号字 */
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-/* 修改内容列略宽 */
-.table th:nth-child(7), .table td:nth-child(7){min-width:420px}
-/* 新增上传列 */
-.table th:nth-child(8), .table td:nth-child(8){min-width:180px}
-/* 溢出时缩小文字而非撑开格子 */
-.table td.shrink{font-size:var(--fs-xs)}
-/* 规格多组合换行显示 */
-.table td .text-cell{white-space:normal}
+/* 修改内容列（v1.4.5 保留） */
+.table th:nth-child(7), .table td:nth-child(7){min-width:520px}
+/* 新增 上传列最小宽度 */
+.table th:nth-child(8), .table td:nth-child(8){min-width:140px}
 
 /* 最近项目 */
 .recent .list-item{display:grid;grid-template-columns:1fr 140px 180px;gap:12px;align-items:center}
@@ -76,7 +73,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 进度条 */
 .prog{position:relative;height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
-.prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055)}
 .recent .prog{height:24px}
 .prog-text{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
@@ -92,7 +89,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .badge-done{background:#eaf9f2;color:#1b9e67;border-color:#c9f0df}
 
 /* Pills / status */
-.pill{display:inline-block;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm)}
+.pill{display:inline-block;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm);padding:4px 10px}
 .pill-blue{color:#fff;background:var(--blue);border-color:var(--blue)}
 .pill-green{color:#fff;background:var(--green);border-color:var(--green)}
 .pill-gold{color:#fff;background:var(--gold);border-color:var(--gold)}
@@ -128,7 +125,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
 
-/* 横行 */
+/* 横行排序 */
 .h-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .h-row > label{min-width:180px}
 
@@ -145,7 +142,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 
 /* Posters */
 .poster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
-.poster{display:block;aspect-ratio:16/9;background:#f6f6f6 center/cover no-repeat;border:1px solid var(--line);border-radius:24px;overflow:hidden;position:relative}
+.poster{display:block;aspect-ratio:16/9;background:#f6f6f6;border:1px solid var(--line);border-radius:24px;overflow:hidden;position:relative;background-size:cover;background-position:center}
 .poster .caption{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.9);padding:6px 10px;border-radius:var(--pill);border:1px solid var(--line)}
 
 /* Trend */
@@ -160,8 +157,5 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
 .ratios-inline{display:flex;gap:12px;align-items:center;margin-left:auto}
 
-/* Upload */
-.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media (max-width:980px){ .upload-grid{grid-template-columns:1fr} }
-.dropzone{margin:8px 0;padding:22px;border:2px dashed var(--line);border-radius:16px;background:#fafafa;text-align:center;cursor:pointer}
-.dropzone.drag{background:#f0f7ff;border-color:#bcd8ff}
+/* 上传粘贴区 */
+.upload-paste textarea{width:100%;min-height:80px;border-radius:16px}
