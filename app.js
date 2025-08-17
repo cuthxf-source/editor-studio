@@ -1,7 +1,6 @@
-/* editor-studio / app.js  v1.4.5 */
+/* editor-studio / app.js  v1.4.6 */
 
-// ============== App 版本（用于修改记录） ==============
-const APP_VERSION = 'v1.4.5';
+const APP_VERSION = 'v1.4.6';
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -10,7 +9,7 @@ const supa = window.supabase.createClient(
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-// ============== 视图管理 ==============
+// ============== 视图/导航/主题 ==============
 const views = {
   auth:      document.getElementById('view-auth'),
   home:      document.getElementById('view-home'),
@@ -26,6 +25,7 @@ const nav = {
   gallery:  document.getElementById('btn-gallery'),
   finance:  document.getElementById('btn-finance'),
   logout:   document.getElementById('btn-logout'),
+  theme:    document.getElementById('btn-theme'),
 };
 function showView(name){
   Object.values(views).forEach(v=>v.classList.add('hidden'));
@@ -33,14 +33,25 @@ function showView(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.removeAttribute('aria-current'));
   ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
+// 主题：light/dark/auto 循环
+const THEME_KEY='theme';
+function applyTheme(mode){
+  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  const dark = mode==='dark' || (mode==='auto' && prefersDark);
+  document.documentElement.classList.toggle('theme-dark', !!dark);
+}
+function loadTheme(){ return localStorage.getItem(THEME_KEY)||'auto'; }
+let themeMode = loadTheme(); applyTheme(themeMode);
+nav.theme?.addEventListener('click', ()=>{
+  themeMode = themeMode==='light' ? 'dark' : themeMode==='dark' ? 'auto' : 'light';
+  localStorage.setItem(THEME_KEY, themeMode);
+  applyTheme(themeMode);
+});
 
-// ============== 登录/注册（未登录只显示登录页） ==============
+// ============== 登录 ==============
 const authForm = document.getElementById('auth-form');
 const authTip  = document.getElementById('auth-tip');
-nav.logout.addEventListener('click', async ()=>{
-  await supa.auth.signOut();
-  showView('auth');
-});
+nav.logout?.addEventListener('click', async ()=>{ await supa.auth.signOut(); showView('auth'); });
 authForm?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email = document.getElementById('email').value.trim();
@@ -66,30 +77,34 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-// ============== Notes（用于存“完成标签/小版本/修改历史”） ==============
+// ============== Notes（扩展：支持 priority） ==============
 function parseNotes(notes){
-  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' };
+  // 默认结构
+  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999 };
   if(!notes) return base;
   try{
     const obj = JSON.parse(notes);
-    if(obj && (obj.tags || obj.versions || obj.changes || Object.prototype.hasOwnProperty.call(obj,'free'))){
+    if(obj && (obj.tags || obj.versions || obj.changes || Object.prototype.hasOwnProperty.call(obj,'free') || Object.prototype.hasOwnProperty.call(obj,'priority'))){
       return {
         tags: new Set(Array.isArray(obj.tags)?obj.tags:[]),
         versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
         changes: Array.isArray(obj.changes)?obj.changes:[],
-        free: obj.free || ''
+        free: obj.free || '',
+        priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999
       };
     }
   }catch(e){}
+  // 文本兼容
   const tags = new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes };
+  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes, priority:999 };
 }
 function stringifyNotes(obj){
   return JSON.stringify({
     tags: Array.from(obj.tags||[]),
     versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
     changes: obj.changes || [],
-    free: obj.free || ''
+    free: obj.free || '',
+    priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999
   });
 }
 function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
@@ -97,8 +112,9 @@ function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
 // ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
+const getPriority = p => parseNotes(p.notes).priority ?? 999;
 
-// 小版本号自增：v1 -> v2（上限 v8）
+// 小版本号自增
 function bumpVersion(ver){
   const n = parseInt(String(ver||'v1').replace(/[^\d]/g,''), 10) || 1;
   const next = Math.min(n + 1, 8);
@@ -163,17 +179,7 @@ function totalClipsOf(p){
   if(parsed.json) return parsed.combos.reduce((s,c)=>s+Number(c.clips||0),0) || Number(p.clips||0) || 0;
   return Number(p.clips||0) || 0;
 }
-
-// 未收款 = 总金额 - 已收款
-function unpaidAmt(p){
-  return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0);
-}
-
-function payBadgePill(st){
-  if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
-  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
-  return `<span class="pill pill-blue">未收款</span>`;
-}
+function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
 function stageInfo(p){
   const d = parseNotes(p.notes);
   const A = !hasTag(p.notes,'#A_DONE');
@@ -204,9 +210,8 @@ function nearestMilestone(p){
   const overdue = n.date < today;
   return { text: `${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue, date:n.date, k:n.k };
 }
-
 function stageBadgeHTML(name, version){
-  const map = { 'Acopy':'a', 'Bcopy':'b', 'Final':'f', '完结':'done', '催收尾款':'f' };
+  const map = { 'Acopy':'a', 'Bcopy':'b', 'Final':'f', '完结':'done' };
   const cls = map[name] || 'a';
   const text = name==='完结' ? '完结' : `${name}${version?` · ${version}`:''}`;
   return `<span class="badge badge-${cls}">${text}</span>`;
@@ -242,7 +247,6 @@ function renderRecent(){
             <div class="prog-bar" style="width:${st.percent}%"></div>
             <span class="prog-text">${st.percent}%</span>
           </div>
-          ${stageBadgeHTML(st.name, st.version)}
         </div>
       </div>
       <div class="count muted small">条数：${totalClipsOf(p)||1}</div>
@@ -275,16 +279,14 @@ function renderKpis(){
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 
-  // 新增：截至日期文字
+  // 截至日期
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const homeAsof = document.getElementById('home-asof');
-  if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
-  const fAsof = document.getElementById('f-asof');
-  if(fAsof) fAsof.textContent = `截至 ${todayStr}`;
+  const homeAsof = document.getElementById('home-asof'); if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
+  const fAsof = document.getElementById('f-asof'); if(fAsof) fAsof.textContent = `截至 ${todayStr}`;
 }
 
-// 报价分析器（单/多组合 + 合成复杂度）
+// ============== 报价分析器（原逻辑保留） ==============
 (function initQuote(){
   const typeBase = {
     'LookBook': {price:100,  baseSec:15,  secRate:0.01},
@@ -321,7 +323,6 @@ function renderKpis(){
   });
   refreshLabels();
 
-  // “合成”开关控制复杂度滑块显示
   function toggleCompRow(){ elCompRow.classList.toggle('hidden', !elCompCk.checked); }
   elCompCk.addEventListener('change', ()=>{ toggleCompRow(); calc(); });
   toggleCompRow();
@@ -332,13 +333,7 @@ function renderKpis(){
     const over = Math.max(0, Number(secs||0) - def.baseSec);
     const secFactor = over>0 ? Math.pow(1+def.secRate, over) : 1;
     let price = basePrice * secFactor;
-
-    // 合成复杂度（每10%台阶递进，总体相当于 +复杂度%）
-    if(elCompCk.checked){
-      const c = Number(elComp.value||0); // 0~100，步长10
-      price *= (1 + c/100);
-    }
-
+    if(elCompCk.checked){ const c = Number(elComp.value||0); price *= (1 + c/100); }
     price *= (1 + Number(elCreative.value||0)/100);
     price *= (1 + (Number(elUrgent.value||0)/10) * 0.03);
     const rev = Number(elRev.value||0);
@@ -346,14 +341,12 @@ function renderKpis(){
     price *= (1 + extraRev*0.20);
     return Math.round(price);
   }
-
   function calcSingle(){
     const net = unitPriceBy(elType.value, Number(elSecs.value||0), elBase.value||undefined);
     const gross = Math.round(net * 1.06);
     document.getElementById('qa-net').textContent   = money(net);
     document.getElementById('qa-gross').textContent = money(gross);
   }
-
   function mcRowHTML(idx, c){
     return `
       <div class="h-row" data-idx="${idx}" style="margin-top:10px">
@@ -371,15 +364,8 @@ function renderKpis(){
       </div>
     `;
   }
-  function ensureOneRow(){
-    if(!list.querySelector('[data-idx]')) list.insertAdjacentHTML('beforeend', mcRowHTML(0,{type:'LookBook',count:1,secs:0}));
-  }
-  addBtn.addEventListener('click', ()=>{
-    const idx = list.querySelectorAll('[data-idx]').length;
-    list.insertAdjacentHTML('beforeend', mcRowHTML(idx,{type:'LookBook',count:1,secs:0}));
-    calc();
-  });
-
+  function ensureOneRow(){ if(!list.querySelector('[data-idx]')) list.insertAdjacentHTML('beforeend', mcRowHTML(0,{type:'LookBook',count:1,secs:0})); }
+  addBtn.addEventListener('click', ()=>{ const idx = list.querySelectorAll('[data-idx]').length; list.insertAdjacentHTML('beforeend', mcRowHTML(idx,{type:'LookBook',count:1,secs:0})); calc(); });
   function calcMulti(){
     const rows = [...list.querySelectorAll('[data-idx]')];
     const totalNet = rows.reduce((sum,row)=>{
@@ -392,51 +378,39 @@ function renderKpis(){
     document.getElementById('qa-net').textContent   = money(totalNet);
     document.getElementById('qa-gross').textContent = money(gross);
   }
-
   function calc(){ if(elMultiToggle.checked) calcMulti(); else calcSingle(); }
-
   elMultiToggle.addEventListener('change', ()=>{
     document.getElementById('qa-single').classList.toggle('hidden', elMultiToggle.checked);
     elMulti.classList.toggle('hidden', !elMultiToggle.checked);
     if(elMultiToggle.checked){ ensureOneRow(); calcMulti(); } else { calcSingle(); }
   });
-
   document.getElementById('quote-form').addEventListener('input', calc);
   calc();
 })();
 
-// ============== 通用编辑模态 ==============
+// ============== 通用编辑模态（原逻辑保留，略） ==============
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
 const editorClose  = document.getElementById('editor-close');
 const editorCancel = document.getElementById('editor-cancel');
-
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
 editorClose?.addEventListener('click', closeEditor);
 editorCancel?.addEventListener('click', closeEditor);
 editorModal?.addEventListener('mousedown', (e)=>{ if(e.target===editorModal) closeEditor(); });
 
-function optionList(opts, selected){
-  return opts.map(o=>`<option ${o===(selected||'')?'selected':''}>${o}</option>`).join('');
-}
+function optionList(opts, selected){ return opts.map(o=>`<option ${o===(selected||'')?'selected':''}>${o}</option>`).join(''); }
 function checkboxList(opts, selectedArr){
   const sel = new Set(selectedArr||[]);
-  return opts.map(o=>{
-    const ck = sel.has(o) ? 'checked' : '';
-    return `<label class="pill"><input type="checkbox" value="${o}" ${ck}><span>${o}</span></label>`;
-  }).join('');
+  return opts.map(o=>`<label class="pill"><input type="checkbox" value="${o}" ${sel.has(o)?'checked':''}><span>${o}</span></label>`).join('');
 }
 const TYPE_OPTS = ['LookBook','形象片','TVC','纪录片','微电影'];
 const RES_OPTS  = ['1080p','2k','4k'];
 const RATIO_OPTS= ['16:9','9:16','1:1','4:3','3:4'];
 
 function openEditorModal(kind, id){
-  const p = projects.find(x=>String(x.id)===String(id));
-  if(!p) return;
-  editorModal.classList.add('show');
-  editorForm.setAttribute('data-kind', kind);
-  editorForm.setAttribute('data-id', id);
+  const p = projects.find(x=>String(x.id)===String(id)); if(!p) return;
+  editorModal.classList.add('show'); editorForm.setAttribute('data-kind', kind); editorForm.setAttribute('data-id', id);
 
   if(kind==='producer'){
     editorTitle.textContent = '编辑 合作制片';
@@ -528,7 +502,6 @@ function openEditorModal(kind, id){
         <div>${(x.text||'').replace(/</g,'&lt;')}</div>
       </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
-    // —— 两段式结构（上：本次修改，下：历史记录），并显示当前阶段/小版本
     editorForm.innerHTML = `
       <div class="card" style="margin-bottom:10px">
         <div class="section-head"><h3>本次修改（自动关联当前阶段与最新小版本）</h3></div>
@@ -558,7 +531,6 @@ function openEditorModal(kind, id){
     `;
   }
 }
-
 function comboRowHTML(idx,c){
   return `
   <div class="combo-row" data-idx="${idx}">
@@ -583,7 +555,6 @@ function comboRowHTML(idx,c){
     </div>
   </div>`;
 }
-
 editorForm?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const id   = editorForm.getAttribute('data-id');
@@ -625,16 +596,12 @@ editorForm?.addEventListener('submit', async (e)=>{
       B: fd.get('ver_B')||d.versions.B||'v1',
       F: fd.get('ver_F')||d.versions.F||'v1'
     }};
-    // 完成标记
     const tags = new Set(d.tags||[]);
     if(fd.get('A_DONE')) tags.add('#A_DONE'); else tags.delete('#A_DONE');
     if(fd.get('B_DONE')) tags.add('#B_DONE'); else tags.delete('#B_DONE');
     if(fd.get('F_DONE')) tags.add('#F_DONE'); else tags.delete('#F_DONE');
     d.tags = Array.from(tags);
-    patch = {
-      a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null,
-      notes: stringifyNotes(d)
-    };
+    patch = { a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null, notes: stringifyNotes(d) };
   }
   if(kind==='money'){
     patch.quote_amount   = Number(fd.get('quote_amount')||0);
@@ -643,12 +610,10 @@ editorForm?.addEventListener('submit', async (e)=>{
   if(kind==='changes'){
     const row = projects.find(x=>String(x.id)===String(id));
     let d = parseNotes(row?.notes||'');
-
     const phase = (fd.get('chg_phase')||'Final').toString();
     const version = (fd.get('chg_version')||'v1').toString();
     const text = (fd.get('chg_text')||'').toString().trim();
     const autoBump = !!fd.get('auto_bump');
-
     if(text){
       const chg = { phase, version, text, ts: Date.now(), appVer: APP_VERSION };
       d.changes = Array.isArray(d.changes)? d.changes : [];
@@ -668,9 +633,8 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表 ==============
+// ============== 项目列表（新增：优先级排序 + 已完结窗口） ==============
 function formatProgressCell(p){
-  // 完结后显示：完结-mm.dd；未完结：显示“大版本号-mm.dd-小版本号”，并配颜色块
   const vers = parseNotes(p.notes).versions;
   const near = nearestMilestone(p);
   const doneF = hasTag(p.notes,'#F_DONE');
@@ -688,10 +652,36 @@ function formatProgressCell(p){
   return `<span class="badge ${cls}">${near.k}</span> <span class="small">- ${mm}.${dd} - ${small}</span>`;
 }
 
+function renderDoneProjects(doneList){
+  const tb = document.getElementById('done-body'); tb.innerHTML='';
+  doneList.forEach(p=>{
+    const tr = document.createElement('tr');
+    const pay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
+    tr.innerHTML = `
+      <td>${p.title||''}${p.brand?` · ${p.brand}`:''}</td>
+      <td>${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')||'—'}</td>
+      <td>${p.final_date||'—'}</td>
+      <td>${pay}</td>
+      <td>${money(p.quote_amount)}</td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+
 function renderProjects(list=projects){
+  const undone = list.filter(p=> !hasTag(p.notes,'#F_DONE'));
+  const done   = list.filter(p=>  hasTag(p.notes,'#F_DONE'));
+
+  // —— 未完成项目：按优先级升序，再按更新时间倒序
+  const sorted = [...undone].sort((a,b)=>{
+    const pa = getPriority(a), pb = getPriority(b);
+    if(pa!==pb) return pa - pb;
+    return new Date(b.updated_at) - new Date(a.updated_at);
+  });
+
   const tb = document.getElementById('projects-body'); tb.innerHTML='';
 
-  list.forEach(p=>{
+  sorted.forEach(p=>{
     const tr = document.createElement('tr');
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
     const moneyText = `${money(p.quote_amount)} / ${money(p.paid_amount)}`;
@@ -699,10 +689,18 @@ function renderProjects(list=projects){
     const d = parseNotes(p.notes);
     const last = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
     const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,60)}${last.text.length>60?'…':''}` : '—';
+    const prio = getPriority(p);
 
     tr.innerHTML = `
       <!-- 项目 -->
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
+
+      <!-- 优先级（数值越小越靠前） -->
+      <td>
+        <div class="cell-summary">
+          <input type="number" class="prio-inline" data-id="${p.id}" min="0" step="1" value="${prio}">
+        </div>
+      </td>
 
       <!-- 合作制片 -->
       <td>
@@ -721,7 +719,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 进度（带颜色块） -->
+      <!-- 进度 -->
       <td>
         <div class="cell-summary">
           <span class="text-cell">${formatProgressCell(p)}</span>
@@ -729,7 +727,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 支付状态（内嵌下拉，不再弹窗） -->
+      <!-- 支付状态（内联） -->
       <td>
         <div class="cell-summary">
           <select class="pay-inline" data-id="${p.id}">
@@ -738,7 +736,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 金额（仅显示 总金额 / 已收款；弹窗编辑） -->
+      <!-- 金额 -->
       <td>
         <div class="cell-summary">
           <span class="muted text-cell">${moneyText}</span>
@@ -746,7 +744,7 @@ function renderProjects(list=projects){
         </div>
       </td>
 
-      <!-- 修改内容（列加宽） -->
+      <!-- 修改内容 -->
       <td>
         <div class="cell-summary">
           <span class="small text-cell">${lastText}</span>
@@ -757,9 +755,9 @@ function renderProjects(list=projects){
     tb.appendChild(tr);
   });
 
-  // —— 监听只绑定一次，避免重复触发
+  // —— 监听只绑定一次
   if(!tb._bound){
-    // —— 可编辑文本（标题）
+    // 标题可编辑
     tb.addEventListener('blur', async (e)=>{
       const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
       const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
@@ -768,13 +766,13 @@ function renderProjects(list=projects){
       await supa.from('projects').update(patch).eq('id', id);
     }, true);
 
-    // —— 统一弹窗入口
+    // 弹窗入口
     tb.addEventListener('click', (e)=>{
       const btn = e.target.closest('.edit-btn'); if(!btn) return;
       openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id'));
     });
 
-    // —— 支付状态内联选择
+    // 支付状态内联
     tb.addEventListener('change', async (e)=>{
       const sel = e.target.closest('select.pay-inline'); if(!sel) return;
       const id = sel.getAttribute('data-id');
@@ -784,14 +782,27 @@ function renderProjects(list=projects){
       renderProjects(projects);
     });
 
+    // 优先级内联
+    tb.addEventListener('change', async (e)=>{
+      const inp = e.target.closest('input.prio-inline'); if(!inp) return;
+      const id   = inp.getAttribute('data-id');
+      const row  = projects.find(x=> String(x.id)===String(id));
+      if(!row) return;
+      let d = parseNotes(row.notes||'');
+      d.priority = Number(inp.value||999);
+      await supa.from('projects').update({ notes: stringifyNotes(d) }).eq('id', id);
+      await fetchProjects(); renderProjects(projects); // 重新排序
+    });
+
     tb._bound = true;
   }
 
-  // —— 渲染后执行“溢出缩字”
+  // 缩字
   shrinkOverflowCells(tb);
-}
 
-// 根据单元格宽度缩小文字，避免表格被撑开
+  // 渲染“已完结项目”窗口
+  renderDoneProjects(done);
+}
 function shrinkOverflowCells(tb){
   const cells = tb.querySelectorAll('td .text-cell');
   cells.forEach(el=>{
@@ -805,17 +816,15 @@ function shrinkOverflowCells(tb){
   });
 }
 
-// ============== 最近项目·快速查看小窗 ==============
+// ============== 最近项目·快速查看（原逻辑保留） ==============
 const quickModal = document.getElementById('quick-modal');
 const quickTitle = document.getElementById('quick-title');
 const quickBody  = document.getElementById('quick-body');
 const quickClose = document.getElementById('quick-close');
 const quickFinalBtn = document.getElementById('quick-final-done');
-
 function closeQuick(){ quickModal.classList.remove('show'); quickBody.innerHTML=''; }
 quickClose?.addEventListener('click', closeQuick);
 quickModal?.addEventListener('mousedown', (e)=>{ if(e.target===quickModal) closeQuick(); });
-
 function openQuickModal(id){
   const p = projects.find(x=>String(x.id)===String(id)); if(!p) return;
   const st = stageInfo(p);
@@ -828,7 +837,6 @@ function openQuickModal(id){
       <div class="small muted">节点：${[p.a_copy?`Acopy ${p.a_copy}`:'', p.b_copy?`Bcopy ${p.b_copy}`:'', p.final_date?`Final ${p.final_date}`:''].filter(Boolean).join(' ｜ ')||'—'}</div>
       <div style="margin-top:8px" class="pmeta">
         <div class="prog" style="flex:1"><div class="prog-bar" style="width:${st.percent}%"></div></div>
-        ${stageBadgeHTML(st.name, st.version)}
       </div>
     </div>
   `;
@@ -842,7 +850,7 @@ function openQuickModal(id){
   quickModal.classList.add('show');
 }
 
-// ============== 作品合集 ==============
+// ============== 作品合集（原逻辑保留） ==============
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); grid.innerHTML='';
   const finals = projects.filter(p=>p.final_link);
@@ -861,12 +869,12 @@ function renderGallery(){
   });
 }
 
-// ============== 档期 ==============
+// ============== 档期（新增：A→B、B→Final 跨期条） ==============
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
 let calBase = new Date(); calBase.setDate(1);
-document.getElementById('cal-prev').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); });
-document.getElementById('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); });
+document.getElementById('cal-prev')?.addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); });
+document.getElementById('cal-next')?.addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); });
 
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
@@ -875,17 +883,39 @@ function renderCalendar(){
   const today=new Date(); today.setHours(0,0,0,0);
 
   const evs={};
+  function pushDay(dateObj, item){
+    if(!dateObj) return;
+    if(dateObj.getFullYear()!==y || dateObj.getMonth()!==m) return;
+    const day = dateObj.getDate();
+    (evs[day] ||= []).push(item);
+  }
+
+  // 单日节点
   projects.forEach(p=>{
     [['a_copy','a'],['b_copy','b'],['final_date','final']].forEach(([key,typ])=>{
       const d = fmt(p[key]); if(!d) return;
-      if(d.getFullYear()!==y || d.getMonth()!==m) return;
-      const day=d.getDate();
       const done = (typ==='a' && hasTag(p.notes,'#A_DONE')) ||
                    (typ==='b' && hasTag(p.notes,'#B_DONE')) ||
                    (typ==='final' && hasTag(p.notes,'#F_DONE'));
       const overdue = d<today && !done;
-      (evs[day] ||= []).push({ typ, txt:`${p.title||'未命名'} · ${typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'}`, overdue });
+      pushDay(d, { typ, txt:`${p.title||'未命名'} · ${typ==='a'?'Acopy':typ==='b'?'Bcopy':'Final'}`, overdue });
     });
+  });
+
+  // 跨期条（限制最大 14 天，避免挤爆）
+  function addSpan(startDate, endDate, label){
+    if(!startDate || !endDate) return;
+    if(endDate < startDate) return;
+    const spanDays = Math.min(14, Math.floor((endDate - startDate)/86400000)+1);
+    for(let i=0;i<spanDays;i++){
+      const d=new Date(startDate.getTime()+i*86400000);
+      pushDay(d, { typ:'span', txt:label, overdue:false });
+    }
+  }
+  projects.forEach(p=>{
+    const A = fmt(p.a_copy), B = fmt(p.b_copy), F = fmt(p.final_date);
+    if(A && B) addSpan(A,B,`${p.title||'未命名'} · A→B`);
+    if(B && F) addSpan(B,F,`${p.title||'未命名'} · B→F`);
   });
 
   for(let i=0;i<42;i++){
@@ -894,21 +924,21 @@ function renderCalendar(){
     if(day>0 && day<=days){
       const head=document.createElement('div'); head.className='cal-day'; head.textContent=String(day); cell.appendChild(head);
       (evs[day]||[]).forEach(e=>{
-        const tag=document.createElement('span');
-        tag.className='ev ' + (e.typ==='a'?'ev-a':e.typ==='b'?'ev-b':'ev-final') + (e.overdue?' ev-overdue':'');
-        tag.textContent=e.txt; cell.appendChild(tag);
+        const cls = e.typ==='a'?'ev-a': e.typ==='b'?'ev-b': e.typ==='final'?'ev-final':'ev-span';
+        const over = e.overdue?' ev-overdue':'';
+        const tag=document.createElement('span'); tag.className='ev ' + cls + over; tag.textContent=e.txt; cell.appendChild(tag);
       });
     }
     gridEl.appendChild(cell);
   }
 }
 
-// ============== 财务 ==============
+// ============== 财务（智能排序：金额×逾期天数） ==============
 function renderFinance(){
   const byPartner = new Map();
   projects.forEach(p=>{
     const k=p.producer_name||'未填';
-    const sum = Number(p.paid_amount||0); // v1.4.4：只按“已收款”统计
+    const sum = Number(p.paid_amount||0);
     byPartner.set(k, (byPartner.get(k)||0)+sum);
   });
   const rp=document.getElementById('rank-partner'); rp.innerHTML='';
@@ -925,27 +955,28 @@ function renderFinance(){
 
   const aging=document.getElementById('aging'); aging.innerHTML='';
   const today=Date.now();
-  projects.filter(p=> p.final_date && unpaidAmt(p)>0)
-    .sort((a,b)=> new Date(a.final_date)-new Date(b.final_date))
-    .forEach(p=>{
-      const days = Math.floor((today - new Date(p.final_date).getTime())/86400000);
-      const li=document.createElement('div'); li.className='list-item';
-      li.innerHTML = `<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div>
-                      <div>${money(unpaidAmt(p))} / ${days>0?days:0}天</div>`;
-      aging.appendChild(li);
-    });
+  const rows = projects.filter(p=> p.final_date && unpaidAmt(p)>0).map(p=>{
+    const days = Math.max(0, Math.floor((today - new Date(p.final_date).getTime())/86400000));
+    const amt  = unpaidAmt(p);
+    const weight = amt * days; // 加权
+    return { p, days, amt, weight };
+  }).sort((a,b)=> b.weight - a.weight); // 权重降序
+
+  rows.forEach(({p,days,amt})=>{
+    const li=document.createElement('div'); li.className='list-item';
+    li.innerHTML = `<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div>
+                    <div>${money(amt)} / ${days}天</div>`;
+    aging.appendChild(li);
+  });
 
   const start = new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
-  const days = Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
-  const map = new Map(days.map(d=>[d.toDateString(),0]));
+  const daysArr = Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
+  const map = new Map(daysArr.map(d=>[d.toDateString(),0]));
   projects.forEach(p=>{
     const d = new Date(p.updated_at); d.setHours(0,0,0,0);
-    if(d>=start){
-      const k = d.toDateString();
-      map.set(k, (map.get(k)||0) + Number(p.paid_amount||0));
-    }
+    if(d>=start){ const k = d.toDateString(); map.set(k, (map.get(k)||0) + Number(p.paid_amount||0)); }
   });
-  const series = days.map(d=> map.get(d.toDateString())||0);
+  const series = daysArr.map(d=> map.get(d.toDateString())||0);
   drawTrend(document.getElementById('trend'), series);
 }
 function drawTrend(container, arr){
@@ -958,13 +989,13 @@ function drawTrend(container, arr){
 
 // ============== 导航 ==============
 document.getElementById('go-list')?.addEventListener('click', ()=> showView('projects'));
-nav.home.addEventListener('click',    ()=> showView('home'));
-nav.projects.addEventListener('click', ()=> showView('projects'));
-nav.gallery.addEventListener('click',  ()=> showView('gallery'));
-nav.finance.addEventListener('click',  ()=> showView('finance'));
-nav.schedule.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
+nav.home?.addEventListener('click',    ()=> showView('home'));
+nav.projects?.addEventListener('click', ()=> showView('projects'));
+nav.gallery?.addEventListener('click',  ()=> showView('gallery'));
+nav.finance?.addEventListener('click',  ()=> showView('finance'));
+nav.schedule?.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
 
-// ============== 新建项目 ==============
+// ============== 新建项目（保持不变，仅初始化 notes 结构支持 priority） ==============
 const mNew = document.getElementById('new-modal');
 document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classList.add('show'));
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
@@ -974,10 +1005,10 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.clips = Number(row.clips||1);
   row.quote_amount   = Number(row.quote_amount||0);
   row.paid_amount    = Number(row.paid_amount||0);
-  row.deposit_amount = 0; // v1.4.4：不再使用定金，置0以兼容旧表结构
+  row.deposit_amount = 0; // 旧字段兼容
   if(row.spec){ row.spec = row.spec; }
-  // 初始化 notes 为 JSON
-  row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' });
+  // 初始化 notes 为 JSON（含 priority）
+  row.notes = stringifyNotes({ tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999 });
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
