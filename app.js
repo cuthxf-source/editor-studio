@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5 */
-const APP_VERSION = 'V1.5';
+/* editor-studio / app.js  v1.5.1 */
+const APP_VERSION = 'V1.5.1';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -56,7 +56,6 @@ function parseNotes(notes){
 }
 function stringifyNotes(o){ return JSON.stringify({tags:Array.from(o.tags||[]),versions:o.versions||{A:'v1',B:'v1',F:'v1'},changes:o.changes||[],free:o.free||'',priority:o.priority||'P3'}); }
 function hasTag(n,t){ return parseNotes(n).tags.has(t); }
-function bumpVersion(v){ const n=parseInt(String(v||'v1').replace(/[^\d]/g,''),10)||1; return 'v'+Math.min(n+1,8); }
 function getPriority(p){ return parseNotes(p.notes).priority||'P3'; }
 function priRank(code){ return ({P1:0,P2:1,P3:2,P4:3})[code] ?? 2; }
 function priObj(code){ const map={P1:{k:'P1',txt:'紧急且重要',cls:'pri-p1'},P2:{k:'P2',txt:'重要不紧急',cls:'pri-p2'},P3:{k:'P3',txt:'次要一般',cls:'pri-p3'},P4:{k:'P4',txt:'观察排期',cls:'pri-p4'}}; return map[code] || map.P3; }
@@ -102,7 +101,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目（保留能量条；移除首页“截至时间”的渲染） */
+/* 首页：最近项目（保留能量条，居中百分比） */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -159,7 +158,7 @@ function renderKpis(){
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
-/* 报价分析器（横向 + 无每组难度按钮） */
+/* 报价分析器（横向 + 保留原选项 + 说明） */
 (function initQuote(){
   const typeBase={'LookBook':{price:100,baseSec:15,secRate:0.01},'形象片':{price:3500,baseSec:45,secRate:0.03},'TVC':{price:7000,baseSec:60,secRate:0.03},'纪录片':{price:12000,baseSec:180,secRate:0.005},'微电影':{price:12000,baseSec:180,secRate:0.005}};
   const elType=$('qa-type'), elBase=$('qa-base'), elSecs=$('qa-secs');
@@ -223,7 +222,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态（保留“修改内容”粘贴小图 & 历史可编辑） */
+/* 编辑模态与项目表渲染：保持不变，仅列宽变更由 CSS 控制 */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -453,7 +452,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-/* 项目列表（两个窗口；列宽自适应；修改内容列更宽） */
+/* 项目表 */
 function formatProgressCell(p){
   const vers=parseNotes(p.notes).versions;
   const near=nearestMilestone(p);
@@ -546,7 +545,6 @@ function renderProjects(){
   const completed=projects.filter(p=> (p.pay_status||'')==='已收尾款');
   const incompleted=projects.filter(p=> (p.pay_status||'')!=='已收尾款');
 
-  // 以优先级排序（P1→P4），再按更新时间
   incompleted.sort((a,b)=> priRank(getPriority(a))-priRank(getPriority(b)) || new Date(b.updated_at)-new Date(a.updated_at));
   completed.sort((a,b)=> priRank(getPriority(a))-priRank(getPriority(b)) || new Date(b.updated_at)-new Date(a.updated_at));
 
@@ -560,7 +558,7 @@ function renderProjects(){
 function openQuickModal(id){
   const qModal=$('quick-modal'), qTitle=$('quick-title'), qBody=$('quick-body'), qFinalBtn=$('quick-final-done');
   const p=projects.find(x=>String(x.id)===String(id)); if(!p) return;
-  const st=stageInfo(p), near=nearestMilestone(p);
+  const st=stageInfo(p);
   qTitle.textContent=`${p.title||'未命名'}${p.brand?` · ${p.brand}`:''}`;
   qBody.innerHTML=`<div class="grid-1"><div>合作制片：${[p.producer_name,p.producer_contact].filter(Boolean).join(' · ')||'—'}</div><div class="small muted">规格：${(parseSpec(p.spec).json? typeSpecLines(p).join('，') : typeSpecLines(p)[0])||'—'}</div><div class="small muted">节点：${[p.a_copy?`Acopy ${p.a_copy}`:'', p.b_copy?`Bcopy ${p.b_copy}`:'', p.final_date?`Final ${p.final_date}`:''].filter(Boolean).join(' ｜ ')||'—'}</div><div style="margin-top:8px" class="pmeta"><div class="prog" style="flex:1"><div class="prog-bar" style="width:${st.percent}%"></div><span class="prog-text">${st.percent}%</span></div></div></div>`;
   $('quick-close')?.addEventListener('click',()=>{ qModal.classList.remove('show'); qBody.innerHTML=''; }, { once:true });
@@ -568,14 +566,18 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：超大海报 + 自动抽帧封面（CORS 不通过则用占位） */
+/* 作品合集：中间帧抽封面 + 更大 + 不规则组合 */
 const thumbCache=new Map();
-function captureVideoFrame(url){
+function captureVideoMiddleFrame(url){
   return new Promise((resolve)=>{
     try{
       const v=document.createElement('video');
-      v.crossOrigin='anonymous'; v.muted=true; v.playsInline=true; v.src=url;
-      v.addEventListener('loadeddata',()=>{ try{ v.currentTime=Math.min(1,(v.duration||2)/2); }catch(e){} }, { once:true });
+      v.crossOrigin='anonymous'; v.muted=true; v.playsInline=true; v.preload='metadata';
+      v.src=url;
+      v.addEventListener('loadedmetadata',()=>{
+        const mid = isFinite(v.duration) && v.duration>0 ? v.duration/2 : 1;
+        v.currentTime = mid; // 中间帧
+      }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
           const canvas=document.createElement('canvas');
@@ -586,6 +588,8 @@ function captureVideoFrame(url){
         }catch(e){ resolve(null); }
       }, { once:true });
       v.addEventListener('error',()=> resolve(null), { once:true });
+      // 某些浏览器可能不触发 seeked，兜底
+      v.addEventListener('timeupdate',()=>{ resolve(null); }, { once:true });
     }catch(e){ resolve(null); }
   });
 }
@@ -595,7 +599,7 @@ async function getCoverFor(p){
   let cover=null;
   if(p.final_link){
     if(/\.(png|jpe?g|webp)$/i.test(p.final_link)) cover=p.final_link;
-    else if(/\.(mp4|mov|m4v|webm|ogg)$/i.test(p.final_link)) cover=await captureVideoFrame(p.final_link);
+    else if(/\.(mp4|mov|m4v|webm|ogg)$/i.test(p.final_link)) cover=await captureVideoMiddleFrame(p.final_link);
   }
   if(!cover){
     cover='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#f2f2f7"/><stop offset="1" stop-color="#e9ecef"/></linearGradient></defs><rect fill="url(#g)" width="1600" height="900"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="64" fill="#999">No Cover</text></svg>`);
@@ -605,16 +609,21 @@ async function getCoverFor(p){
 async function renderGallery(){
   const grid=$('gallery-grid'); grid.innerHTML='';
   const finals=projects.filter(p=>p.final_link);
-  if(finals.length===0){ const ph=document.createElement('div'); ph.className='mag-card'; ph.innerHTML=`<div class="mag-cap">暂未上传成片，请在项目中上传海报或视频</div>`; grid.appendChild(ph); return; }
-  for(const p of finals){
+  if(finals.length===0){
+    const ph=document.createElement('div'); ph.className='mag-card'; ph.innerHTML=`<div class="mag-cap">暂未上传成片，请在项目中上传海报或视频</div>`; grid.appendChild(ph); return;
+  }
+  for(let i=0;i<finals.length;i++){
+    const p=finals[i];
     const a=document.createElement('a'); a.className='mag-card'; a.href=p.final_link; a.target='_blank';
+    // 30% 几率跨两列，形成不规则组合（浏览器会用 dense 策略尽量贴合）
+    if(Math.random()<0.3) a.classList.add('mag-span2');
     const cover=await getCoverFor(p);
     a.innerHTML = `<img class="mag-cover" src="${cover}" alt=""><div class="mag-cap">${p.title||'未命名'}${p.brand?` · ${p.brand}`:''}</div>`;
     grid.appendChild(a);
   }
 }
 
-/* 档期：在色块起点显示“项目名 + 版本号” */
+/* 日历：把“项目名+版本”放进色块内，并把色块加大（CSS 控制高度） */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -645,7 +654,11 @@ function renderCalendar(){
       for(let d=sDay; d<=eDay; d++){
         const line=document.createElement('div'); line.className='bar-line';
         const piece=document.createElement('div'); piece.className=`span-piece span-${sp.k} ${d===sDay?'span-start':''} ${d===eDay?'span-end':''}`;
-        if(d===sDay){ const label=document.createElement('span'); label.className='ev-label'; label.textContent=`${p.title||'未命名'} · ${sp.label}${sp.ver?(' '+sp.ver):''}`; line.appendChild(label); }
+        if(d===sDay){
+          const label=document.createElement('span'); label.className='span-text';
+          label.textContent=`${p.title||'未命名'} · ${sp.label}${sp.ver?(' '+sp.ver):''}`;
+          piece.appendChild(label);
+        }
         line.appendChild(piece);
         dayCells[d]?.appendChild(line);
       }
@@ -653,7 +666,7 @@ function renderCalendar(){
   });
 }
 
-/* 财务 */
+/* 财务与趋势图（保持） */
 function renderFinance(){
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
