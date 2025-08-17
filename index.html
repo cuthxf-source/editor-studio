@@ -1,16 +1,17 @@
-<!-- editor-studio / index.html  v1.4.6 -->
+<!-- editor-studio / index.html  v1.4.7 -->
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+  <meta name="color-scheme" content="light dark" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.6" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.6" />
+  <link rel="icon" href="icon.png?v=v1.4.7" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.7" />
   <!-- Supabase UMD -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -28,6 +29,7 @@
         <button id="btn-finance" class="nav-btn">财务</button>
       </nav>
       <div class="nav-right">
+        <button id="btn-theme" class="nav-btn ghost" title="切换深色/浅色">深色</button>
         <button id="btn-logout" class="nav-btn ghost">退出登录</button>
       </div>
     </div>
@@ -49,18 +51,15 @@
   <main class="container main-wrap">
     <!-- 首页 -->
     <section id="view-home" class="view">
-      <!-- 金额 KPI -->
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
       </div>
-      <!-- 片数 KPI -->
       <div class="grid-2 kpi">
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
-      <!-- 截至日期 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -71,7 +70,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（原有功能保留） -->
+      <!-- 报价分析器（保留） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -79,7 +78,6 @@
             <label>项目名<input id="qa-title" /></label>
             <label>制片<input id="qa-producer" /></label>
           </div>
-
           <div id="qa-single">
             <div class="grid-3">
               <label>影片类型
@@ -162,10 +160,11 @@
               <th>合作制片</th>
               <th>影片类型&条数&规格</th>
               <th>进度</th>
+              <th>优先级</th>
               <th>支付状态</th>
               <th>总金额</th>
               <th>修改内容</th>
-              <th>上传</th> <!-- 新增列 -->
+              <th>上传</th>
             </tr>
           </thead>
           <tbody id="projects-body"></tbody>
@@ -240,7 +239,7 @@
         </div>
         <div class="grid-2">
           <label>合作制片（姓名）<input name="producer_name"></label>
-          <label>合作制片（联系方式）<input name="producer_contact"></label>
+          <label>合作制片（联系方式）<input name="producer_contact"></input></label>
         </div>
         <label class="hidden">备注<textarea name="notes" rows="3"></textarea></label>
         <div class="modal-foot">
@@ -280,7 +279,7 @@
     </div>
   </div>
 
-  <!-- 上传海报/成片 小窗（新增） -->
+  <!-- 上传海报/成片 小窗（保留，按钮合并在“上传”胶囊上） -->
   <div id="upload-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
@@ -315,11 +314,24 @@
     </div>
   </div>
 
+  <!-- 图片预览 Lightbox（用于查看“修改内容”里的大图） -->
+  <div id="imgbox" class="modal">
+    <div class="modal-inner" style="max-width:min(96vw,1100px)">
+      <div class="modal-head">
+        <h3>图片预览</h3>
+        <button id="imgbox-close" class="ghost">关闭</button>
+      </div>
+      <div style="text-align:center">
+        <img id="imgbox-img" style="max-width:100%;border-radius:12px"/>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase 配置 -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.6" defer></script>
+  <script src="app.js?v=v1.4.7" defer></script>
 </body>
 </html>
