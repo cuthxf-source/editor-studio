@@ -140,6 +140,24 @@ function mergeTypeSpec(p){
     return (joined? joined : '—') + clips + (r||'');
   }
 }
+function typeSpecLines(p){
+  const parsed = parseSpec(p.spec);
+  if(parsed.json){
+    return parsed.combos.map(c=>{
+      const r = c.ratios?.length ? ` · ${c.ratios.join('/')}` : '';
+      const rr = c.res ? ` · ${c.res}` : '';
+      return `${c.type||'未填'}×${c.clips||1}${rr}${r}`;
+    });
+  }else{
+    const c = parsed.combos[0]||{};
+    const clips = p.clips ? ` · ${p.clips}条` : '';
+    const type  = p.type || '';
+    const r = c.ratios?.length ? ` · ${c.ratios.join('/')}` : (c.ratio?` · ${c.ratio}`:'');
+    const rr = c.res ? ` · ${c.res}` : '';
+    const joined = [type, rr.replace(' · ','').trim()].filter(Boolean).join(' · ');
+    return [(joined? joined : '—') + clips + (r||'')];
+  }
+}
 function totalClipsOf(p){
   const parsed = parseSpec(p.spec);
   if(parsed.json) return parsed.combos.reduce((s,c)=>s+Number(c.clips||0),0) || Number(p.clips||0) || 0;
@@ -222,6 +240,7 @@ function renderRecent(){
         <div class="prog-wrap">
           <div class="prog" title="${st.name}${st.version?(' '+st.version):''} ${st.percent}%">
             <div class="prog-bar" style="width:${st.percent}%"></div>
+            <span class="prog-text">${st.percent}%</span>
           </div>
           ${stageBadgeHTML(st.name, st.version)}
         </div>
@@ -255,6 +274,13 @@ function renderKpis(){
   document.getElementById('f-total').textContent     = money(total);
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
+
+  // 新增：截至日期文字
+  const todayStr = new Date().toISOString().slice(0,10);
+  const homeAsof = document.getElementById('home-asof');
+  if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
+  const fAsof = document.getElementById('f-asof');
+  if(fAsof) fAsof.textContent = `截至 ${todayStr}`;
 }
 
 // 报价分析器（单/多组合 + 合成复杂度）
@@ -501,22 +527,29 @@ function openEditorModal(kind, id){
         <div>${(x.text||'').replace(/</g,'&lt;')}</div>
       </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
+    // —— 两段式结构（上：本次修改，下：历史记录），并显示当前阶段/小版本
     editorForm.innerHTML = `
-      <div class="h-row">
-        <label>关联阶段
-          <select name="chg_phase">${optionList(['Acopy','Bcopy','Final'], st.name==='完结'?'Final':st.name)}</select>
+      <div class="card" style="margin-bottom:10px">
+        <div class="section-head"><h3>本次修改（自动关联当前阶段与最新小版本）</h3></div>
+        <div class="h-row">
+          <label>关联阶段
+            <select name="chg_phase">${optionList(['Acopy','Bcopy','Final'], st.name==='完结'?'Final':st.name)}</select>
+          </label>
+          <label>小版本号
+            <select name="chg_version">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)}</select>
+          </label>
+          <label>系统版本（只读）
+            <input type="text" value="${APP_VERSION}" disabled>
+          </label>
+        </div>
+        <div class="h-row" style="margin-top:6px">
+          <span class="small muted">当前进度：${stageBadgeHTML(st.name, st.version)}</span>
+        </div>
+        <label style="margin-top:8px">修改内容（本次）
+          <textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea>
         </label>
-        <label>小版本号
-          <select name="chg_version">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)}</select>
-        </label>
-        <label>系统版本（只读）
-          <input type="text" value="${APP_VERSION}" disabled>
-        </label>
+        <label class="pill" style="margin-top:8px"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>
       </div>
-      <label class="pill"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>
-      <label style="margin-top:8px">修改内容（本次）
-        <textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea>
-      </label>
       <div class="card" style="margin-top:10px">
         <div class="section-head"><h3>历史修改记录</h3></div>
         <div class="list">${histHTML}</div>
@@ -541,7 +574,7 @@ function comboRowHTML(idx,c){
         ${optionList(RES_OPTS, c.res||'')}
       </select>
     </label>
-    <div class="center pill-group" style="flex:1 1 100%;">
+    <div class="pill-group ratios-inline">
       ${checkboxList(RATIO_OPTS, c.ratios||[])}
     </div>
     <div style="margin-left:auto">
@@ -682,7 +715,7 @@ function renderProjects(list=projects){
       <!-- 影片类型&条数&规格 -->
       <td>
         <div class="cell-summary">
-          <span class="text-cell">${mergeTypeSpec(p)||'—'}</span>
+          <span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span>
           <button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button>
         </div>
       </td>
@@ -723,27 +756,35 @@ function renderProjects(list=projects){
     tb.appendChild(tr);
   });
 
-  // —— 可编辑文本（标题）
-  tb.addEventListener('blur', async (e)=>{
-    const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
-    const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
-    if(!id || !k) return;
-    const patch = {}; patch[k]=v;
-    await supa.from('projects').update(patch).eq('id', id);
-  }, true);
+  // —— 监听只绑定一次，避免重复触发
+  if(!tb._bound){
+    // —— 可编辑文本（标题）
+    tb.addEventListener('blur', async (e)=>{
+      const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
+      const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
+      if(!id || !k) return;
+      const patch = {}; patch[k]=v;
+      await supa.from('projects').update(patch).eq('id', id);
+    }, true);
 
-  // —— 统一弹窗入口
-  tb.addEventListener('click', (e)=>{
-    const btn = e.target.closest('.edit-btn'); if(!btn) return;
-    openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id'));
-  });
+    // —— 统一弹窗入口
+    tb.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.edit-btn'); if(!btn) return;
+      openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id'));
+    });
 
-  // —— 支付状态内联选择
-  tb.addEventListener('change', async (e)=>{
-    const sel = e.target.closest('select.pay-inline'); if(!sel) return;
-    const id = sel.getAttribute('data-id');
-    await supa.from('projects').update({ pay_status: sel.value }).eq('id', id);
-  });
+    // —— 支付状态内联选择
+    tb.addEventListener('change', async (e)=>{
+      const sel = e.target.closest('select.pay-inline'); if(!sel) return;
+      const id = sel.getAttribute('data-id');
+      await supa.from('projects').update({ pay_status: sel.value }).eq('id', id);
+      const row = projects.find(x=> String(x.id)===String(id));
+      if(row){ row.pay_status = sel.value; }
+      renderProjects(projects);
+    });
+
+    tb._bound = true;
+  }
 
   // —— 渲染后执行“溢出缩字”
   shrinkOverflowCells(tb);
@@ -755,7 +796,6 @@ function shrinkOverflowCells(tb){
   cells.forEach(el=>{
     const td = el.closest('td');
     if(!td) return;
-    // 临时测量：加上一个容器限制
     if(td.scrollWidth > td.clientWidth || el.scrollWidth > td.clientWidth){
       td.classList.add('shrink');
     }else{
