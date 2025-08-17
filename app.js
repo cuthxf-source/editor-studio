@@ -1,16 +1,33 @@
-/* editor-studio / app.js  v1.4.6 */
+/* editor-studio / app.js  v1.4.7 */
 
-// ============== App 版本（用于修改记录） ==============
-const APP_VERSION = 'v1.4.6';
+const APP_VERSION = 'v1.4.7';
 
-// ============== Supabase 初始化 ==============
+/* ========= Supabase ========= */
 const supa = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_ANON_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-// ============== 视图管理（保留） ==============
+/* ========= 主题：GitHub 风格深色/浅色 ========= */
+const rootEl = document.documentElement;
+const themeBtn = document.getElementById('btn-theme');
+function applyTheme(t){
+  rootEl.setAttribute('data-theme', t);
+  themeBtn.textContent = (t==='dark'?'浅色':'深色');
+  localStorage.setItem('theme', t);
+}
+(function initTheme(){
+  const saved = localStorage.getItem('theme');
+  const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (sysDark?'dark':'light'));
+})();
+themeBtn?.addEventListener('click', ()=>{
+  const cur = rootEl.getAttribute('data-theme')==='dark'?'dark':'light';
+  applyTheme(cur==='dark'?'light':'dark');
+});
+
+/* ========= 视图 ========= */
 const views = {
   auth:      document.getElementById('view-auth'),
   home:      document.getElementById('view-home'),
@@ -34,13 +51,10 @@ function showView(name){
   ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
 
-// ============== 登录 ==============
+/* ========= 登录 ========= */
 const authForm = document.getElementById('auth-form');
 const authTip  = document.getElementById('auth-tip');
-nav.logout.addEventListener('click', async ()=>{
-  await supa.auth.signOut();
-  showView('auth');
-});
+nav.logout.addEventListener('click', async ()=>{ await supa.auth.signOut(); showView('auth'); });
 authForm?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email = document.getElementById('email').value.trim();
@@ -54,7 +68,7 @@ authForm?.addEventListener('submit', async (e)=>{
   if(session){ await bootAfterAuth(); showView('home'); }
 });
 
-// ============== 数据 ==============
+/* ========= 数据 ========= */
 let projects = [];
 async function fetchProjects(){
   const { data, error } = await supa
@@ -66,38 +80,48 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-// ============== Notes（保留） ==============
+/* ========= Notes 扩展：支持 priority、changes 图 ========= */
 function parseNotes(notes){
-  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' };
+  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:'P3' };
   if(!notes) return base;
   try{
     const obj = JSON.parse(notes);
-    if(obj && (obj.tags || obj.versions || obj.changes || Object.prototype.hasOwnProperty.call(obj,'free'))){
+    if(obj){
       return {
         tags: new Set(Array.isArray(obj.tags)?obj.tags:[]),
         versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
         changes: Array.isArray(obj.changes)?obj.changes:[],
-        free: obj.free || ''
+        free: obj.free || '',
+        priority: obj.priority || 'P3'
       };
     }
   }catch(e){}
   const tags = new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes };
+  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes, priority:'P3' };
 }
 function stringifyNotes(obj){
   return JSON.stringify({
     tags: Array.from(obj.tags||[]),
     versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
     changes: obj.changes || [],
-    free: obj.free || ''
+    free: obj.free || '',
+    priority: obj.priority || 'P3'
   });
 }
 function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
 
-// ============== 工具 ==============
+/* ========= 工具 ========= */
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
 function bumpVersion(ver){ const n=parseInt(String(ver||'v1').replace(/[^\d]/g,''),10)||1; return 'v'+Math.min(n+1,8); }
+const PRI_OPTS = [
+  {k:'P1', txt:'紧急且重要', cls:'pri-p1'},
+  {k:'P2', txt:'重要不紧急', cls:'pri-p2'},
+  {k:'P3', txt:'次要一般',   cls:'pri-p3'},
+  {k:'P4', txt:'观察排期',   cls:'pri-p4'},
+];
+function getPriority(p){ return parseNotes(p.notes).priority || 'P3'; }
+function priObj(code){ return PRI_OPTS.find(x=>x.k===code) || PRI_OPTS[2]; }
 
 function parseSpec(specStr){
   const s = specStr || '';
@@ -154,11 +178,6 @@ function totalClipsOf(p){
   return Number(p.clips||0) || 0;
 }
 function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
-function payBadgePill(st){
-  if(st==='已收尾款') return `<span class="pill pill-gold">已收尾款</span>`;
-  if(st==='已收定金') return `<span class="pill pill-green">已收定金</span>`;
-  return `<span class="pill pill-blue">未收款</span>`;
-}
 function stageInfo(p){
   const d = parseNotes(p.notes);
   const A = !hasTag(p.notes,'#A_DONE');
@@ -196,7 +215,7 @@ function stageBadgeHTML(name, version){
   return `<span class="badge badge-${cls}">${text}</span>`;
 }
 
-// ============== 首页 ==============
+/* ========= 首页 ========= */
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -243,7 +262,6 @@ function renderKpis(){
   const total   = projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid    = projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
   const unpaid  = projects.reduce((s,p)=>s+unpaidAmt(p),0);
-
   const clipDone = projects.reduce((s,p)=> s + (hasTag(p.notes,'#F_DONE') ? totalClipsOf(p) : 0), 0);
   const clipAll  = projects.reduce((s,p)=> s + totalClipsOf(p), 0);
   const clipTodo = Math.max(clipAll - clipDone, 0);
@@ -258,14 +276,13 @@ function renderKpis(){
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 
-  // 截至日期
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   document.getElementById('home-asof').textContent = `截至 ${todayStr}`;
   document.getElementById('f-asof').textContent    = `截至 ${todayStr}`;
 }
 
-// 报价分析器（保留）
+/* ========= 报价分析器（保留） ========= */
 (function initQuote(){
   const typeBase = {
     'LookBook': {price:100,  baseSec:15,  secRate:0.01},
@@ -374,7 +391,7 @@ function renderKpis(){
   calc();
 })();
 
-// ============== 通用编辑模态（保留） ==============
+/* ========= 通用编辑模态 ========= */
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
@@ -386,15 +403,10 @@ editorClose?.addEventListener('click', closeEditor);
 editorCancel?.addEventListener('click', closeEditor);
 editorModal?.addEventListener('mousedown', (e)=>{ if(e.target===editorModal) closeEditor(); });
 
-function optionList(opts, selected){
-  return opts.map(o=>`<option ${o===(selected||'')?'selected':''}>${o}</option>`).join('');
-}
+function optionList(opts, selected){ return opts.map(o=>`<option ${o===(selected||'')?'selected':''}>${o}</option>`).join(''); }
 function checkboxList(opts, selectedArr){
   const sel = new Set(selectedArr||[]);
-  return opts.map(o=>{
-    const ck = sel.has(o) ? 'checked' : '';
-    return `<label class="pill"><input type="checkbox" value="${o}" ${ck}><span>${o}</span></label>`;
-  }).join('');
+  return opts.map(o=>`<label class="pill"><input type="checkbox" value="${o}" ${sel.has(o)?'checked':''}><span>${o}</span></label>`).join('');
 }
 const TYPE_OPTS = ['LookBook','形象片','TVC','纪录片','微电影'];
 const RES_OPTS  = ['1080p','2k','4k'];
@@ -430,7 +442,7 @@ function openEditorModal(kind, id){
         <button type="button" id="add-combo" class="cell-edit">新增组合</button>
       </div>
       <div class="combo-help">
-        · 4K（UHD）对应常见比例：16:9 → 3840×2160；9:16 → 2160×3840；1:1 → 2160×2160；4:3 → 2880×2160；3:4 → 2160×2880
+        · 4K（UHD）常见比例：16:9 → 3840×2160；9:16 → 2160×3840；1:1 → 2160×2160；4:3 → 2880×2160；3:4 → 2160×2880
       </div>
     `;
     editorForm.addEventListener('click', e=>{
@@ -488,35 +500,43 @@ function openEditorModal(kind, id){
     const d = parseNotes(p.notes);
     const st = stageInfo(p);
     const history = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts);
+
     const histHTML = history.length? history.map(x=>{
       const dt = new Date(x.ts||Date.now());
       const time = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
       const appVer = x.appVer ? `APP ${x.appVer}` : 'APP —';
+      const imgs = Array.isArray(x.imgs)? x.imgs.map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
       return `<div class="list-item">
         <div class="small muted">[${appVer}] [${x.phase} · ${x.version}] · ${time}</div>
         <div>${(x.text||'').replace(/</g,'&lt;')}</div>
+        ${imgs?`<div class="thumb-list" style="margin-top:6px">${imgs}</div>`:''}
       </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
+
     editorForm.innerHTML = `
       <div class="card" style="margin-bottom:10px">
-        <div class="section-head"><h3>本次修改（自动关联当前阶段与最新小版本）</h3></div>
+        <div class="section-head"><h3>本次修改（可插入图片）</h3></div>
         <div class="h-row">
           <label>关联阶段
-            <select name="chg_phase">${optionList(['Acopy','Bcopy','Final'], st.name==='完结'?'Final':st.name)}</select>
+            <select name="chg_phase">${['Acopy','Bcopy','Final'].map(s=>`<option ${s===(st.name==='完结'?'Final':st.name)?'selected':''}>${s}</option>`).join('')}</select>
           </label>
           <label>小版本号
-            <select name="chg_version">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?parseNotes(p.notes).versions.A:st.name==='Bcopy'?parseNotes(p.notes).versions.B:parseNotes(p.notes).versions.F)}</select>
+            <select name="chg_version">${optionList(['v1','v2','v3','v4','v5','v6','v7','v8'], st.name==='Acopy'?d.versions.A:st.name==='Bcopy'?d.versions.B:d.versions.F)}</select>
           </label>
           <label>系统版本（只读）
             <input type="text" value="${APP_VERSION}" disabled>
           </label>
         </div>
-        <div class="h-row" style="margin-top:6px">
-          <span class="small muted">当前进度：${stageBadgeHTML(st.name, st.version)}</span>
-        </div>
-        <label style="margin-top:8px">修改内容（本次）
-          <textarea name="chg_text" rows="4" placeholder="填写本次修改点..."></textarea>
+        <label style="margin-top:8px">修改内容（文字）
+          <textarea name="chg_text" rows="4" id="chg_text" placeholder="填写本次修改点（可在下方粘贴或选择图片）"></textarea>
         </label>
+        <div class="h-row">
+          <label>添加图片（可多选）
+            <input type="file" id="chg_imgs" accept="image/*" multiple>
+          </label>
+          <div class="muted small">或直接在上方文本框内 ⌘V / Ctrl+V 粘贴图片</div>
+        </div>
+        <div id="chg_preview" class="thumb-list" style="margin-top:6px"></div>
         <label class="pill" style="margin-top:8px"><input type="checkbox" name="auto_bump" checked><span>保存后将所选阶段的小版本 +1</span></label>
       </div>
       <div class="card" style="margin-top:10px">
@@ -524,6 +544,37 @@ function openEditorModal(kind, id){
         <div class="list">${histHTML}</div>
       </div>
     `;
+
+    // 预览区 + 粘贴捕获
+    const textArea = editorForm.querySelector('#chg_text');
+    const fileInput= editorForm.querySelector('#chg_imgs');
+    const prevList = editorForm.querySelector('#chg_preview');
+    let pendingFiles = [];
+    textArea?.addEventListener('paste', (e)=>{
+      const items = e.clipboardData?.items || [];
+      for(const it of items){
+        if(it.type && it.type.startsWith('image/')){
+          const f = it.getAsFile();
+          if(f){ pendingFiles.push(new File([f], `paste-${Date.now()}.png`, { type: f.type||'image/png' })); renderPreview(); }
+          e.preventDefault();
+        }
+      }
+    });
+    fileInput?.addEventListener('change', ()=>{
+      pendingFiles = pendingFiles.concat([...fileInput.files]);
+      fileInput.value=''; renderPreview();
+    });
+    function renderPreview(){
+      prevList.innerHTML='';
+      pendingFiles.forEach(f=>{
+        const img = document.createElement('img');
+        img.className='tiny-thumb'; img.title=f.name;
+        const r = new FileReader(); r.onload=()=>{ img.src=r.result; };
+        r.readAsDataURL(f);
+        prevList.appendChild(img);
+      });
+    }
+    editorForm._pendingFiles = pendingFiles; // 传给提交逻辑
   }
 }
 
@@ -598,10 +649,7 @@ editorForm?.addEventListener('submit', async (e)=>{
     if(fd.get('B_DONE')) tags.add('#B_DONE'); else tags.delete('#B_DONE');
     if(fd.get('F_DONE')) tags.add('#F_DONE'); else tags.delete('#F_DONE');
     d.tags = Array.from(tags);
-    patch = {
-      a_copy: a_copy||null, b_copy: b_copy||null, final_date: final_date||null,
-      notes: stringifyNotes(d)
-    };
+    patch = { a_copy:a_copy||null, b_copy:b_copy||null, final_date:final_date||null, notes: stringifyNotes(d) };
   }
   if(kind==='money'){
     patch.quote_amount   = Number(fd.get('quote_amount')||0);
@@ -614,8 +662,22 @@ editorForm?.addEventListener('submit', async (e)=>{
     const version = (fd.get('chg_version')||'v1').toString();
     const text = (fd.get('chg_text')||'').toString().trim();
     const autoBump = !!fd.get('auto_bump');
-    if(text){
-      const chg = { phase, version, text, ts: Date.now(), appVer: APP_VERSION };
+
+    let imgs = [];
+    const files = editorForm._pendingFiles || [];
+    const ts = Date.now();
+    for(let i=0;i<files.length;i++){
+      const f = files[i];
+      const ext = (f.name.split('.').pop()||'png').toLowerCase();
+      const path = `projects/${id}/changes/${ts}-${i}.${ext}`;
+      const { error } = await supa.storage.from('attachments').upload(path, f, { upsert:true, contentType:f.type||'image/png' });
+      if(error){ console.error(error); continue; }
+      const { data } = supa.storage.from('attachments').getPublicUrl(path);
+      imgs.push(data.publicUrl);
+    }
+
+    if(text || imgs.length){
+      const chg = { phase, version, text, imgs, ts, appVer: APP_VERSION };
       d.changes = Array.isArray(d.changes)? d.changes : [];
       d.changes.push(chg);
     }
@@ -633,7 +695,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表（新增上传列） ==============
+/* ========= 项目列表（优先级 + 修改内容缩图 + 上传合并） ========= */
 function formatProgressCell(p){
   const vers = parseNotes(p.notes).versions;
   const near = nearestMilestone(p);
@@ -659,17 +721,22 @@ function renderProjects(list=projects){
     const tr = document.createElement('tr');
     const currentPay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
     const moneyText = `${money(p.quote_amount)} / ${money(p.paid_amount)}`;
+
     const d = parseNotes(p.notes);
     const last = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
-    const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,60)}${last.text.length>60?'…':''}` : '—';
+    const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,42)}${last.text.length>42?'…':''}` : '—';
+    const thumbs = last?.imgs?.length ? last.imgs.slice(0,4).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
 
     const posterOk = !!p.poster_url;
     const videoOk  = !!p.final_link;
     const upLabel  = (posterOk || videoOk) ? '已上传' : '未上传';
     const upCls    = (posterOk || videoOk) ? 'pill-green' : 'pill-blue';
 
+    const pri = priObj(getPriority(p));
+
     tr.innerHTML = `
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
+
       <td>
         <div class="cell-summary">
           <span>${p.producer_name||'未填'}</span>
@@ -677,41 +744,54 @@ function renderProjects(list=projects){
           <button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button>
         </div>
       </td>
+
       <td>
         <div class="cell-summary">
           <span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span>
           <button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button>
         </div>
       </td>
+
       <td>
         <div class="cell-summary">
           <span class="text-cell">${formatProgressCell(p)}</span>
           <button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button>
         </div>
       </td>
+
+      <!-- 优先级（小列） -->
+      <td class="col-priority">
+        <div class="cell-summary">
+          <button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k || 'P3'}·${pri.txt}</button>
+        </div>
+      </td>
+
       <td>
         <div class="cell-summary">
           <select class="pay-inline" data-id="${p.id}">
-            ${optionList(['未收款','已收定金','已收尾款'], currentPay)}
+            ${['未收款','已收定金','已收尾款'].map(o=>`<option ${o===currentPay?'selected':''}>${o}</option>`).join('')}
           </select>
         </div>
       </td>
+
       <td>
         <div class="cell-summary">
           <span class="muted text-cell">${moneyText}</span>
           <button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button>
         </div>
       </td>
-      <td>
+
+      <td class="col-changes">
         <div class="cell-summary">
           <span class="small text-cell">${lastText}</span>
+          ${thumbs? `<div class="thumb-list">${thumbs}</div>` : ''}
           <button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button>
         </div>
       </td>
-      <td>
+
+      <td class="col-upload">
         <div class="cell-summary">
-          <span class="pill ${upCls}">${upLabel}</span>
-          <button class="cell-edit upload-btn" data-id="${p.id}">上传</button>
+          <button class="pill ${upCls} upload-pill" data-id="${p.id}">${upLabel}</button>
         </div>
       </td>
     `;
@@ -719,6 +799,7 @@ function renderProjects(list=projects){
   });
 
   if(!tb._bound){
+    // 标题内联编辑
     tb.addEventListener('blur', async (e)=>{
       const td = e.target.closest('td[contenteditable="true"]'); if(!td) return;
       const id = td.getAttribute('data-id'); const k = td.getAttribute('data-k'); const v = td.textContent.trim();
@@ -727,13 +808,26 @@ function renderProjects(list=projects){
       await supa.from('projects').update(patch).eq('id', id);
     }, true);
 
-    tb.addEventListener('click', (e)=>{
-      const btn1 = e.target.closest('.edit-btn'); 
-      const btn2 = e.target.closest('.upload-btn');
-      if(btn1){ openEditorModal(btn1.getAttribute('data-kind'), btn1.getAttribute('data-id')); }
-      if(btn2){ openUploadModal(btn2.getAttribute('data-id')); }
+    // 统一弹窗与上传、优先级切换
+    tb.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('.edit-btn'); 
+      const up  = e.target.closest('.upload-pill');
+      const pri = e.target.closest('.pri-toggle');
+      const img = e.target.closest('.img-thumb');
+      if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); }
+      if(up){ openUploadModal(up.getAttribute('data-id')); }
+      if(pri){
+        const id = pri.getAttribute('data-id');
+        const row = projects.find(x=>String(x.id)===String(id)); if(!row) return;
+        const d = parseNotes(row.notes);
+        d.priority = d.priority==='P1'?'P2':d.priority==='P2'?'P3':d.priority==='P3'?'P4':'P1';
+        await supa.from('projects').update({ notes: stringifyNotes(d) }).eq('id', id);
+        await fetchProjects(); renderProjects(projects);
+      }
+      if(img){ openImgbox(img.getAttribute('data-full')); }
     });
 
+    // 支付状态
     tb.addEventListener('change', async (e)=>{
       const sel = e.target.closest('select.pay-inline'); if(!sel) return;
       const id = sel.getAttribute('data-id');
@@ -747,7 +841,6 @@ function renderProjects(list=projects){
   }
   shrinkOverflowCells(tb);
 }
-
 function shrinkOverflowCells(tb){
   const cells = tb.querySelectorAll('td .text-cell');
   cells.forEach(el=>{
@@ -760,117 +853,22 @@ function shrinkOverflowCells(tb){
   });
 }
 
-// ============== 上传海报/成片（新增） ==============
-const uploadModal   = document.getElementById('upload-modal');
-const uploadForm    = document.getElementById('upload-form');
-const uploadClose   = document.getElementById('upload-close');
-const uploadCancel  = document.getElementById('upload-cancel');
-const upPosterInput = document.getElementById('up-poster');
-const upVideoInput  = document.getElementById('up-video');
-const pasteBox      = document.getElementById('paste-box');
-const upProgEl      = document.getElementById('up-progress');
-const upProgBar     = upProgEl?.querySelector('.prog-bar');
-const upProgText    = upProgEl?.querySelector('.prog-text');
-const upTip         = document.getElementById('up-tip');
+/* ========= 图片 Lightbox ========= */
+const imgbox = document.getElementById('imgbox');
+const imgboxImg = document.getElementById('imgbox-img');
+document.getElementById('imgbox-close')?.addEventListener('click', ()=> imgbox.classList.remove('show'));
+imgbox?.addEventListener('mousedown', (e)=>{ if(e.target===imgbox) imgbox.classList.remove('show'); });
+function openImgbox(url){ imgboxImg.src=url; imgbox.classList.add('show'); }
 
-let pastedPosterFile = null;
-
-function openUploadModal(id){
-  uploadForm.setAttribute('data-id', id);
-  upPosterInput.value = ''; upVideoInput.value = '';
-  pastedPosterFile = null;
-  setProgress(0); upTip.textContent = '';
-  uploadModal.classList.add('show');
-}
-function closeUploadModal(){ uploadModal.classList.remove('show'); }
-uploadClose?.addEventListener('click', closeUploadModal);
-uploadCancel?.addEventListener('click', closeUploadModal);
-uploadModal?.addEventListener('mousedown', (e)=>{ if(e.target===uploadModal) closeUploadModal(); });
-
-// 捕获粘贴图片
-pasteBox?.addEventListener('paste', (e)=>{
-  const items = e.clipboardData?.items || [];
-  for(const it of items){
-    if(it.type && it.type.startsWith('image/')){
-      const f = it.getAsFile();
-      if(f){ pastedPosterFile = new File([f], 'pasted.png', { type: f.type || 'image/png' }); upTip.textContent='已接收粘贴图片（将作为海报上传）'; }
-      e.preventDefault();
-      break;
-    }
-  }
-});
-
-function setProgress(p){
-  const pct = Math.max(0, Math.min(100, Math.round(p)));
-  if(upProgBar) upProgBar.style.width = pct + '%';
-  if(upProgText) upProgText.textContent = pct + '%';
-}
-
-// 简易“伪进度”（Supabase upload 无内建进度事件）
-function fakeProgressStart(){
-  let p = 5;
-  setProgress(p);
-  const t = setInterval(()=>{
-    p = Math.min(95, p + Math.random()*7);
-    setProgress(p);
-  }, 300);
-  return ()=>{ clearInterval(t); setProgress(100); };
-}
-
-async function uploadToBucket(path, file){
-  const { error } = await supa.storage.from('attachments').upload(path, file, { upsert:true, contentType:file.type||undefined });
-  if(error) throw error;
-  const { data } = supa.storage.from('attachments').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-function extOf(name, fallback='dat'){ const i=name.lastIndexOf('.'); return i>=0? name.slice(i+1).toLowerCase(): fallback; }
-
-uploadForm?.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const id = uploadForm.getAttribute('data-id');
-  const posterFile = upPosterInput.files?.[0] || pastedPosterFile || null;
-  const videoFile  = upVideoInput.files?.[0] || null;
-  if(!posterFile && !videoFile){ upTip.textContent='请选择文件或粘贴图片'; return; }
-  const stopFake = fakeProgressStart();
-  try{
-    let posterUrl = null, videoUrl = null;
-    if(posterFile){
-      const pth = `projects/${id}/poster-${Date.now()}.${extOf(posterFile.name,'png')}`;
-      posterUrl = await uploadToBucket(pth, posterFile);
-    }
-    if(videoFile){
-      const pth = `projects/${id}/final-${Date.now()}.${extOf(videoFile.name,'mp4')}`;
-      videoUrl = await uploadToBucket(pth, videoFile);
-    }
-    const patch = {};
-    if(posterUrl) patch.poster_url = posterUrl;
-    if(videoUrl)  patch.final_link = videoUrl;  // 复用既有 final_link 字段
-    if(Object.keys(patch).length){
-      await supa.from('projects').update(patch).eq('id', id);
-    }
-    stopFake();
-    upTip.textContent = '上传完成';
-    await fetchProjects(); renderAll();
-    setTimeout(closeUploadModal, 300);
-  }catch(err){
-    console.error(err);
-    stopFake();
-    upTip.textContent = '上传失败：' + (err?.message||'');
-  }
-});
-
-// ============== 最近项目·快速查看小窗（保留） ==============
+/* ========= 最近项目·快速查看 ========= */
 const quickModal = document.getElementById('quick-modal');
 const quickTitle = document.getElementById('quick-title');
 const quickBody  = document.getElementById('quick-body');
 const quickClose = document.getElementById('quick-close');
 const quickFinalBtn = document.getElementById('quick-final-done');
-
 function closeQuick(){ quickModal.classList.remove('show'); quickBody.innerHTML=''; }
 quickClose?.addEventListener('click', closeQuick);
 quickModal?.addEventListener('mousedown', (e)=>{ if(e.target===quickModal) closeQuick(); });
-
 function openQuickModal(id){
   const p = projects.find(x=>String(x.id)===String(id)); if(!p) return;
   const st = stageInfo(p);
@@ -897,7 +895,7 @@ function openQuickModal(id){
   quickModal.classList.add('show');
 }
 
-// ============== 作品合集（使用 poster_url 作为背景） ==============
+/* ========= 作品合集：用 poster_url 做背景 ========= */
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); grid.innerHTML='';
   const finals = projects.filter(p=>p.final_link);
@@ -917,13 +915,12 @@ function renderGallery(){
   });
 }
 
-// ============== 档期（保留） ==============
+/* ========= 档期（原样） ========= */
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
 let calBase = new Date(); calBase.setDate(1);
 document.getElementById('cal-prev').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); });
 document.getElementById('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); });
-
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
   labelEl.textContent = `${y}年 ${m+1}月`;
@@ -959,7 +956,7 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务（保留） ==============
+/* ========= 财务（原样） ========= */
 function renderFinance(){
   const byPartner = new Map();
   projects.forEach(p=>{
@@ -1009,10 +1006,10 @@ function drawTrend(container, arr){
   const w=container.clientWidth||800, h=container.clientHeight||180, pad=10;
   const max=Math.max(...arr,1), step=(w-2*pad)/Math.max(arr.length-1,1);
   let d=''; arr.forEach((v,i)=>{ const x=pad+i*step, y=h-pad-(v/max)*(h-2*pad); d+=(i?'L':'M')+x+','+y+' '; });
-  container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#0a84ff" stroke-width="2"/></svg>`;
+  container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#2f81f7" stroke-width="2"/></svg>`;
 }
 
-// ============== 导航 ==============
+/* ========= 导航 ========= */
 document.getElementById('go-list')?.addEventListener('click', ()=> showView('projects'));
 nav.home.addEventListener('click',    ()=> showView('home'));
 nav.projects.addEventListener('click', ()=> showView('projects'));
@@ -1020,7 +1017,7 @@ nav.gallery.addEventListener('click',  ()=> showView('gallery'));
 nav.finance.addEventListener('click',  ()=> showView('finance'));
 nav.schedule.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
 
-// ============== 新建项目（保留） ==============
+/* ========= 新建项目 ========= */
 const mNew = document.getElementById('new-modal');
 document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classList.add('show'));
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
@@ -1032,31 +1029,87 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.paid_amount    = Number(row.paid_amount||0);
   row.deposit_amount = 0;
   if(row.spec){ row.spec = row.spec; }
-  row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'' });
+  row.notes = stringifyNotes({ tags:[], versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:'P3' });
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
   await fetchProjects(); renderAll();
 });
 
-// ============== 渲染整页 ==============
-function renderAll(){
-  renderKpis();
-  renderRecent();
-  renderProjects();
-  renderGallery();
-  renderFinance();
+/* ========= 上传海报/成片 ========= */
+const uploadModal   = document.getElementById('upload-modal');
+const uploadForm    = document.getElementById('upload-form');
+const uploadClose   = document.getElementById('upload-close');
+const uploadCancel  = document.getElementById('upload-cancel');
+const upPosterInput = document.getElementById('up-poster');
+const upVideoInput  = document.getElementById('up-video');
+const pasteBox      = document.getElementById('paste-box');
+const upProgEl      = document.getElementById('up-progress');
+const upProgBar     = upProgEl?.querySelector('.prog-bar');
+const upProgText    = upProgEl?.querySelector('.prog-text');
+const upTip         = document.getElementById('up-tip');
+let pastedPosterFile = null;
+function openUploadModal(id){
+  uploadForm.setAttribute('data-id', id);
+  upPosterInput.value = ''; upVideoInput.value = '';
+  pastedPosterFile = null; setProgress(0); upTip.textContent = '';
+  uploadModal.classList.add('show');
 }
+function closeUploadModal(){ uploadModal.classList.remove('show'); }
+uploadClose?.addEventListener('click', closeUploadModal);
+uploadCancel?.addEventListener('click', closeUploadModal);
+uploadModal?.addEventListener('mousedown', (e)=>{ if(e.target===uploadModal) closeUploadModal(); });
+pasteBox?.addEventListener('paste', (e)=>{
+  const items = e.clipboardData?.items || [];
+  for(const it of items){
+    if(it.type && it.type.startsWith('image/')){
+      const f = it.getAsFile();
+      if(f){ pastedPosterFile = new File([f], 'pasted.png', { type: f.type || 'image/png' }); upTip.textContent='已接收粘贴图片（将作为海报上传）'; }
+      e.preventDefault();
+      break;
+    }
+  }
+});
+function setProgress(p){ const pct=Math.max(0,Math.min(100,Math.round(p))); if(upProgBar) upProgBar.style.width=pct+'%'; if(upProgText) upProgText.textContent=pct+'%'; }
+function fakeProgressStart(){ let p=5; setProgress(p); const t=setInterval(()=>{ p=Math.min(95,p+Math.random()*7); setProgress(p); },300); return ()=>{ clearInterval(t); setProgress(100); }; }
+async function uploadToBucket(path, file){
+  const { error } = await supa.storage.from('attachments').upload(path, file, { upsert:true, contentType:file.type||undefined });
+  if(error) throw error;
+  const { data } = supa.storage.from('attachments').getPublicUrl(path);
+  return data.publicUrl;
+}
+function extOf(name, fallback='dat'){ const i=name.lastIndexOf('.'); return i>=0? name.slice(i+1).toLowerCase(): fallback; }
+uploadForm?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const id = uploadForm.getAttribute('data-id');
+  const posterFile = upPosterInput.files?.[0] || pastedPosterFile || null;
+  const videoFile  = upVideoInput.files?.[0] || null;
+  if(!posterFile && !videoFile){ upTip.textContent='请选择文件或粘贴图片'; return; }
+  const stopFake = fakeProgressStart();
+  try{
+    let posterUrl = null, videoUrl = null;
+    if(posterFile){
+      const pth = `projects/${id}/poster-${Date.now()}.${extOf(posterFile.name,'png')}`;
+      posterUrl = await uploadToBucket(pth, posterFile);
+    }
+    if(videoFile){
+      const pth = `projects/${id}/final-${Date.now()}.${extOf(videoFile.name,'mp4')}`;
+      videoUrl = await uploadToBucket(pth, videoFile);
+    }
+    const patch = {};
+    if(posterUrl) patch.poster_url = posterUrl;
+    if(videoUrl)  patch.final_link = videoUrl;
+    if(Object.keys(patch).length){ await supa.from('projects').update(patch).eq('id', id); }
+    stopFake(); upTip.textContent='上传完成';
+    await fetchProjects(); renderAll();
+    setTimeout(closeUploadModal, 300);
+  }catch(err){ console.error(err); stopFake(); upTip.textContent='上传失败：'+(err?.message||''); }
+});
 
-// ============== 启动 ==============
-async function boot(){
-  const { data:{ session } } = await supa.auth.getSession();
-  if(!session){ showView('auth'); return; }
-  await bootAfterAuth();
-}
-async function bootAfterAuth(){
-  await fetchProjects();
-  renderAll();
-  showView('home');
-}
+/* ========= 渲染 ========= */
+function renderAll(){ renderKpis(); renderRecent(); renderProjects(); renderGallery(); renderFinance(); }
+
+/* ========= 启动 ========= */
+async function boot(){ const { data:{ session } } = await supa.auth.getSession(); if(!session){ showView('auth'); return; } await bootAfterAuth(); }
+async function bootAfterAuth(){ await fetchProjects(); renderAll(); showView('home'); }
 boot();
