@@ -1,81 +1,186 @@
-/* 项目列表加宽 */
-.projects-table{
-  table-layout: fixed;
-  width: 120%;
+/* editor-studio / styles.css  v1.4.6 */
+:root{
+  --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
+  --line:#e5e5ea; --brand:#0a84ff;
+  --gold:#b9812b; --yellow:#d6a300; --red:#e23d2f; --green:#1b9e67; --blue:#2b78ff; --purple:#7a5aff;
+  --r:16px; --pill:999px;
+  --space:18px; --space-lg:22px;
+  --fs:16px; --fs-sm:13px; --fs-xs:12px; --fs-lg:20px;
+  --lh:1.78; --letter:0.2px;
 }
-.projects-table th, .projects-table td{
-  padding: 12px;
-  text-align: left;
-  white-space: nowrap;
+[data-theme="dark"]{
+  --bg:#0d1117; --panel:#0f141b; --text:#c9d1d9; --muted:#8b949e; --line:#30363d; --brand:#2f81f7;
+  --gold:#c8a15a; --yellow:#e3b341; --red:#f47067; --green:#3fb950; --blue:#58a6ff; --purple:#b88cff;
 }
-.projects-table th:nth-child(3), .projects-table td:nth-child(3){
-  width: 20%;
-}
-.projects-table th:nth-child(4), .projects-table td:nth-child(4){
-  width: 5%;
-}
-.projects-table th:nth-child(7), .projects-table td:nth-child(7){
-  width: 5%;
-}
-.projects-table th:nth-child(8), .projects-table td:nth-child(8){
-  width: 40%;
-}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/var(--lh) -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Arial}
+.hidden{display:none!important}
+.center{display:flex;justify-content:center;align-items:center}
+.muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
+.container{width:100%;max-width:1500px;margin:auto;padding:0 24px}
+@media (min-width:1600px){ .container{max-width:1680px} }
 
-/* 作品合集展示 */
-.poster-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-.poster {
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  height: 400px;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-.poster .caption {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-}
+/* Header */
+.site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.nav-wrap{display:flex;align-items:center;gap:12px;height:68px}
+.brand{font-weight:600;letter-spacing:.2px}
+.brand-gold{color:var(--gold);font-weight:700}
+.nav-center{margin-left:auto;margin-right:auto;display:flex;gap:10px}
+.nav-right{display:flex;gap:10px}
+.nav-btn{padding:10px 16px;border:1px solid var(--line);background:var(--panel);border-radius:var(--pill);letter-spacing:.2px;color:var(--text)}
+.nav-btn[aria-current="page"]{border-color:var(--brand);color:var(--brand)}
+.nav-btn.ghost{background:var(--panel)}
+
+/* Layout */
+.main-wrap{padding:26px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:18px;margin-bottom:18px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-head.center{justify-content:center;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.grid-1{display:grid;grid-template-columns:1fr;gap:18px}
+@media (max-width:980px){ .grid-3{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
+
+.kpi-card{border-radius:24px}
+.kpi-label{font-size:var(--fs-sm);color:var(--muted);letter-spacing:var(--letter)}
+.kpi-num{font-weight:800;font-size:28px;letter-spacing:.3px}
+.kpi-gold .kpi-num{color:var(--gold)}
+.kpi-yellow .kpi-num{color:var(--yellow)}
+.kpi-red .kpi-num{color:var(--red)}
+.asof{margin-top:6px}
+
+/* Lists & table */
+.list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
+.list.compact .list-item{padding:8px 0}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
+.table-wrap.wide{overflow:auto}
+.table{width:100%;border-collapse:collapse;table-layout:auto}
+.table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter);vertical-align:middle;color:var(--text)}
+.table thead th{background:color-mix(in oklab, var(--panel), var(--text) 6%)}
+.table th:not(:first-child), .table td:not(:first-child){font-size:14px}
+
+/* 列宽分配（整体加宽 30% 的显示区靠 overflow 承载） */
+.projects-table{min-width:1450px}
+.col-spec{min-width:360px}
+.col-prog{width:120px}
+.col-pri{width:120px}
+.col-pay{width:150px}
+.col-money{width:140px}
+.col-changes{min-width:520px} /* 加宽 40% */
+.col-upload{width:130px}
+
+/* 溢出缩字 */
+.table td.shrink{font-size:var(--fs-xs)}
+.table td .text-cell{white-space:normal}
+
+/* 最近项目：三列+进度能量条（右侧仅版本号椭圆） */
+.recent .list-item{display:grid;grid-template-columns:1fr 220px 160px;gap:12px;align-items:center}
+.recent .pmeta{display:flex;gap:12px;align-items:center}
+.recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:240px}
+.recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
+.recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:8px;align-items:center}
+.recent .count{text-align:center}
+.recent .due{text-align:right}
 
 /* 进度条 */
-.prog-bar {
-  background: linear-gradient(90deg, var(--gold), #e8b055);
-}
-.prog-text {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
+.prog{position:relative;height:24px;border-radius:var(--pill);background:color-mix(in oklab, var(--panel), var(--text) 8%);border:1px solid var(--line);overflow:hidden;width:100%}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055)}
+.prog-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
+.ver-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm);}
 
-/* 报价分析器横向布局 */
-#quote-form .grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+/* Badge（阶段颜色块） */
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 12px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
+.badge-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
+.badge-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
+.badge-f{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
+.badge-done{background:#eaf9f2;color:#1b9e67;border-color:#c9f0df}
+
+/* Pills / status */
+.pill{display:inline-block;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm);background:var(--panel);color:var(--text)}
+.pill-blue{color:#fff;background:var(--blue);border-color:var(--blue)}
+.pill-green{color:#fff;background:var(--green);border-color:var(--green)}
+.pill-gold{color:#fff;background:var(--gold);border-color:var(--gold)}
+.pill-yellow{color:#fff;background:var(--yellow);border-color:var(--yellow)}
+.pill-red{color:#fff;background:var(--red);border-color:var(--red)}
+
+/* 胶囊 select（支付状态/优先级） */
+.capsule-select{
+  appearance:none;-webkit-appearance:none;
+  padding:8px 28px 8px 12px;border-radius:var(--pill);border:1px solid var(--line);
+  background:var(--panel) no-repeat right 10px center / 10px 10px;
+  color:var(--text);min-width:120px;cursor:pointer
 }
-#quote-form .grid-4 label {
-  display: flex;
-  flex-direction: column;
-  font-weight: 600;
-}
-#quote-form .pill-group {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
+.capsule-select[data-val="未收款"]{background-color:color-mix(in oklab, var(--red), transparent 80%);border-color:color-mix(in oklab, var(--red), transparent 40%)}
+.capsule-select[data-val="已收定金"]{background-color:color-mix(in oklab, var(--yellow), transparent 80%);border-color:color-mix(in oklab, var(--yellow), transparent 40%)}
+.capsule-select[data-val="已收尾款"]{background-color:color-mix(in oklab, var(--green), transparent 80%);border-color:color-mix(in oklab, var(--green), transparent 40%)}
+
+/* 表单与按钮 */
+.auth-view{padding:44px 0}
+.auth-card{max-width:420px;margin:auto}
+.auth-form input{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);margin:8px 0;background:var(--panel);color:var(--text)}
+.auth-form button{width:100%;padding:12px;border-radius:var(--pill);border:1px solid var(--line);background:var(--panel);color:var(--text)}
+
+.form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);letter-spacing:var(--letter);background:var(--panel);color:var(--text)}
+.form label{line-height:1.9}
+.btn,.btn-ghost,.ghost{padding:10px 14px;border-radius:var(--pill);border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.btn-ghost,.ghost{background:var(--panel)}
+.cell-edit{padding:6px 12px;border-radius:var(--pill);border:1px solid var(--line);background:var(--panel);font-size:13px;cursor:pointer}
+.cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cell-summary .cell-edit{margin-left:auto}
+
+/* 胶囊多选 */
+.pill-group{gap:12px;flex-wrap:wrap;margin-top:6px;display:flex}
+label.pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--pill);cursor:pointer;background:var(--panel);padding:0;font-size:var(--fs-sm);color:var(--text)}
+label.pill input{display:none}
+label.pill span{display:inline-block;padding:6px 12px}
+label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var(--gold)}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+.modal-inner{width:min(920px,95vw);background:var(--panel);border-radius:24px;border:1px solid var(--line);padding:18px}
+.modal-inner-wide{width:min(1060px,96vw)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
+
+/* 横行 */
+.h-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.h-row > label{min-width:180px}
+
+/* Calendar - 联通格子 */
+.cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:8px 0}
+.cal-grid{position:relative;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,100px);gap:8px}
+.cal-daycell{border:1px solid var(--line);border-radius:14px;padding:6px 8px;position:relative;background:var(--panel)}
+.cal-daynum{font-weight:700;font-size:13px;color:var(--muted)}
+.bar{position:absolute;height:22px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 10px;overflow:hidden}
+.bar-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
+.bar-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
+.bar-f{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
+
+/* Masonry poster */
+.poster-masonry{column-count:3;column-gap:18px}
+@media (max-width:1100px){ .poster-masonry{column-count:2} }
+@media (max-width:700px){ .poster-masonry{column-count:1} }
+.poster{break-inside:avoid;display:block;margin:0 0 18px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#111}
+.poster .ph{aspect-ratio:16/9;background:#222}
+.poster img{width:100%;height:auto;display:block}
+.poster .caption{padding:10px 12px;background:var(--panel);border-top:1px solid var(--line)}
+
+/* Trend */
+.trend{height:180px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:10px}
+.trend svg{width:100%;height:100%}
+
+/* 报价分析器横向排布 */
+.qa-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:8px}
+.price-row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:10px}
+.price-box{border:1px dashed var(--line);border-radius:16px;padding:12px}
+.price{font-size:22px;font-weight:800}
+
+/* Uploader */
+.uploader .dropzone{border:2px dashed var(--line);border-radius:16px;padding:16px;text-align:center;margin-bottom:12px;color:var(--muted)}
+.thumb{display:inline-block;margin:6px 6px 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.thumb img{width:64px;height:64px;object-fit:cover;display:block}
+
+/* 历史修改记录缩略图 */
+.hist-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.hist-thumbs img{width:56px;height:56px;object-fit:cover;border:1px solid var(--line);border-radius:8px;cursor:pointer}
