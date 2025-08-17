@@ -1,6 +1,5 @@
-/* editor-studio / app.js  v1.4.6 */
-
-const APP_VERSION = 'v1.4.6';
+/* editor-studio / app.js  v1.4.7 */
+const APP_VERSION = 'v1.4.7';
 
 // ============== Supabase 初始化 ==============
 const supa = window.supabase.createClient(
@@ -33,7 +32,7 @@ function showView(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.removeAttribute('aria-current'));
   ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
 }
-// 主题：light/dark/auto 循环
+// 主题：light/dark/auto
 const THEME_KEY='theme';
 function applyTheme(mode){
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -77,26 +76,25 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-// ============== Notes（扩展：支持 priority） ==============
+// ============== Notes（扩展：priorityQuadrant & numeric 兼容） ==============
 function parseNotes(notes){
-  // 默认结构
-  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999 };
+  const base = { tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999, priorityQuadrant:'Q3' };
   if(!notes) return base;
   try{
     const obj = JSON.parse(notes);
-    if(obj && (obj.tags || obj.versions || obj.changes || Object.prototype.hasOwnProperty.call(obj,'free') || Object.prototype.hasOwnProperty.call(obj,'priority'))){
+    if(obj){
       return {
         tags: new Set(Array.isArray(obj.tags)?obj.tags:[]),
         versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
         changes: Array.isArray(obj.changes)?obj.changes:[],
         free: obj.free || '',
-        priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999
+        priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999,
+        priorityQuadrant: typeof obj.priorityQuadrant==='string' ? obj.priorityQuadrant : 'Q3'
       };
     }
   }catch(e){}
-  // 文本兼容
   const tags = new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes, priority:999 };
+  return { tags, versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:notes, priority:999, priorityQuadrant:'Q3' };
 }
 function stringifyNotes(obj){
   return JSON.stringify({
@@ -104,7 +102,8 @@ function stringifyNotes(obj){
     versions: obj.versions || {A:'v1',B:'v1',F:'v1'},
     changes: obj.changes || [],
     free: obj.free || '',
-    priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999
+    priority: Number.isFinite(Number(obj.priority)) ? Number(obj.priority) : 999,
+    priorityQuadrant: obj.priorityQuadrant || 'Q3'
   });
 }
 function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
@@ -112,7 +111,15 @@ function hasTag(notes, tag){ return parseNotes(notes).tags.has(tag); }
 // ============== 工具 ==============
 const money = n => `¥${(Number(n||0)).toLocaleString()}`;
 const fmt = (d)=> d? new Date(d): null;
-const getPriority = p => parseNotes(p.notes).priority ?? 999;
+
+const QUADS = {
+  Q1: { label:'Q1 高紧急·高价值', cls:'prio-q1', weight:1 },
+  Q2: { label:'Q2 低紧急·高价值', cls:'prio-q2', weight:2 },
+  Q3: { label:'Q3 高紧急·低价值', cls:'prio-q3', weight:3 },
+  Q4: { label:'Q4 低紧急·低价值', cls:'prio-q4', weight:4 },
+};
+const getQuadKey = (p)=> parseNotes(p.notes).priorityQuadrant || 'Q3';
+const getQuadWeight = (p)=> (QUADS[getQuadKey(p)]?.weight ?? 3);
 
 // 小版本号自增
 function bumpVersion(ver){
@@ -120,7 +127,6 @@ function bumpVersion(ver){
   const next = Math.min(n + 1, 8);
   return 'v' + next;
 }
-
 function parseSpec(specStr){
   const s = specStr || '';
   let json = null;
@@ -131,10 +137,8 @@ function parseSpec(specStr){
     const combos = Array.isArray(json) ? json : (json.combos||[]);
     return { json: true, combos };
   }
-  // 兼容旧版： "1080p · 16:9"
   const raw = s.split('·').map(x=>x.trim());
-  let res = raw[0] || '';
-  let ratio = raw[1] || '';
+  let res = raw[0] || ''; let ratio = raw[1] || '';
   if(!ratio && res.includes(':')){ ratio=res; res=''; }
   return { json:false, combos:[{ type:'', clips:1, res, ratios: ratio? [ratio]: [] }] };
 }
@@ -180,6 +184,8 @@ function totalClipsOf(p){
   return Number(p.clips||0) || 0;
 }
 function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
+function isFullyPaid(p){ return (p.pay_status==='已收尾款') || unpaidAmt(p)<=0; }
+
 function stageInfo(p){
   const d = parseNotes(p.notes);
   const A = !hasTag(p.notes,'#A_DONE');
@@ -220,7 +226,6 @@ function stageBadgeHTML(name, version){
 // ============== 首页 ==============
 function renderRecent(){
   const box = document.getElementById('recent-list'); box.innerHTML='';
-  // 按未来最近节点优先排序
   const weighted = projects.map(p=>{
     const n = nearestMilestone(p);
     let w = 1e15;
@@ -265,7 +270,7 @@ function renderKpis(){
   const paid    = projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
   const unpaid  = projects.reduce((s,p)=>s+unpaidAmt(p),0);
 
-  const clipDone = projects.reduce((s,p)=> s + (hasTag(p.notes,'#F_DONE') ? totalClipsOf(p) : 0), 0);
+  const clipDone = projects.reduce((s,p)=> s + ((hasTag(p.notes,'#F_DONE')||isFullyPaid(p)) ? totalClipsOf(p) : 0), 0);
   const clipAll  = projects.reduce((s,p)=> s + totalClipsOf(p), 0);
   const clipTodo = Math.max(clipAll - clipDone, 0);
 
@@ -279,14 +284,13 @@ function renderKpis(){
   document.getElementById('f-paid').textContent      = money(paid);
   document.getElementById('f-unpaid').textContent    = money(unpaid);
 
-  // 截至日期
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const homeAsof = document.getElementById('home-asof'); if(homeAsof) homeAsof.textContent = `截至 ${todayStr}`;
-  const fAsof = document.getElementById('f-asof'); if(fAsof) fAsof.textContent = `截至 ${todayStr}`;
+  document.getElementById('home-asof')?.replaceChildren(document.createTextNode(`截至 ${todayStr}`));
+  document.getElementById('f-asof')?.replaceChildren(document.createTextNode(`截至 ${todayStr}`));
 }
 
-// ============== 报价分析器（原逻辑保留） ==============
+// ============== 报价分析器（沿用） ==============
 (function initQuote(){
   const typeBase = {
     'LookBook': {price:100,  baseSec:15,  secRate:0.01},
@@ -388,7 +392,7 @@ function renderKpis(){
   calc();
 })();
 
-// ============== 通用编辑模态（原逻辑保留，略） ==============
+// ============== 通用编辑模态（保留） ==============
 const editorModal  = document.getElementById('editor-modal');
 const editorTitle  = document.getElementById('editor-title');
 const editorForm   = document.getElementById('editor-form');
@@ -435,7 +439,7 @@ function openEditorModal(kind, id){
         <button type="button" id="add-combo" class="cell-edit">新增组合</button>
       </div>
       <div class="combo-help">
-        · 4K（UHD）对应常见比例：16:9 → 3840×2160；9:16 → 2160×3840；1:1 → 2160×2160；4:3 → 2880×2160；3:4 → 2160×2880
+        · 4K（UHD）比例参考：16:9 → 3840×2160；9:16 → 2160×3840；1:1 → 2160×2160；4:3 → 2880×2160；3:4 → 2160×2880
       </div>
     `;
     editorForm.addEventListener('click', e=>{
@@ -633,7 +637,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-// ============== 项目列表（新增：优先级排序 + 已完结窗口） ==============
+// ============== 项目列表（未完结上方，已收尾款下方；四象限优先级） ==============
 function formatProgressCell(p){
   const vers = parseNotes(p.notes).versions;
   const near = nearestMilestone(p);
@@ -652,9 +656,26 @@ function formatProgressCell(p){
   return `<span class="badge ${cls}">${near.k}</span> <span class="small">- ${mm}.${dd} - ${small}</span>`;
 }
 
-function renderDoneProjects(doneList){
-  const tb = document.getElementById('done-body'); tb.innerHTML='';
-  doneList.forEach(p=>{
+function prioPillHTML(quadKey){
+  const q = QUADS[quadKey] || QUADS.Q3;
+  return `<span class="prio-pill ${q.cls}" data-quad="${quadKey}">${q.label}</span>`;
+}
+function prioPopoverHTML(cur){
+  return `
+    <div class="prio-pop">
+      ${Object.keys(QUADS).map(k=>{
+        const q=QUADS[k];
+        return `<div class="opt" data-choose="${k}">
+          <span class="prio-pill ${q.cls}">${q.label}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderDonePaid(list){
+  const tb = document.getElementById('done-paid-body'); tb.innerHTML='';
+  list.forEach(p=>{
     const tr = document.createElement('tr');
     const pay = p.pay_status || (unpaidAmt(p)<=0 ? '已收尾款' : (Number(p.paid_amount||0)>0?'已收定金':'未收款'));
     tr.innerHTML = `
@@ -669,13 +690,14 @@ function renderDoneProjects(doneList){
 }
 
 function renderProjects(list=projects){
-  const undone = list.filter(p=> !hasTag(p.notes,'#F_DONE'));
-  const done   = list.filter(p=>  hasTag(p.notes,'#F_DONE'));
+  // 以“已收尾款=已完结”为准
+  const donePaid = list.filter(p=> isFullyPaid(p));
+  const undone   = list.filter(p=> !isFullyPaid(p));
 
-  // —— 未完成项目：按优先级升序，再按更新时间倒序
+  // 未完结：四象限 → 更新时间
   const sorted = [...undone].sort((a,b)=>{
-    const pa = getPriority(a), pb = getPriority(b);
-    if(pa!==pb) return pa - pb;
+    const wa=getQuadWeight(a), wb=getQuadWeight(b);
+    if(wa!==wb) return wa - wb;
     return new Date(b.updated_at) - new Date(a.updated_at);
   });
 
@@ -689,17 +711,15 @@ function renderProjects(list=projects){
     const d = parseNotes(p.notes);
     const last = [...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
     const lastText = last ? `[${last.phase}·${last.version}] ${last.text.slice(0,60)}${last.text.length>60?'…':''}` : '—';
-    const prio = getPriority(p);
+    const quadKey = getQuadKey(p);
 
     tr.innerHTML = `
       <!-- 项目 -->
       <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
 
-      <!-- 优先级（数值越小越靠前） -->
-      <td>
-        <div class="cell-summary">
-          <input type="number" class="prio-inline" data-id="${p.id}" min="0" step="1" value="${prio}">
-        </div>
+      <!-- 优先级（四象限） -->
+      <td class="prio-cell">
+        ${prioPillHTML(quadKey)}
       </td>
 
       <!-- 合作制片 -->
@@ -755,7 +775,7 @@ function renderProjects(list=projects){
     tb.appendChild(tr);
   });
 
-  // —— 监听只绑定一次
+  // —— 行级交互（只绑定一次）
   if(!tb._bound){
     // 标题可编辑
     tb.addEventListener('blur', async (e)=>{
@@ -779,19 +799,39 @@ function renderProjects(list=projects){
       await supa.from('projects').update({ pay_status: sel.value }).eq('id', id);
       const row = projects.find(x=> String(x.id)===String(id));
       if(row){ row.pay_status = sel.value; }
-      renderProjects(projects);
+      await fetchProjects(); renderProjects(projects); // 切换后可能进入“已完结”
     });
 
-    // 优先级内联
-    tb.addEventListener('change', async (e)=>{
-      const inp = e.target.closest('input.prio-inline'); if(!inp) return;
-      const id   = inp.getAttribute('data-id');
-      const row  = projects.find(x=> String(x.id)===String(id));
-      if(!row) return;
-      let d = parseNotes(row.notes||'');
-      d.priority = Number(inp.value||999);
-      await supa.from('projects').update({ notes: stringifyNotes(d) }).eq('id', id);
-      await fetchProjects(); renderProjects(projects); // 重新排序
+    // 四象限优先级：行内小弹窗，不影响其他行
+    tb.addEventListener('click', async (e)=>{
+      const pill = e.target.closest('.prio-pill'); if(!pill) return;
+      const cell = pill.closest('.prio-cell');
+      // 关闭其他弹窗
+      tb.querySelectorAll('.prio-pop').forEach(n=> n.remove());
+      cell.insertAdjacentHTML('beforeend', prioPopoverHTML(pill.getAttribute('data-quad')));
+      const pop = cell.querySelector('.prio-pop');
+
+      // 选择
+      pop.addEventListener('click', async (ee)=>{
+        const opt = ee.target.closest('[data-choose]'); if(!opt) return;
+        const quad = opt.getAttribute('data-choose');
+        // 找到该行 id
+        const tr = cell.closest('tr');
+        const titleTd = tr.querySelector('td[contenteditable][data-id]');
+        const id = titleTd?.getAttribute('data-id');
+        if(!id) return;
+        const row = projects.find(x=> String(x.id)===String(id));
+        let d = parseNotes(row?.notes||'');
+        d.priorityQuadrant = quad;
+        await supa.from('projects').update({ notes: stringifyNotes(d) }).eq('id', id);
+        pop.remove();
+        await fetchProjects(); renderProjects(projects); // 重新排序渲染该表
+      }, { once:true });
+    });
+
+    // 点击空白关闭优先级弹窗
+    document.addEventListener('mousedown', (ev)=>{
+      if(!ev.target.closest('.prio-cell')) tb.querySelectorAll('.prio-pop').forEach(n=> n.remove());
     });
 
     tb._bound = true;
@@ -800,8 +840,10 @@ function renderProjects(list=projects){
   // 缩字
   shrinkOverflowCells(tb);
 
-  // 渲染“已完结项目”窗口
-  renderDoneProjects(done);
+  // 下方“已收尾款=已完结”
+  // 可按 Final 日期降序显示
+  const doneSorted = [...donePaid].sort((a,b)=> new Date(b.final_date||b.updated_at||0) - new Date(a.final_date||a.updated_at||0));
+  renderDonePaid(doneSorted);
 }
 function shrinkOverflowCells(tb){
   const cells = tb.querySelectorAll('td .text-cell');
@@ -816,7 +858,7 @@ function shrinkOverflowCells(tb){
   });
 }
 
-// ============== 最近项目·快速查看（原逻辑保留） ==============
+// ============== 最近项目·快速查看（保留） ==============
 const quickModal = document.getElementById('quick-modal');
 const quickTitle = document.getElementById('quick-title');
 const quickBody  = document.getElementById('quick-body');
@@ -850,7 +892,7 @@ function openQuickModal(id){
   quickModal.classList.add('show');
 }
 
-// ============== 作品合集（原逻辑保留） ==============
+// ============== 作品合集（保留） ==============
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); grid.innerHTML='';
   const finals = projects.filter(p=>p.final_link);
@@ -869,7 +911,7 @@ function renderGallery(){
   });
 }
 
-// ============== 档期（新增：A→B、B→Final 跨期条） ==============
+// ============== 档期（跨期条） ==============
 const gridEl  = document.getElementById('cal-grid');
 const labelEl = document.getElementById('cal-label');
 let calBase = new Date(); calBase.setDate(1);
@@ -902,7 +944,7 @@ function renderCalendar(){
     });
   });
 
-  // 跨期条（限制最大 14 天，避免挤爆）
+  // 跨期条（限制 14 天）
   function addSpan(startDate, endDate, label){
     if(!startDate || !endDate) return;
     if(endDate < startDate) return;
@@ -933,7 +975,7 @@ function renderCalendar(){
   }
 }
 
-// ============== 财务（智能排序：金额×逾期天数） ==============
+// ============== 财务（加权排序保留） ==============
 function renderFinance(){
   const byPartner = new Map();
   projects.forEach(p=>{
@@ -958,9 +1000,9 @@ function renderFinance(){
   const rows = projects.filter(p=> p.final_date && unpaidAmt(p)>0).map(p=>{
     const days = Math.max(0, Math.floor((today - new Date(p.final_date).getTime())/86400000));
     const amt  = unpaidAmt(p);
-    const weight = amt * days; // 加权
+    const weight = amt * days;
     return { p, days, amt, weight };
-  }).sort((a,b)=> b.weight - a.weight); // 权重降序
+  }).sort((a,b)=> b.weight - a.weight);
 
   rows.forEach(({p,days,amt})=>{
     const li=document.createElement('div'); li.className='list-item';
@@ -995,7 +1037,7 @@ nav.gallery?.addEventListener('click',  ()=> showView('gallery'));
 nav.finance?.addEventListener('click',  ()=> showView('finance'));
 nav.schedule?.addEventListener('click', ()=> { showView('schedule'); renderCalendar(); });
 
-// ============== 新建项目（保持不变，仅初始化 notes 结构支持 priority） ==============
+// ============== 新建项目（notes 初始含 priorityQuadrant） ==============
 const mNew = document.getElementById('new-modal');
 document.getElementById('btn-new')?.addEventListener('click', ()=> mNew.classList.add('show'));
 document.getElementById('new-cancel')?.addEventListener('click', ()=> mNew.classList.remove('show'));
@@ -1007,8 +1049,7 @@ document.getElementById('new-form')?.addEventListener('submit', async (e)=>{
   row.paid_amount    = Number(row.paid_amount||0);
   row.deposit_amount = 0; // 旧字段兼容
   if(row.spec){ row.spec = row.spec; }
-  // 初始化 notes 为 JSON（含 priority）
-  row.notes = stringifyNotes({ tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999 });
+  row.notes = stringifyNotes({ tags:new Set(), versions:{A:'v1',B:'v1',F:'v1'}, changes:[], free:'', priority:999, priorityQuadrant:'Q3' });
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show');
