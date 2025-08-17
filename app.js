@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.1 */
-const APP_VERSION = 'V1.5.1';
+/* editor-studio / app.js  v1.5.2 */
+const APP_VERSION = 'V1.5.2';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -109,7 +109,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目（保留能量条，居中百分比） */
+/* 首页：最近项目（能量条直显） */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -145,7 +145,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI（首页不显示 as-of；财务页显示） */
+/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -160,13 +160,11 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
-
-  const t=new Date(); const s=`截至 ${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-  const fAsOf=$('f-asof'); if(fAsOf) fAsOf.textContent=s;
+  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
-/* 报价分析器（横向 + 保留原选项 + 说明） */
+/* 报价分析器（横向） */
 (function initQuote(){
   const typeBase={'LookBook':{price:100,baseSec:15,secRate:0.01},'形象片':{price:3500,baseSec:45,secRate:0.03},'TVC':{price:7000,baseSec:60,secRate:0.03},'纪录片':{price:12000,baseSec:180,secRate:0.005},'微电影':{price:12000,baseSec:180,secRate:0.005}};
   const elType=$('qa-type'), elBase=$('qa-base'), elSecs=$('qa-secs');
@@ -230,7 +228,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染：保持不变，仅列宽变更由 CSS 控制 */
+/* 编辑模态与项目表渲染（保持原逻辑） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -574,9 +572,9 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：中间帧抽封面 + 更大 + 不规则组合 */
+/* 作品合集：改回“靠近首帧”的自动抽帧 */
 const thumbCache=new Map();
-function captureVideoMiddleFrame(url){
+function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
     try{
       const v=document.createElement('video');
@@ -584,7 +582,7 @@ function captureVideoMiddleFrame(url){
       v.src=url;
       v.addEventListener('loadedmetadata',()=>{
         const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
-        v.currentTime = t; // 近首帧自动取一帧
+        v.currentTime = t; // 靠近首帧
       }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
@@ -596,15 +594,9 @@ function captureVideoMiddleFrame(url){
         }catch(e){ resolve(null); }
       }, { once:true });
       v.addEventListener('error',()=> resolve(null), { once:true });
-      // 某些浏览器可能不触发 seeked，兜底
       v.addEventListener('timeupdate',()=>{ resolve(null); }, { once:true });
     }catch(e){ resolve(null); }
   });
-}
-function colorIndexForId(id){
-  let s=0; const str=String(id||'0');
-  for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
-  return s % 8; // 对应 .c0 ~ .c7
 }
 async function getCoverFor(p){
   if(p.poster_url) return p.poster_url;
@@ -612,7 +604,7 @@ async function getCoverFor(p){
   let cover=null;
   if(p.final_link){
     if(/\.(png|jpe?g|webp)$/i.test(p.final_link)) cover=p.final_link;
-    else if(/\.(mp4|mov|m4v|webm|ogg)$/i.test(p.final_link)) cover=await captureVideoMiddleFrame(p.final_link);
+    else if(/\.(mp4|mov|m4v|webm|ogg)$/i.test(p.final_link)) cover=await captureVideoAutoFrame(p.final_link);
   }
   if(!cover){
     cover='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#f2f2f7"/><stop offset="1" stop-color="#e9ecef"/></linearGradient></defs><rect fill="url(#g)" width="1600" height="900"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="64" fill="#999">No Cover</text></svg>`);
@@ -628,7 +620,6 @@ async function renderGallery(){
   for(let i=0;i<finals.length;i++){
     const p=finals[i];
     const a=document.createElement('a'); a.className='mag-card'; a.href=p.final_link; a.target='_blank';
-    // 30% 几率跨两列，形成不规则组合（浏览器会用 dense 策略尽量贴合）
     if(Math.random()<0.3) a.classList.add('mag-span2');
     const cover=await getCoverFor(p);
     a.innerHTML = `<img class="mag-cover" src="${cover}" alt=""><div class="mag-cap">${p.title||'未命名'}${p.brand?` · ${p.brand}`:''}</div>`;
@@ -636,12 +627,17 @@ async function renderGallery(){
   }
 }
 
-/* 日历：把“项目名+版本”放进色块内，并把色块加大（CSS 控制高度） */
+/* 日历：仅边框 + 多色（按项目 id 哈希） */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
 $('cal-prev').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); });
 $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); });
+function colorIndexForId(id){
+  let s=0; const str=String(id||'0');
+  for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
+  return s % 8; // 对应 .c0 ~ .c7
+}
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
   labelEl.textContent=`${y}年 ${m+1}月`;
@@ -679,34 +675,100 @@ function renderCalendar(){
   });
 }
 
-/* 财务与趋势图（保持） */
+/* 财务 */
 function renderFinance(){
+  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
-  const rp=$('rank-partner'); rp.innerHTML=''; [...byPartner.entries()].sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{ const li=document.createElement('div'); li.className='list-item'; li.innerHTML=`<div>${k}</div><strong>${money(v)}</strong>`; rp.appendChild(li); });
-  const rq=$('rank-project'); rq.innerHTML=''; [...projects].sort((a,b)=>Number(b.quote_amount||0)-Number(a.quote_amount||0)).forEach(p=>{ const li=document.createElement('div'); li.className='list-item'; li.innerHTML=`<div>${p.title||'未命名'}</div><strong>${money(p.quote_amount)}</strong>`; rq.appendChild(li); });
-  const aging=$('aging'); aging.innerHTML=''; const today=Date.now();
-  projects.filter(p=> p.final_date && unpaidAmt(p)>0).sort((a,b)=> new Date(a.final_date)-new Date(b.final_date)).forEach(p=>{
-    const days=Math.floor((today - new Date(p.final_date).getTime())/86400000);
+  const rp=$('rank-partner'); rp.innerHTML='';
+  const partnerRank=[...byPartner.entries()].sort((a,b)=>b[1]-a[1]);
+  partnerRank.forEach(([k,v])=>{ const li=document.createElement('div'); li.className='list-item'; li.innerHTML=`<div>${k}</div><strong>${moneyAbbr(v)}</strong>`; rp.appendChild(li); });
+  rp.classList.add('collapsed');
+
+  const rq=$('rank-project'); rq.innerHTML='';
+  const projRank=[...projects].sort((a,b)=>Number(b.quote_amount||0)-Number(a.quote_amount||0));
+  projRank.forEach(p=>{ const li=document.createElement('div'); li.className='list-item'; li.innerHTML=`<div>${p.title||'未命名'}</div><strong>${moneyAbbr(p.quote_amount)}</strong>`; rq.appendChild(li); });
+  rq.classList.add('collapsed');
+
+  const aging=$('aging'); aging.innerHTML='';
+  const today=Date.now();
+  const agingRows = projects
+    .filter(p=> p.final_date && unpaidAmt(p)>0)
+    .map(p=>({p,days:Math.max(0,Math.floor((today - new Date(p.final_date).getTime())/86400000))}))
+    .sort((a,b)=> b.days-a.days || unpaidAmt(b.p)-unpaidAmt(a.p));
+  agingRows.forEach(({p,days})=>{
     const li=document.createElement('div'); li.className='list-item';
-    li.innerHTML=`<div>${p.title||'未命名'} / ${p.producer_name||'未填'}</div><div>${money(unpaidAmt(p))} / ${days>0?days:0}天</div>`;
+    li.innerHTML=`<div>${p.title||'未命名'} · ${p.producer_name||'未填'}</div><strong>${moneyAbbr(unpaidAmt(p))} / ${days}天</strong>`;
     aging.appendChild(li);
   });
+  aging.classList.add('collapsed');
 
-  const start=new Date(Date.now()-89*86400000); start.setHours(0,0,0,0);
-  const days=Array.from({length:90},(_,i)=> new Date(start.getTime()+i*86400000));
-  const map=new Map(days.map(d=>[d.toDateString(),0]));
-  projects.forEach(p=>{ const d=new Date(p.updated_at); d.setHours(0,0,0,0); if(d>=start){ const k=d.toDateString(); map.set(k,(map.get(k)||0)+Number(p.paid_amount||0)); }});
-  drawTrend($('trend'), days.map(d=> map.get(d.toDateString())||0));
-}
-function drawTrend(container, arr){
-  container.innerHTML=''; const w=container.clientWidth||800, h=container.clientHeight||180, pad=10;
-  const max=Math.max(...arr,1), step=(w-2*pad)/Math.max(arr.length-1,1);
-  let d=''; arr.forEach((v,i)=>{ const x=pad+i*step, y=h-pad-(v/max)*(h-2*pad); d+=(i?'L':'M')+x+','+y+' '; });
-  container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#2f81f7" stroke-width="2"/></svg>`;
+  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
+  const months=Array.from({length:12},(_,i)=>i); // 0..11
+  const year=(new Date()).getFullYear();
+  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
+  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
+  projects.forEach(p=>{
+    if(p.final_date){
+      const d=new Date(p.final_date);
+      if(d.getFullYear()===year){ deliver[d.getMonth()] += Number(p.quote_amount||0); }
+    }
+    if(p.paid_amount){
+      const u=new Date(p.updated_at||Date.now());
+      if(u.getFullYear()===year){ receive[u.getMonth()] += Number(p.paid_amount||0); }
+    }
+  });
+
+  // 旺季/淡季（基于交稿曲线）
+  let maxM=0,minM=0;
+  for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
+  const tags=$('trend-tags');
+  tags.textContent = `旺季：${maxM+1}月 ｜ 淡季：${minM+1}月`;
+
+  drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 上传 */
+/* 双折线渲染（带坐标轴与月刻度） */
+function drawDualTrend(container, months, deliver, receive){
+  container.innerHTML='';
+  const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
+  const maxVal=Math.max(1, ...deliver, ...receive);
+  const xStep=(w-padL-padR)/Math.max(months.length-1,1);
+  const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
+
+  const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+
+  // 网格 & 轴
+  const ticks=5;
+  let grid='';
+  for(let i=0;i<=ticks;i++){
+    const y=padT + (h-padT-padB)*i/ticks;
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${(w-padR).toFixed(1)}" y2="${y.toFixed(1)}" stroke="currentColor" opacity="0.08"/>`;
+    const val=(maxVal*(1-i/ticks));
+    const label = val>=1e6? (val/1e6).toFixed(1)+'M' : val>=1e3? (val/1e3).toFixed(1)+'K' : Math.round(val).toString();
+    grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
+  }
+
+  // 月份刻度
+  let xlabels='';
+  months.forEach((m,i)=>{
+    const x=padL+i*xStep;
+    xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
+  });
+
+  const pathDeliver = toPath(deliver);
+  const pathReceive = toPath(receive);
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <g class="grid">${grid}</g>
+      <path d="${pathDeliver}" fill="none" stroke="#d29922" stroke-width="2"/>
+      <path d="${pathReceive}" fill="none" stroke="#2f81f7" stroke-width="2"/>
+      <g class="xlabels">${xlabels}</g>
+    </svg>`;
+}
+
+/* 上传（保持） */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
@@ -730,6 +792,18 @@ uploadForm?.addEventListener('submit',async e=>{
     if(Object.keys(patch).length) await supa.from('projects').update(patch).eq('id',id);
     stop(); upTip.textContent='上传完成'; await fetchProjects(); renderAll(); setTimeout(closeUploadModal,300);
   }catch(err){ console.error(err); stop(); upTip.textContent='上传失败：'+(err?.message||''); }
+});
+
+/* 折叠/展开按钮（Finance 三个榜单） */
+document.addEventListener('click', e=>{
+  const btn=e.target.closest('.btn-collapse');
+  if(!btn) return;
+  const id=btn.getAttribute('data-target');
+  const box=$(id);
+  if(!box) return;
+  const expanded = box.classList.toggle('expanded');
+  if(expanded){ box.classList.remove('collapsed'); btn.textContent='收起'; }
+  else { box.classList.add('collapsed'); btn.textContent='展开'; }
 });
 
 /* 导航 & 启动 */
