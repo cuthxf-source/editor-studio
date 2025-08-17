@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.4.5 */
+/* editor-studio / styles.css  v1.4.6 */
 
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
@@ -8,6 +8,13 @@
   --space:18px; --space-lg:22px;
   --fs:16px; --fs-sm:13px; --fs-xs:12px; --fs-lg:20px;
   --lh:1.78; --letter:0.2px;
+}
+
+/* === GitHub 风格·深色模式变量覆盖 === */
+.theme-dark{
+  --bg:#0d1117; --panel:#161b22; --text:#c9d1d9; --muted:#8b949e;
+  --line:#30363d; --brand:#58a6ff;
+  --gold:#e3b341; --yellow:#d29922; --red:#f85149; --green:#3fb950; --blue:#58a6ff; --purple:#a371f7;
 }
 
 *{box-sizing:border-box}
@@ -24,10 +31,12 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .brand{font-weight:600;letter-spacing:.2px}
 .brand-gold{color:var(--gold);font-weight:700}
 .nav-center{margin-left:auto;margin-right:auto;display:flex;gap:10px}
-.nav-right{display:flex}
+.nav-right{display:flex;gap:10px}
 .nav-btn{padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:var(--pill);letter-spacing:.2px}
+.theme-dark .nav-btn{background:var(--panel);color:var(--text)}
 .nav-btn[aria-current="page"]{border-color:var(--brand);color:var(--brand)}
 .nav-btn.ghost{background:#fff}
+.theme-dark .nav-btn.ghost{background:var(--panel)}
 
 /* Layout */
 .main-wrap{padding:26px 0}
@@ -52,32 +61,36 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .list .list-item{padding:12px;border-bottom:1px dashed var(--line);letter-spacing:var(--letter)}
 .list.compact .list-item{padding:8px 0}
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:#fff}
+.theme-dark .table-wrap{background:var(--panel)}
 .table{width:100%;border-collapse:collapse;table-layout:auto}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;letter-spacing:var(--letter);vertical-align:middle}
 .table thead th{background:#fafafa}
+.theme-dark .table thead th{background:#0f141a}
 /* 表格：除第一列外统一小号字 */
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-/* 修改内容列加宽（约3倍） */
-.table th:nth-child(7), .table td:nth-child(7){min-width:520px}
+/* 修改内容列加宽（新增优先级列后为第8列） */
+.table th:nth-child(8), .table td:nth-child(8){min-width:520px}
 /* 溢出时缩小文字而非撑开格子 */
 .table td.shrink{font-size:var(--fs-xs)}
 /* 规格多组合换行显示 */
 .table td .text-cell{white-space:normal}
 
-/* 最近项目：三列栅格（把进度条移到标题右侧并放大） */
+/* 最近项目：三列栅格（进度条更厚，去除版本徽标） */
 .recent .list-item{display:grid;grid-template-columns:1fr 140px 180px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:240px}
 .recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
 .recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:8px;align-items:center}
 .recent .count{text-align:center}
-.recent .due{text-align:right}
+.recent .due{text-align:center} /* 居中 */
 
 /* 进度条 */
 .prog{position:relative;height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
+.theme-dark .prog{background:#0f141a}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);}
+.theme-dark .prog-bar{background:linear-gradient(90deg,var(--gold),#d4a94a)}
 /* 首页“最近项目”进度条更厚 + 百分比文本居中 */
-.recent .prog{height:24px} /* v1.4.5: 进度条更厚 */
+.recent .prog{height:24px}
 .prog-text{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
@@ -90,6 +103,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .badge-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
 .badge-f{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
 .badge-done{background:#eaf9f2;color:#1b9e67;border-color:#c9f0df}
+.theme-dark .badge-a{background:#17233a;color:#58a6ff;border-color:#1f2b44}
+.theme-dark .badge-b{background:#221a35;color:#a371f7;border-color:#2b2242}
+.theme-dark .badge-f{background:#2d2416;color:#e3b341;border-color:#3a2f1e}
+.theme-dark .badge-done{background:#10251a;color:#3fb950;border-color:#203826}
 
 /* Pills / status */
 .pill{display:inline-block;border-radius:var(--pill);border:1px solid var(--line);font-size:var(--fs-sm)}
@@ -102,28 +119,33 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 /* 表单与按钮 */
 .auth-view{padding:44px 0}
 .auth-card{max-width:420px;margin:auto}
-.auth-form input{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);margin:8px 0}
+.auth-form input{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);margin:8px 0;background:var(--panel);color:var(--text)}
 .auth-form button{width:100%;padding:12px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
+.theme-dark .auth-form button{background:var(--panel);color:var(--text)}
 
-.form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);letter-spacing:var(--letter)}
+.form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:var(--pill);letter-spacing:var(--letter);background:var(--panel);color:var(--text)}
 .form label{line-height:1.9}
 .btn,.btn-ghost,.ghost{padding:10px 14px;border-radius:var(--pill);border:1px solid var(--line);background:#fff}
 .btn-ghost,.ghost{background:#fff}
+.theme-dark .btn,.theme-dark .btn-ghost,.theme-dark .ghost{background:var(--panel);color:var(--text);border-color:var(--line)}
 .cell-edit{padding:6px 12px;border-radius:var(--pill);border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer}
+.theme-dark .cell-edit{background:var(--panel);color:var(--text)}
 .cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.cell-summary .cell-edit{margin-left:auto} /* 编辑按钮永远靠右 */
+.cell-summary .cell-edit{margin-left:auto}
 
-/* 胶囊多选（点击前后尺寸一致；点击后颜色占满胶囊） */
+/* 胶囊多选 */
 .pill-group{gap:12px;flex-wrap:wrap;margin-top:6px}
 label.pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--pill);cursor:pointer;background:#fff;padding:0;font-size:var(--fs-sm)}
+.theme-dark label.pill{background:var(--panel);color:var(--text)}
 label.pill input{display:none}
 label.pill span{display:inline-block;padding:6px 12px}
-label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var(--gold)} /* 颜色占满整颗胶囊 */
+label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var(--gold)}
 
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
 .modal-inner{width:min(920px,95vw);background:#fff;border-radius:24px;border:1px solid var(--line);padding:18px}
+.theme-dark .modal-inner{background:var(--panel)}
 .modal-inner-wide{width:min(1060px,96vw)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
@@ -136,27 +158,38 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:8px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;min-height:300px}
 .cal-cell{background:#fff;border:1px solid var(--line);border-radius:24px;padding:10px;min-height:110px}
+.theme-dark .cal-cell{background:var(--panel)}
 .cal-day{font-weight:700}
 .ev{display:inline-block;margin:6px 0 0;padding:4px 10px;border-radius:var(--pill);font-size:var(--fs-sm);border:1px solid var(--line)}
 .ev-a{background:#e7f0ff;color:#2b78ff;border-color:#cfe0ff}
 .ev-b{background:#efe7ff;color:#7a5aff;border-color:#dfd3ff}
 .ev-final{background:#fff4e5;color:#b36b00;border-color:#ffe2b8}
 .ev-overdue{background:#ffe9e7;color:#e23d2f;border-color:#ffd7d3}
+.ev-span{background:#eef2ff;color:#2b78ff;border-color:#d6ddff}
+.theme-dark .ev-a{background:#17233a;color:#58a6ff;border-color:#1f2b44}
+.theme-dark .ev-b{background:#221a35;color:#a371f7;border-color:#2b2242}
+.theme-dark .ev-final{background:#2d2416;color:#e3b341;border-color:#3a2f1e}
+.theme-dark .ev-overdue{background:#3a1b1b;color:#f85149;border-color:#562222}
+.theme-dark .ev-span{background:#131b2a;color:#58a6ff;border-color:#1f2b44}
 
 /* Posters */
 .poster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
 .poster{display:block;aspect-ratio:16/9;background:#f6f6f6;border:1px solid var(--line);border-radius:24px;overflow:hidden;position:relative}
+.theme-dark .poster{background:#0f141a}
 .poster .caption{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.9);padding:6px 10px;border-radius:var(--pill);border:1px solid var(--line)}
 
 /* Trend */
 .trend{height:180px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:10px}
+.theme-dark .trend{background:var(--panel)}
 .trend svg{width:100%;height:100%}
 
 /* Toolbar */
 .toolbar{display:flex;gap:10px;align-items:center}
 
-/* 规格编辑行（横行 & 呼吸空间） */
+/* 规格编辑行 */
 .combo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:8px 0}
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
-/* 多选比例右上对齐（与类型/分辨率一行） */
 .ratios-inline{display:flex;gap:12px;align-items:center;margin-left:auto}
+
+/* 已完结窗口 */
+.fixed-pane{max-height:260px;overflow:auto}
