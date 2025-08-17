@@ -1,5 +1,4 @@
-index.html（v1.5.1）
-<!-- editor-studio / index.html  v1.5.1 -->
+<!-- editor-studio / index.html  v1.5.2 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -10,8 +9,8 @@ index.html（v1.5.1）
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5.1" />
-  <link rel="stylesheet" href="styles.css?v=v1.5.1" />
+  <link rel="icon" href="icon.png?v=v1.5.2" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.2" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -68,7 +67,7 @@ index.html（v1.5.1）
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器：横向对齐，保留原有选项 + 底部说明 -->
+      <!-- 报价分析器：横向对齐，保留原有选项（底部说明已去掉） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form quote-horizontal">
@@ -117,7 +116,7 @@ index.html（v1.5.1）
             <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
-
+          <!-- 原底部说明已删除 -->
         </form>
       </div>
     </section>
@@ -185,7 +184,7 @@ index.html（v1.5.1）
       <div id="cal-grid" class="cal-grid"></div>
     </section>
 
-    <!-- 作品合集：超大海报 + 中间帧抽封面 + 不规则组合 -->
+    <!-- 作品合集 -->
     <section id="view-gallery" class="view hidden">
       <div class="section-head"><h2>作品合集</h2></div>
       <div id="gallery-grid" class="mag-grid"></div>
@@ -200,18 +199,24 @@ index.html（v1.5.1）
       </div>
       <div id="f-asof" class="muted small asof"></div>
       <div class="grid-3">
-        <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
-        <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
         <div class="card">
-          <div class="section-head"><h3>已完结未结款</h3></div>
-          <div class="list compact">
-            <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
-            <div id="aging"></div>
-          </div>
+          <div class="section-head"><h3>合作金额最高伙伴</h3><button class="ghost fold-btn" data-target="rank-partner">展开全部</button></div>
+          <div id="rank-partner" class="list compact fold"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h3>单值最高项目</h3><button class="ghost fold-btn" data-target="rank-project">展开全部</button></div>
+          <div id="rank-project" class="list compact fold"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h3>已完结未结款</h3><button class="ghost fold-btn" data-target="aging">展开全部</button></div>
+          <div id="aging" class="list compact fold"></div>
         </div>
       </div>
       <div class="card">
-        <div class="section-head"><h3>收入趋势（90 天）</h3></div>
+        <div class="section-head">
+          <h3>收入趋势（12 个月）</h3>
+          <div id="season-tags" class="season-tags"></div>
+        </div>
         <div id="trend" class="trend"></div>
       </div>
     </section>
@@ -251,6 +256,6 @@ index.html（v1.5.1）
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5.1" defer></script>
+  <script src="app.js?v=v1.5.2" defer></script>
 </body>
 </html>
