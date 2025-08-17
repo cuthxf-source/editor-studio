@@ -1,3 +1,5 @@
+/* editor-studio / styles.css  v1.4.5 */
+
 :root{
   --bg:#fbfbfd; --panel:#fff; --text:#111; --muted:#666;
   --line:#e5e5ea; --brand:#0a84ff;
@@ -75,10 +77,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .prog{position:relative;height:12px;border-radius:var(--pill);background:#f2f2f7;border:1px solid var(--line);overflow:hidden;width:100%}
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055);}
 /* 首页“最近项目”进度条更厚 + 百分比文本居中 */
-.recent .prog{height:20px}
+.recent .prog{height:24px} /* v1.4.5: 进度条更厚 */
 .prog-text{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
+  font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
   pointer-events:none;
 }
 
@@ -158,58 +160,3 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .combo-help{margin-top:6px;color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
 /* 多选比例右上对齐（与类型/分辨率一行） */
 .ratios-inline{display:flex;gap:12px;align-items:center;margin-left:auto}
-/* editor-studio / app.js  v1.4.5 */
-
-// ============== App 版本（用于修改记录） ==============
-const APP_VERSION = 'v1.4.5';
-
-// ============== Supabase 初始化 ==============
-const supa = window.supabase.createClient(
-  window.SUPABASE_URL,
-  window.SUPABASE_ANON_KEY,
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-);
-
-// ============== 视图管理 ==============
-const views = {
-  auth:      document.getElementById('view-auth'),
-  home:      document.getElementById('view-home'),
-  projects:  document.getElementById('view-projects'),
-  schedule:  document.getElementById('view-schedule'),
-  gallery:   document.getElementById('view-gallery'),
-  finance:   document.getElementById('view-finance'),
-};
-const nav = {
-  home:     document.getElementById('btn-home'),
-  projects: document.getElementById('btn-projects'),
-  schedule: document.getElementById('btn-schedule'),
-  gallery:  document.getElementById('btn-gallery'),
-  finance:  document.getElementById('btn-finance'),
-  logout:   document.getElementById('btn-logout'),
-};
-function showView(name){
-  Object.values(views).forEach(v=>v.classList.add('hidden'));
-  (views[name]||views.home).classList.remove('hidden');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.removeAttribute('aria-current'));
-  ({home:nav.home, projects:nav.projects, schedule:nav.schedule, gallery:nav.gallery, finance:nav.finance}[name])?.setAttribute('aria-current','page');
-}
-
-// ============== 登录/注册（未登录只显示登录页） ==============
-const authForm = document.getElementById('auth-form');
-const authTip  = document.getElementById('auth-tip');
-nav.logout.addEventListener('click', async ()=>{
-  await supa.auth.signOut();
-  showView('auth');
-});
-authForm?.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value.trim();
-  let { error } = await supa.auth.signInWithPassword({ email, password });
-  if(error){
-    const { error: signUpErr } = await supa.auth.signUp({ email, password });
-    if(signUpErr){ authTip.textContent = signUpErr.message; return; }
-  }
-  const { data: { session } } = await supa.auth.getSession();
-  if(session){ await bootAfterAuth(); showView('home'); }
-});
