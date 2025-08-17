@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.6 -->
+<!-- editor-studio / index.html  v1.4.7 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.6" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.6" />
+  <link rel="icon" href="icon.png?v=v1.4.7" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.7" />
   <!-- Supabase UMD（必须在 app.js 前） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -158,31 +158,13 @@
         </div>
       </div>
 
-      <!-- 已完结项目（固定窗口，不影响未完成排序） -->
-      <div class="card">
-        <div class="section-head"><h3>已完结项目</h3></div>
-        <div id="done-wrap" class="table-wrap fixed-pane">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>项目</th>
-                <th>合作制片</th>
-                <th>Final 日期</th>
-                <th>收款状态</th>
-                <th>金额</th>
-              </tr>
-            </thead>
-            <tbody id="done-body"></tbody>
-          </table>
-        </div>
-      </div>
-
+      <!-- 未完结（上方） -->
       <div id="projects-wrap" class="table-wrap">
         <table class="table">
           <thead>
             <tr>
               <th>项目</th>
-              <th>优先级</th>
+              <th class="col-prio">优先级</th>
               <th>合作制片</th>
               <th>影片类型&条数&规格</th>
               <th>进度</th>
@@ -193,6 +175,25 @@
           </thead>
           <tbody id="projects-body"></tbody>
         </table>
+      </div>
+
+      <!-- 已完结（下方，以“已收尾款=已完结”为准） -->
+      <div class="card" style="margin-top:16px">
+        <div class="section-head"><h3>已完结项目（以已收尾款为准）</h3></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>合作制片</th>
+                <th>Final 日期</th>
+                <th>收款状态</th>
+                <th>金额</th>
+              </tr>
+            </thead>
+            <tbody id="done-paid-body"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -311,6 +312,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.6" defer></script>
+  <script src="app.js?v=v1.4.7" defer></script>
 </body>
 </html>
