@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5 */
+/* editor-studio / styles.css  v1.5.1 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,7 +20,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-.container{width:100%;max-width:1500px;margin:auto;padding:0 24px}
+/* 整体加宽 */
+.container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -50,7 +51,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .asof{margin-top:6px}
 #view-home .asof{display:none} /* 首页不显示截至时间 */
 
-/* 表格（满足：两个窗口加宽 40%，修改内容列加宽 40%） */
+/* 表格（满足：整体更宽；修改内容列缩小 50%） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
@@ -61,19 +62,18 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .col-upload{min-width:140px}
 .col-priority{min-width:110px}
 
-/* 项目页：表整体加宽 40%（未完成与已完成两个窗口） */
-#view-projects .projects-table{table-layout:fixed;width:140%}
-
-/* 指定列宽：第3列(规格)=20%，第8列(修改内容)=40%，其余自适应单行 */
+/* 项目页：表整体加宽到 150%（未完成与已完成两个窗口） */
+#view-projects .projects-table{table-layout:fixed;width:150%}
+/* 指定列宽：第3列(规格)=20%，第8列(修改内容)=20%（由原 40% 缩 50%），其余自适应单行 */
 #view-projects .projects-table th:nth-child(3), 
 #view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
 #view-projects .projects-table th:nth-child(8), 
-#view-projects .projects-table td:nth-child(8){width:40%;min-width:640px;white-space:normal}
+#view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
-/* 最近项目（四列：信息 / 条数 / 最近节点 / 版本号） + 能量条 */
-.recent .list-item{display:grid;grid-template-columns:1fr 100px 140px 120px;gap:12px;align-items:center}
+/* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
+.recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
-.recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:240px}
+.recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:260px}
 .recent .pmeta .subtitle{color:var(--muted);font-size:var(--fs-sm)}
 .recent .pmeta .prog-wrap{flex:1 1 auto;display:flex;gap:8px;align-items:center}
 .recent .prog{height:24px}
@@ -118,26 +118,35 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .tiny-thumb{width:28px;height:18px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
 .thumb-list{display:flex;gap:6px;align-items:center}
 
-/* 日历：联通格子 + 在色块起点显示“项目名+版本号” */
+/* 日历：色块内展示项目名+版本（加高） */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin:8px 0}
 .cal-grid-head span{text-align:center;font-weight:700;padding:6px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--line)}
-.cal-cell{position:relative;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:96px;padding:8px}
+.cal-cell{position:relative;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:110px;padding:8px}
 .cal-cell:nth-child(7n){border-right:none}
 .cal-day{font-weight:700;margin-bottom:6px}
-.span-piece{height:8px;border:1px solid var(--line);background:#e7f0ff}
+.span-piece{position:relative;height:22px;border:1px solid var(--line);background:#e7f0ff;overflow:hidden}
 .span-a{background:#e7f0ff;border-color:#cfe0ff}
 .span-b{background:#efe7ff;border-color:#dfd3ff}
 .span-f{background:#fff4e5;border-color:#ffe2b8}
 .span-start{border-top-left-radius:6px;border-bottom-left-radius:6px}
 .span-end{border-top-right-radius:6px;border-bottom-right-radius:6px}
-.bar-line{position:relative;display:block;margin-top:6px}
-.ev-label{position:absolute;left:0;top:-16px;font-size:12px;color:var(--muted);white-space:nowrap}
+.bar-line{position:relative;display:block;margin-top:8px}
+.span-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#222}
+[data-theme="dark"] .span-text{color:#111}
 
-/* 作品合集：杂志式拼贴（超大海报 + 自动抽帧封面） */
-.magazine-grid{column-count:4;column-gap:18px}
-@media (max-width:1400px){ .magazine-grid{ column-count:3 } }
-@media (max-width:980px){ .magazine-grid{ column-count:2 } }
-.mag-card{display:block; break-inside:avoid; margin-bottom:18px; position:relative; border-radius:24px; overflow:hidden; border:1px solid var(--line); background:#f6f6f6}
+/* 作品合集：更大 + 直角 + 不规则组合（CSS Grid 密集排布） */
+.mag-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(560px, 1fr)); /* 大约比之前大 2 倍 */
+  gap:18px;
+  grid-auto-flow:dense;
+}
+.mag-card{
+  display:block; position:relative; background:#f6f6f6;
+  border:1px solid var(--line); border-radius:0; /* 直角 */
+  overflow:hidden;
+}
 .mag-cover{width:100%;height:auto;display:block}
-.mag-cap{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:var(--pill);border:1px solid rgba(255,255,255,.2)}
+.mag-cap{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:6px}
+.mag-span2{grid-column:span 2} /* 允许部分海报跨两列，形成不规则贴合 */
