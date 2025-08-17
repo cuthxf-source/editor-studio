@@ -1,3 +1,4 @@
+<!-- editor-studio / index.html  v1.5.1 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -8,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5" />
-  <link rel="stylesheet" href="styles.css?v=v1.5" />
+  <link rel="icon" href="icon.png?v=v1.5.1" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.1" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -55,6 +56,7 @@
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
+      <!-- 首页不显示截至时间 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -65,28 +67,56 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（横向排版） -->
+      <!-- 报价分析器：横向对齐，保留原有选项 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
-        <form id="quote-form" class="form">
-          <div class="grid-2">
-            <label>项目名<input id="qa-title" /></label>
-            <label>制片<input id="qa-producer" /></label>
+        <form id="quote-form" class="form quote-horizontal">
+          <div class="qh-row">
+            <div class="qh-block"><label>项目名<input id="qa-title" /></label></div>
+            <div class="qh-block"><label>制片<input id="qa-producer" /></label></div>
+            <div class="qh-block">
+              <label>影片类型
+                <select id="qa-type">
+                  <option value="LookBook">LookBook</option>
+                  <option value="形象片">形象片</option>
+                  <option value="TVC">TVC</option>
+                  <option value="纪录片">纪录片</option>
+                  <option value="微电影">微电影</option>
+                </select>
+              </label>
+            </div>
+            <div class="qh-block"><label>基础价格（可自填）<input id="qa-base" type="number" min="0" step="1" placeholder="留空用默认"></label></div>
+            <div class="qh-block"><label>影片时长（秒）<input id="qa-secs" type="number" min="0" step="1" value="0"></label></div>
+
+            <div class="qh-block"><label>创意密度（%）
+              <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
+              <span id="qa-creative-val" class="muted small">30%</span>
+            </label></div>
+
+            <div class="qh-block"><label>紧急系数（%）
+              <input id="qa-urgent" type="range" min="0" max="100" step="10" value="0">
+              <span id="qa-urgent-val" class="muted small">0%</span>
+            </label></div>
+
+            <div class="qh-block"><label>修改次数
+              <input id="qa-rev" type="number" min="0" step="1" value="4">
+            </label></div>
+
+            <div class="qh-block qh-switch">
+              <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
+            </div>
           </div>
-          <div class="muted small" style="margin:10px 0 6px">多组合模式：添加多组「类型 × 条数 × 时长」，每组可设置合成复杂度/创意/紧急/修改次数/基础价。</div>
-          <div class="pill-group">
-            <label class="pill"><input type="checkbox" id="qa-multi-toggle" checked><span>启用多组合计价</span></label>
-            <label class="pill"><input type="checkbox" id="qa-advanced-toggle" checked><span>显示每组难度选项</span></label>
-          </div>
-          <div id="qa-single" class="hidden"></div>
-          <div id="qa-multi">
+
+          <div id="qa-multi" class="hidden">
             <div id="qa-mc-list"></div>
             <div style="margin-top:10px"><button type="button" id="qa-mc-add" class="cell-edit">新增组合</button></div>
           </div>
-          <div class="grid-2" style="margin-top:10px">
+
+          <div class="qh-result">
             <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
+          <!-- 已按要求移除底部文字 -->
         </form>
       </div>
     </section>
@@ -122,7 +152,7 @@
 
       <div class="card">
         <div class="section-head"><h3>已完成项目（支付状态=已收尾款）</h3></div>
-        <div id="completed-wrap" class="table-wrap table-fixed">
+        <div id="completed-wrap" class="table-wrap">
           <table class="table projects-table">
             <thead>
               <tr>
@@ -142,10 +172,55 @@
         </div>
       </div>
     </section>
-    
-    <!-- 后续部分保持不变 --> 
 
+    <!-- 档期 -->
+    <section id="view-schedule" class="view hidden">
+      <div class="section-head center">
+        <button id="cal-prev" class="ghost">上一月</button>
+        <h2 id="cal-label" class="cal-title">2025年 8月</h2>
+        <button id="cal-next" class="ghost">下一月</button>
+      </div>
+      <div class="cal-grid-head"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div id="cal-grid" class="cal-grid"></div>
+    </section>
+
+    <!-- 作品合集 -->
+    <section id="view-gallery" class="view hidden">
+      <div class="section-head"><h2>作品合集</h2></div>
+      <div id="gallery-grid" class="mag-grid"></div>
+    </section>
+
+    <!-- 财务 -->
+    <section id="view-finance" class="view hidden">
+      <div class="grid-3 kpi">
+        <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="f-total" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="f-paid" class="kpi-num">¥0</div></div>
+        <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
+      </div>
+      <div id="f-asof" class="muted small asof"></div>
+      <div class="grid-3">
+        <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
+        <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
+        <div class="card">
+          <div class="section-head"><h3>已完结未结款</h3></div>
+          <div class="list compact">
+            <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
+            <div id="aging"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3>收入趋势（90 天）</h3></div>
+        <div id="trend" class="trend"></div>
+      </div>
+    </section>
   </main>
-  <script src="app.js?v=v1.5" defer></script>
+
+  <!-- 其余弹窗和 Supabase 配置保持不变 -->
+  <script>
+    window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
+  </script>
+  <script src="app.js?v=v1.5.1" defer></script>
 </body>
 </html>
