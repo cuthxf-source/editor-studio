@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.4.5 + poster/video upload -->
+<!-- editor-studio / index.html  v1.4.6 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,8 +9,9 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.4.5" />
-  <link rel="stylesheet" href="styles.css?v=v1.4.5" />
+  <link rel="icon" href="icon.png?v=v1.4.6" />
+  <link rel="stylesheet" href="styles.css?v=v1.4.6" />
+  <!-- Supabase UMD -->
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -48,15 +49,18 @@
   <main class="container main-wrap">
     <!-- 首页 -->
     <section id="view-home" class="view">
+      <!-- 金额 KPI -->
       <div class="grid-3 kpi">
         <div class="card kpi-card kpi-gold"><div class="kpi-label">收入总金额</div><div id="kpi-total" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-yellow"><div class="kpi-label">已收款</div><div id="kpi-paid" class="kpi-num">¥0</div></div>
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="kpi-unpaid" class="kpi-num">¥0</div></div>
       </div>
+      <!-- 片数 KPI -->
       <div class="grid-2 kpi">
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
+      <!-- 截至日期 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -67,7 +71,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器（原样保留） -->
+      <!-- 报价分析器（原有功能保留） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form">
@@ -161,7 +165,7 @@
               <th>支付状态</th>
               <th>总金额</th>
               <th>修改内容</th>
-              <th>上传</th><!-- 新增列 -->
+              <th>上传</th> <!-- 新增列 -->
             </tr>
           </thead>
           <tbody id="projects-body"></tbody>
@@ -196,11 +200,10 @@
         <div class="card kpi-card kpi-red"><div class="kpi-label">未收款</div><div id="f-unpaid" class="kpi-num">¥0</div></div>
       </div>
       <div id="f-asof" class="muted small asof"></div>
-
       <div class="grid-3">
         <div class="card"><div class="section-head"><h3>合作金额最高伙伴</h3></div><div id="rank-partner" class="list compact"></div></div>
         <div class="card"><div class="section-head"><h3>单值最高项目</h3></div><div id="rank-project" class="list compact"></div></div>
-        <div class="card"><div class="section-head"><h3>已完结未结款</h3>
+        <div class="card"><div class="section-head"><h3>已完结未结款</h3></div>
           <div class="list compact">
             <div class="list-item muted"><div>项目 / 合作制片</div><div>未收 / 逾期</div></div>
             <div id="aging"></div>
@@ -248,7 +251,7 @@
     </div>
   </div>
 
-  <!-- 通用编辑模态 -->
+  <!-- 通用编辑模态（保留） -->
   <div id="editor-modal" class="modal">
     <div class="modal-inner modal-inner-wide">
       <div class="modal-head">
@@ -263,48 +266,52 @@
     </div>
   </div>
 
-  <!-- 最近项目·快速查看小窗 -->
+  <!-- 最近项目·快速查看小窗（保留） -->
   <div id="quick-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
         <h3 id="quick-title">项目详情</h3>
         <button id="quick-close" class="ghost">关闭</button>
       </div>
-        <div id="quick-body" class="form"></div>
+      <div id="quick-body" class="form"></div>
       <div class="modal-foot">
-        <button type="button" id="quick-final-done" class="btn">标记 Final 完成</button>
+        <button id="quick-final-done" class="btn">标记 Final 完成</button>
       </div>
     </div>
   </div>
 
-  <!-- 上传小窗（海报 / 成片） -->
+  <!-- 上传海报/成片 小窗（新增） -->
   <div id="upload-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
         <h3>上传海报 / 成片</h3>
         <button id="upload-close" class="ghost">关闭</button>
       </div>
-      <div id="upload-body" class="form">
-        <div class="upload-grid">
-          <div>
-            <div class="small muted">海报（支持拖拽/粘贴，jpg/png/webp）</div>
-            <div id="poster-drop" class="dropzone">将图片拖拽到此处，或粘贴，或点击选择</div>
-            <input id="poster-file" type="file" accept="image/*" class="hidden">
-            <button id="btn-upload-poster" class="btn" type="button">上传海报</button>
-            <div id="poster-status" class="small muted"></div>
-          </div>
-          <div>
-            <div class="small muted">成片视频（mp4/mov 等常见格式）</div>
-            <div id="final-drop" class="dropzone">将视频拖拽到此处，或点击选择</div>
-            <input id="final-file" type="file" accept="video/*" class="hidden">
-            <button id="btn-upload-final" class="btn" type="button">上传成片</button>
-            <div id="final-status" class="small muted"></div>
-          </div>
+      <form id="upload-form" class="form" data-id="">
+        <div class="grid-2">
+          <label>海报图片（JPG/PNG，≤10MB）
+            <input type="file" id="up-poster" accept="image/*">
+          </label>
+          <label>成片视频（MP4/MOV，≤2GB）
+            <input type="file" id="up-video" accept="video/*">
+          </label>
         </div>
-      </div>
-      <div class="modal-foot">
-        <button id="upload-cancel" class="ghost" type="button">关闭</button>
-      </div>
+        <div class="upload-paste">
+          <div class="muted small">也可把图片直接粘贴到下方作为海报：</div>
+          <textarea id="paste-box" rows="3" placeholder="在这里 ⌘V / Ctrl+V 粘贴图片"></textarea>
+        </div>
+        <div class="h-row">
+          <div class="prog" id="up-progress" style="flex:1">
+            <div class="prog-bar" style="width:0%"></div>
+            <span class="prog-text">0%</span>
+          </div>
+          <span id="up-tip" class="small muted"></span>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="ghost" id="upload-cancel">取消</button>
+          <button type="submit" class="btn">开始上传</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -313,6 +320,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.4.5" defer></script>
+  <script src="app.js?v=v1.4.6" defer></script>
 </body>
 </html>
