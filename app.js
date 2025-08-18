@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.4 */
-const APP_VERSION = 'V1.5.4';
+/* editor-studio / app.js  v1.5.5 */
+const APP_VERSION = 'V1.5.5';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -43,18 +43,36 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-/* Notes & 优先级 */
+/* Notes & 优先级 & 导演备注 */
 function parseNotes(notes){
-  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3'};
+  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',director:''};
   if(!notes) return base;
   try{
     const obj=JSON.parse(notes);
-    if(obj) return {tags:new Set(Array.isArray(obj.tags)?obj.tags:[]),versions:obj.versions||{A:'v1',B:'v1',F:'v1'},changes:Array.isArray(obj.changes)?obj.changes:[],free:obj.free||'',priority:obj.priority||'P3'};
+    if(obj){
+      return {
+        tags:new Set(Array.isArray(obj.tags)?obj.tags:[]),
+        versions:obj.versions||{A:'v1',B:'v1',F:'v1'},
+        changes:Array.isArray(obj.changes)?obj.changes:[],
+        free:obj.free||'',
+        priority:obj.priority||'P3',
+        director:obj.director||''
+      };
+    }
   }catch(e){}
   const tags=new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3'};
+  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3',director:''};
 }
-function stringifyNotes(o){ return JSON.stringify({tags:Array.from(o.tags||[]),versions:o.versions||{A:'v1',B:'v1',F:'v1'},changes:o.changes||[],free:o.free||'',priority:o.priority||'P3'}); }
+function stringifyNotes(o){
+  return JSON.stringify({
+    tags:Array.from(o.tags||[]),
+    versions:o.versions||{A:'v1',B:'v1',F:'v1'},
+    changes:o.changes||[],
+    free:o.free||'',
+    priority:o.priority||'P3',
+    director:o.director||''
+  });
+}
 function hasTag(n,t){ return parseNotes(n).tags.has(t); }
 function getPriority(p){ return parseNotes(p.notes).priority||'P3'; }
 function priRank(code){ return ({P1:0,P2:1,P3:2,P4:3})[code] ?? 2; }
@@ -109,7 +127,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目 */
+/* 首页：最近项目（能量条直显） */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -145,7 +163,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI */
+/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -227,7 +245,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑） */
+/* 编辑模态与项目表渲染 */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -372,6 +390,14 @@ function openEditorModal(kind,id){
       editorForm.querySelector('input[name="edit_ts"]').value = String(rec.ts);
     });
   }
+
+  if(kind==='director'){
+    const d=parseNotes(p.notes);
+    editorTitle.textContent='导演备注';
+    editorForm.innerHTML=`
+      <label>备注内容<textarea name="director_note" rows="6" placeholder="填写导演备注（仅内部可见）">${(d.director||'').replace(/</g,'&lt;')}</textarea></label>
+    `;
+  }
 }
 
 editorForm?.addEventListener('submit', async (e)=>{
@@ -450,6 +476,12 @@ editorForm?.addEventListener('submit', async (e)=>{
     patch.notes = stringifyNotes(d);
   }
 
+  if(kind==='director'){
+    const row=projects.find(x=>String(x.id)===String(id));
+    let d=parseNotes(row?.notes||''); d.director = (fd.get('director_note')||'').toString();
+    patch.notes = stringifyNotes(d);
+  }
+
   await supa.from('projects').update(patch).eq('id', id);
   closeEditor();
   await fetchProjects(); renderAll();
@@ -476,11 +508,12 @@ function renderRow(p){
   const moneyText=`${moneyAbbr(p.quote_amount)} / ${moneyAbbr(p.paid_amount)}`;
   const d=parseNotes(p.notes);
   const last=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
-  const lastText=last ? `[${last.phase}·${last.version}] ${last.text.slice(0,42)}${last.text.length>42?'…':''}` : '—';
-  const thumbs=last?.imgs?.length ? last.imgs.slice(0,4).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
+  const lastText=last ? `[${last.phase}·${last.version}] ${last.text}` : '—';
+  const thumbs=last?.imgs?.length ? last.imgs.slice(0,2).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
   const pri=priObj(d.priority||'P3');
 
   const payClass = pay==='未收款' ? 'pill-blue' : (pay==='已收定金' ? 'pill-green' : 'pill-gold');
+  const noteClass = (d.director||'').trim() ? 'pill-yellow' : '';
 
   const upOk= !!p.poster_url || !!p.final_link;
   const upTxt = upOk ? '已上传' : '未上传';
@@ -488,14 +521,15 @@ function renderRow(p){
 
   tr.innerHTML = `
     <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
-    <td><div class="cell-summary"><span>${p.producer_name||'未填'}</span>${p.producer_contact?`<span class="muted small">· ${p.producer_contact}</span>`:''}<button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button></div></td>
+    <td><div class="cell-summary"><span class="one-line">${p.producer_name||'未填'}${p.producer_contact?` · ${p.producer_contact}`:''}</span><button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button></div></td>
     <td><div class="cell-summary"><span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span><button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button></div></td>
-    <td><div class="cell-summary"><span class="text-cell">${formatProgressCell(p)}</span><button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k}·${pri.txt}</button></div></td>
-    <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
-    <td><div class="cell-summary"><span class="muted text-cell">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-changes"><div class="cell-summary"><span class="small text-cell">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill" data-id="${p.id}">${upTxt}</button></div></td>
+    <td><div class="cell-summary"><span class="one-line">${formatProgressCell(p)}</span><button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle one-line" data-id="${p.id}" title="点击切换优先级">${pri.k}·${pri.txt}</button></div></td>
+    <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill one-line" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
+    <td class="col-note"><div class="cell-summary"><button class="pill ${noteClass} note-pill one-line" data-id="${p.id}" title="点击填写/查看导演备注">备注</button></div></td>
+    <td><div class="cell-summary"><span class="muted one-line">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-changes"><div class="cell-summary"><span class="small one-line">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill one-line" data-id="${p.id}">${upTxt}</button></div></td>
   `;
   return tr;
 }
@@ -515,6 +549,7 @@ function bindTable(tb){
     const img=e.target.closest('.img-thumb');
     const up=e.target.closest('.upload-pill');
     const payBtn=e.target.closest('.pay-pill');
+    const noteBtn=e.target.closest('.note-pill');
     if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); }
     if(pri){ const id=pri.getAttribute('data-id'); const row=projects.find(x=>String(x.id)===String(id)); if(!row) return; const d=parseNotes(row.notes); d.priority=d.priority==='P1'?'P2':d.priority==='P2'?'P3':d.priority==='P3'?'P4':'P1'; await supa.from('projects').update({notes:stringifyNotes(d)}).eq('id',id); await fetchProjects(); renderProjects(); }
     if(img){ openImgbox(img.getAttribute('data-full')); }
@@ -531,6 +566,7 @@ function bindTable(tb){
       const row=projects.find(x=> String(x.id)===String(id)); if(row){ row.pay_status=next; }
       renderProjects();
     }
+    if(noteBtn){ openEditorModal('director', noteBtn.getAttribute('data-id')); }
   });
 
   tb._bound = true;
@@ -569,7 +605,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集（自动抽帧靠近首帧） */
+/* 作品合集：自动抽帧靠近首帧 */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -624,7 +660,7 @@ async function renderGallery(){
   }
 }
 
-/* 日历（边框风格 + 多色） */
+/* 日历：仅边框 + 多色 */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -723,14 +759,16 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染 */
+/* 双折线渲染（带坐标轴与月刻度） */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
+
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -740,13 +778,16 @@ function drawDualTrend(container, months, deliver, receive){
     const label = val>=1e6? (val/1e6).toFixed(1)+'M' : val>=1e3? (val/1e3).toFixed(1)+'K' : Math.round(val).toString();
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
+
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
     xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
   });
+
   const pathDeliver = toPath(deliver);
   const pathReceive = toPath(receive);
+
   container.innerHTML = `
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <g class="grid">${grid}</g>
@@ -756,7 +797,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传保持不变 */
+/* 上传（保持） */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
@@ -782,9 +823,9 @@ uploadForm?.addEventListener('submit',async e=>{
   }catch(err){ console.error(err); stop(); upTip.textContent='上传失败：'+(err?.message||''); }
 });
 
-/* 折叠/展开按钮（注意：index.html 中按钮类为 fold-btn，若需切换可改为此类名） */
+/* 折叠/展开按钮（Finance 三个榜单） */
 document.addEventListener('click', e=>{
-  const btn=e.target.closest('.btn-collapse'); // 保持原逻辑
+  const btn=e.target.closest('.btn-collapse');
   if(!btn) return;
   const id=btn.getAttribute('data-target');
   const box=$(id);
@@ -806,7 +847,7 @@ const mNew=$('new-modal'); $('btn-new')?.addEventListener('click',()=> mNew.clas
 $('new-form')?.addEventListener('submit',async e=>{
   e.preventDefault(); const fd=new FormData(e.target); const row=Object.fromEntries(fd.entries());
   row.clips=Number(row.clips||1); row.quote_amount=Number(row.quote_amount||0); row.paid_amount=Number(row.paid_amount||0); row.deposit_amount=0;
-  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3'});
+  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',director:''});
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show'); await fetchProjects(); renderAll();
