@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.4 */
+/* editor-studio / styles.css  v1.5.3 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,9 +20,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-
-/* 整体加宽到 2300px */
-.container{width:100%;max-width:2300px;margin:auto;padding:0 24px}
+/* 整体加宽（沿用当前 1800 宽度；如果后续想 2300 可再指示） */
+.container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -50,46 +49,48 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-yellow .kpi-num{color:var(--yellow)}
 .kpi-red .kpi-num{color:var(--red)}
 .asof{margin-top:6px}
-#view-home .asof{display:none}
+#view-home .asof{display:none} /* 首页不显示截至时间 */
 
-/* 表格（强制单行 + 省略号；一屏显示） */
+/* 表格（整体更宽；三列收紧到恰好容纳文本；修改内容列保持） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-.table{width:100%;border-collapse:collapse;table-layout:fixed}
+.table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:color-mix(in oklab, var(--panel), var(--text) 3%)}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-.table td .text-cell{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.table td[contenteditable="true"]{overflow:hidden;text-overflow:ellipsis}
+.table td .text-cell{white-space:normal} /* 允许指定单元换行内容 */
+
+/* 控制“优先级/支付状态/上传”列尽量贴合 */
 .col-upload{min-width:unset;width:1%;white-space:nowrap}
 .col-priority{min-width:unset;width:1%;white-space:nowrap}
 .col-pay{min-width:unset;width:1%;white-space:nowrap}
-.col-note{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页列宽（10 列）：一屏显示
-   调整：项目列(1)与合作制片列(2)各减半；腾出的 50% 平均分配给 影片类型&规格&条数(3) 与 进度(4) */
-#view-projects .projects-table{width:100%}
-#view-projects .projects-table th:nth-child(1),
-#view-projects .projects-table td:nth-child(1){width:9%}          /* 项目：18% → 9% */
-#view-projects .projects-table th:nth-child(2),
-#view-projects .projects-table td:nth-child(2){width:6.5%}        /* 合作制片：13% → 6.5% */
+/* 项目页：表整体加宽到 150%（未完成与已完成两个窗口） */
+#view-projects .projects-table{table-layout:fixed;width:150%}
+
+/* 原规则：指定列宽（第3列、 第8列）——基础 */
 #view-projects .projects-table th:nth-child(3),
-#view-projects .projects-table td:nth-child(3){width:23.75%}      /* 规格：16% + 7.75% */
-#view-projects .projects-table th:nth-child(4),
-#view-projects .projects-table td:nth-child(4){width:16.75%}      /* 进度：9% + 7.75% */
-#view-projects .projects-table th:nth-child(5),
-#view-projects .projects-table td:nth-child(5){width:5%}          /* 优先级（窄） */
-#view-projects .projects-table th:nth-child(6),
-#view-projects .projects-table td:nth-child(6){width:5%}          /* 支付状态（窄） */
-#view-projects .projects-table th:nth-child(7),
-#view-projects .projects-table td:nth-child(7){width:8%}          /* 总金额 */
+#view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
 #view-projects .projects-table th:nth-child(8),
-#view-projects .projects-table td:nth-child(8){width:4%}          /* 导演备注按钮 */
-#view-projects .projects-table th:nth-child(9),
-#view-projects .projects-table td:nth-child(9){width:15%}         /* 修改内容：省略号 */
-#view-projects .projects-table th:nth-child(10),
-#view-projects .projects-table td:nth-child(10){width:3%}         /* 上传 */
+#view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
-/* 最近项目 + 能量条 */
+/* —— 本次需求定制 —— */
+/* 1) 进度列(第4列)缩小，把宽度让给合作制片(第2列) */
+#view-projects .projects-table th:nth-child(2),
+#view-projects .projects-table td:nth-child(2){width:18%;min-width:280px}
+#view-projects .projects-table th:nth-child(4),
+#view-projects .projects-table td:nth-child(4){width:8%;min-width:160px}
+
+/* 2) 影片类型&条数&规格(第3列)在原基础上缩小 20%，并允许换行显示第二组合 */
+#view-projects .projects-table th:nth-child(3),
+#view-projects .projects-table td:nth-child(3){width:16% !important;min-width:420px;white-space:normal}
+
+/* 3) 给优先级列(第5列)更多空间以展示完整文字 */
+#view-projects .projects-table th:nth-child(5),
+#view-projects .projects-table td:nth-child(5){width:6%;min-width:180px;white-space:nowrap}
+/* 覆盖 class 的超小宽度限制 */
+.col-priority{width:6% !important;min-width:180px !important}
+
+/* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:260px}
@@ -115,11 +116,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .pri-p3{background:var(--blue);color:#fff;border-color:var(--blue)}
 .pri-p4{background:color-mix(in oklab, var(--panel), #000 15%);color:var(--text)}
 
-/* 表单/按钮 */
 .auth-view{padding:44px 0}
 .form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--text)}
 .btn,.ghost,.cell-edit{padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
-.cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .cell-summary .cell-edit{margin-left:auto}
 .pill-group{gap:12px;flex-wrap:wrap;margin-top:6px}
 label.pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:0;font-size:var(--fs-sm)}
@@ -179,6 +179,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .list.compact .list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:var(--fs-sm)}
 .list.compact .list-item strong{font-weight:700}
 .list.collapsed .list-item:nth-child(n+6){display:none}
+.btn-collapse{border-radius:999px}
 
 /* 趋势图（全年·月对比：双折线 + 轴） */
 .trend{height:260px;border:1px dashed var(--line);border-radius:14px;display:block;overflow:hidden}
