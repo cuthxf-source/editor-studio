@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.5.3 -->
+<!-- editor-studio / index.html  v1.5.4 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5.3" />
-  <link rel="stylesheet" href="styles.css?v=v1.5.3" />
+  <link rel="icon" href="icon.png?v=v1.5.4" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.4" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -66,7 +66,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器：横向对齐 -->
+      <!-- 报价分析器：横向对齐，保留原有选项 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form quote-horizontal">
@@ -119,17 +119,16 @@
       </div>
     </section>
 
-    <!-- 项目列表：未完成 + 已完成（移出窗口，直接显示） -->
+    <!-- 项目列表 -->
     <section id="view-projects" class="view hidden">
       <div class="section-head">
         <h2>项目列表</h2>
         <div class="toolbar"><button id="btn-new" class="btn">新建项目</button></div>
       </div>
 
-      <!-- 未完成 -->
-      <div class="card card-plain">
+      <div class="card">
         <div class="section-head"><h3>未完成项目</h3></div>
-        <div id="projects-wrap" class="table-wrap plain">
+        <div id="projects-wrap" class="table-wrap">
           <table class="table projects-table">
             <thead>
               <tr>
@@ -149,10 +148,9 @@
         </div>
       </div>
 
-      <!-- 已完成 -->
-      <div class="card card-plain">
+      <div class="card">
         <div class="section-head"><h3>已完成项目（支付状态=已收尾款）</h3></div>
-        <div id="completed-wrap" class="table-wrap plain">
+        <div id="completed-wrap" class="table-wrap">
           <table class="table projects-table">
             <thead>
               <tr>
@@ -222,7 +220,7 @@
     </section>
   </main>
 
-  <!-- 弹窗（原样保留） -->
+  <!-- 弹窗 -->
   <div id="new-modal" class="modal">
     <div class="modal-inner">
       <div class="modal-head"><h3>新建项目</h3></div>
@@ -256,6 +254,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5.3" defer></script>
+  <script src="app.js?v=v1.5.4" defer></script>
 </body>
 </html>
