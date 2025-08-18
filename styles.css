@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.3 */
+/* editor-studio / styles.css  v1.5.2 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,7 +20,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-/* 整体加宽（沿用当前 1800 宽度；如果后续想 2300 可再指示） */
+/* 整体加宽 */
 .container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
 
 /* Header */
@@ -53,42 +53,35 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 表格（整体更宽；三列收紧到恰好容纳文本；修改内容列保持） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-.table{width:100%;border-collapse:collapse}
+.table{width:100%;border-collapse:collapse;table-layout:fixed}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:color-mix(in oklab, var(--panel), var(--text) 3%)}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-.table td .text-cell{white-space:normal} /* 允许指定单元换行内容 */
-
-/* 控制“优先级/支付状态/上传”列尽量贴合 */
+.table td .text-cell{white-space:normal}
+.table td.shrink{font-size:var(--fs-xs)}
 .col-upload{min-width:unset;width:1%;white-space:nowrap}
-.col-priority{min-width:unset;width:1%;white-space:nowrap}
+.col-priority{min-width:140px;width:1%;white-space:nowrap}  /* 保证优先级文字完整显示 */
 .col-pay{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页：表整体加宽到 150%（未完成与已完成两个窗口） */
-#view-projects .projects-table{table-layout:fixed;width:150%}
+/* 项目页：表整体仍为 150% 宽（保持原样） */
+#view-projects .projects-table{width:150%}
 
-/* 原规则：指定列宽（第3列、 第8列）——基础 */
-#view-projects .projects-table th:nth-child(3),
-#view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
-#view-projects .projects-table th:nth-child(8),
-#view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
-
-/* —— 本次需求定制 —— */
-/* 1) 进度列(第4列)缩小，把宽度让给合作制片(第2列) */
+/* 指定列宽：
+   - 第2列（合作制片）加宽
+   - 第3列（规格）整体缩小 20%
+   - 第4列（进度）收窄，把空间让给第2列
+   - 第8列（修改内容）保持原设定 */
 #view-projects .projects-table th:nth-child(2),
-#view-projects .projects-table td:nth-child(2){width:18%;min-width:280px}
-#view-projects .projects-table th:nth-child(4),
-#view-projects .projects-table td:nth-child(4){width:8%;min-width:160px}
+#view-projects .projects-table td:nth-child(2){ width:18% }
 
-/* 2) 影片类型&条数&规格(第3列)在原基础上缩小 20%，并允许换行显示第二组合 */
 #view-projects .projects-table th:nth-child(3),
-#view-projects .projects-table td:nth-child(3){width:16% !important;min-width:420px;white-space:normal}
+#view-projects .projects-table td:nth-child(3){ width:16%; min-width:420px }  /* 原 20% / 520px */
 
-/* 3) 给优先级列(第5列)更多空间以展示完整文字 */
-#view-projects .projects-table th:nth-child(5),
-#view-projects .projects-table td:nth-child(5){width:6%;min-width:180px;white-space:nowrap}
-/* 覆盖 class 的超小宽度限制 */
-.col-priority{width:6% !important;min-width:180px !important}
+#view-projects .projects-table th:nth-child(4),
+#view-projects .projects-table td:nth-child(4){ width:10% }
+
+#view-projects .projects-table th:nth-child(8),
+#view-projects .projects-table td:nth-child(8){ width:20%; min-width:320px; white-space:normal }
 
 /* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
