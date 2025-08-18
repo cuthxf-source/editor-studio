@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.5 */
+/* editor-studio / styles.css  v1.5.3 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -21,7 +21,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
 
-/* 整体加宽：2300px */
+/* 整体加宽到 2300px */
 .container{width:100%;max-width:2300px;margin:auto;padding:0 24px}
 
 /* Header */
@@ -52,35 +52,41 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .asof{margin-top:6px}
 #view-home .asof{display:none}
 
-/* 表格 */
+/* 表格（强制单行 + 省略号；一屏显示） */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-#view-projects .table-wrap{overflow-x:visible} /* 项目页尽量不出现横向滚动 */
-
 .table{width:100%;border-collapse:collapse;table-layout:fixed}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:color-mix(in oklab, var(--panel), var(--text) 3%)}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
-.table td .text-cell{white-space:normal}
-.table td.shrink{font-size:var(--fs-xs)}
+.table td .text-cell{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.table td[contenteditable="true"]{overflow:hidden;text-overflow:ellipsis}
+.col-upload{min-width:unset;width:1%;white-space:nowrap}
+.col-priority{min-width:unset;width:1%;white-space:nowrap}
+.col-pay{min-width:unset;width:1%;white-space:nowrap}
+.col-note{min-width:unset;width:1%;white-space:nowrap}
 
-/* 单行省略工具类 */
-.one-line{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-
-/* 列最小化：优先级 / 支付 / 上传 / 备注（胶囊最小宽） */
-.col-upload,.col-priority,.col-pay,.col-note{width:1%;white-space:nowrap}
-
-/* “项目”列也尽量收窄 + 省略号 */
-#view-projects .projects-table th:nth-child(1),
-#view-projects .projects-table td:nth-child(1){width:1%;overflow:hidden;text-overflow:ellipsis}
-
-/* 第3列(规格) 16%（较原再压缩过后保持）；允许换行 */
-#view-projects .projects-table th:nth-child(3),
-#view-projects .projects-table td:nth-child(3){width:16%;min-width:416px;white-space:normal}
-
-/* “修改内容”列：再缩小到14%，超出省略号 */
-#view-projects .projects-table th:nth-child(9),
-#view-projects .projects-table td:nth-child(9){width:14%;min-width:260px}
-#view-projects .projects-table td:nth-child(9) .one-line{white-space:nowrap}
+/* 项目页列宽（10 列）：一屏显示 */
+#view-projects .projects-table{width:100%}
+#view-projects .projects-table th:nth-child(1), 
+#view-projects .projects-table td:nth-child(1){width:18%}
+#view-projects .projects-table th:nth-child(2), 
+#view-projects .projects-table td:nth-child(2){width:13%}
+#view-projects .projects-table th:nth-child(3), 
+#view-projects .projects-table td:nth-child(3){width:16%} /* 由 20% → 16% */
+#view-projects .projects-table th:nth-child(4), 
+#view-projects .projects-table td:nth-child(4){width:9%}
+#view-projects .projects-table th:nth-child(5), 
+#view-projects .projects-table td:nth-child(5){width:5%} /* 优先级更窄 */
+#view-projects .projects-table th:nth-child(6), 
+#view-projects .projects-table td:nth-child(6){width:5%} /* 支付状态更窄 */
+#view-projects .projects-table th:nth-child(7), 
+#view-projects .projects-table td:nth-child(7){width:8%} /* 总金额 */
+#view-projects .projects-table th:nth-child(8), 
+#view-projects .projects-table td:nth-child(8){width:4%} /* 导演备注（按钮） */
+#view-projects .projects-table th:nth-child(9), 
+#view-projects .projects-table td:nth-child(9){width:15%} /* 修改内容：省略号 */
+#view-projects .projects-table th:nth-child(10), 
+#view-projects .projects-table td:nth-child(10){width:3%} /* 上传 */
 
 /* 最近项目 + 能量条 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
@@ -108,10 +114,11 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .pri-p3{background:var(--blue);color:#fff;border-color:var(--blue)}
 .pri-p4{background:color-mix(in oklab, var(--panel), #000 15%);color:var(--text)}
 
+/* 表单/按钮 */
 .auth-view{padding:44px 0}
 .form input,.form select,.form textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--text)}
 .btn,.ghost,.cell-edit{padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
-.cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cell-summary{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
 .cell-summary .cell-edit{margin-left:auto}
 .pill-group{gap:12px;flex-wrap:wrap;margin-top:6px}
 label.pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:0;font-size:var(--fs-sm)}
@@ -166,14 +173,13 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .mag-cap{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:6px}
 .mag-span2{grid-column:span 2}
 
-/* Finance 列表 */
+/* Finance 列表：单行、字体更小、可折叠 */
 .list{display:block}
 .list.compact .list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:var(--fs-sm)}
 .list.compact .list-item strong{font-weight:700}
 .list.collapsed .list-item:nth-child(n+6){display:none}
-.btn-collapse{border-radius:999px}
 
-/* 趋势图 */
+/* 趋势图（全年·月对比：双折线 + 轴） */
 .trend{height:260px;border:1px dashed var(--line);border-radius:14px;display:block;overflow:hidden}
 .trend svg text{font-size:11px;fill:var(--muted)}
 .trend .legend{display:flex;gap:12px;align-items:center}
