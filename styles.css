@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.3 */
+/* editor-studio / styles.css  v1.5.4 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -65,28 +65,29 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .col-pay{min-width:unset;width:1%;white-space:nowrap}
 .col-note{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页列宽（10 列）：一屏显示 */
+/* 项目页列宽（10 列）：一屏显示
+   调整：项目列(1)与合作制片列(2)各减半；腾出的 50% 平均分配给 影片类型&规格&条数(3) 与 进度(4) */
 #view-projects .projects-table{width:100%}
-#view-projects .projects-table th:nth-child(1), 
-#view-projects .projects-table td:nth-child(1){width:18%}
-#view-projects .projects-table th:nth-child(2), 
-#view-projects .projects-table td:nth-child(2){width:13%}
-#view-projects .projects-table th:nth-child(3), 
-#view-projects .projects-table td:nth-child(3){width:16%} /* 由 20% → 16% */
-#view-projects .projects-table th:nth-child(4), 
-#view-projects .projects-table td:nth-child(4){width:9%}
-#view-projects .projects-table th:nth-child(5), 
-#view-projects .projects-table td:nth-child(5){width:5%} /* 优先级更窄 */
-#view-projects .projects-table th:nth-child(6), 
-#view-projects .projects-table td:nth-child(6){width:5%} /* 支付状态更窄 */
-#view-projects .projects-table th:nth-child(7), 
-#view-projects .projects-table td:nth-child(7){width:8%} /* 总金额 */
-#view-projects .projects-table th:nth-child(8), 
-#view-projects .projects-table td:nth-child(8){width:4%} /* 导演备注（按钮） */
-#view-projects .projects-table th:nth-child(9), 
-#view-projects .projects-table td:nth-child(9){width:15%} /* 修改内容：省略号 */
-#view-projects .projects-table th:nth-child(10), 
-#view-projects .projects-table td:nth-child(10){width:3%} /* 上传 */
+#view-projects .projects-table th:nth-child(1),
+#view-projects .projects-table td:nth-child(1){width:9%}          /* 项目：18% → 9% */
+#view-projects .projects-table th:nth-child(2),
+#view-projects .projects-table td:nth-child(2){width:6.5%}        /* 合作制片：13% → 6.5% */
+#view-projects .projects-table th:nth-child(3),
+#view-projects .projects-table td:nth-child(3){width:23.75%}      /* 规格：16% + 7.75% */
+#view-projects .projects-table th:nth-child(4),
+#view-projects .projects-table td:nth-child(4){width:16.75%}      /* 进度：9% + 7.75% */
+#view-projects .projects-table th:nth-child(5),
+#view-projects .projects-table td:nth-child(5){width:5%}          /* 优先级（窄） */
+#view-projects .projects-table th:nth-child(6),
+#view-projects .projects-table td:nth-child(6){width:5%}          /* 支付状态（窄） */
+#view-projects .projects-table th:nth-child(7),
+#view-projects .projects-table td:nth-child(7){width:8%}          /* 总金额 */
+#view-projects .projects-table th:nth-child(8),
+#view-projects .projects-table td:nth-child(8){width:4%}          /* 导演备注按钮 */
+#view-projects .projects-table th:nth-child(9),
+#view-projects .projects-table td:nth-child(9){width:15%}         /* 修改内容：省略号 */
+#view-projects .projects-table th:nth-child(10),
+#view-projects .projects-table td:nth-child(10){width:3%}         /* 上传 */
 
 /* 最近项目 + 能量条 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
