@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.3 */
-const APP_VERSION = 'V1.5.3';
+/* editor-studio / app.js  v1.5.2 */
+const APP_VERSION = 'V1.5.2';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -80,15 +80,8 @@ function parseSpec(specStr){
 }
 function typeSpecLines(p){
   const parsed=parseSpec(p.spec);
-  if(parsed.json){
-    // 多组合：每个组合独立一行（满足“第二组合换行”）
-    return parsed.combos.map(c=>`${c.type||'未填'}×${c.clips||1}${c.res?` · ${c.res}`:''}${c.ratios?.length?` · ${c.ratios.join('/')}`:''}`);
-  }
-  const c=parsed.combos[0]||{};
-  const clips=p.clips?` · ${p.clips}条`:''; const type=p.type||'';
-  const r=c.ratios?.length?` · ${c.ratios.join('/')}`:(c.ratio?` · ${c.ratio}`:''); const rr=c.res?` · ${c.res}`:'';
-  const joined=[type,rr.replace(' · ','').trim()].filter(Boolean).join(' · ');
-  return [(joined?joined:'—')+clips+(r||'')];
+  if(parsed.json){ return parsed.combos.map(c=>`${c.type||'未填'}×${c.clips||1}${c.res?` · ${c.res}`:''}${c.ratios?.length?` · ${c.ratios.join('/')}`:''}`); }
+  const c=parsed.combos[0]||{}; const clips=p.clips?` · ${p.clips}条`:''; const type=p.type||''; const r=c.ratios?.length?` · ${c.ratios.join('/')}`:(c.ratio?` · ${c.ratio}`:''); const rr=c.res?` · ${c.res}`:''; const joined=[type,rr.replace(' · ','').trim()].filter(Boolean).join(' · '); return [(joined?joined:'—')+clips+(r||'')];
 }
 function totalClipsOf(p){ const parsed=parseSpec(p.spec); return parsed.json? parsed.combos.reduce((s,c)=>s+Number(c.clips||0),0) || Number(p.clips||0) || 0 : Number(p.clips||0)||0; }
 function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
@@ -167,6 +160,7 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
+  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
@@ -265,7 +259,7 @@ function openEditorModal(kind,id){
 
   if(kind==='producer'){
     editorTitle.textContent='编辑 合作制片';
-    editorForm.innerHTML=`<div class="h-row"><label>合作制片（姓名）<input name="producer_name" value="\${p.producer_name||''}"></label><label>合作制片（联系方式）<input name="producer_contact" value="\${p.producer_contact||''}"></label></div>`;
+    editorForm.innerHTML=`<div class="h-row"><label>合作制片（姓名）<input name="producer_name" value="${p.producer_name||''}"></label><label>合作制片（联系方式）<input name="producer_contact" value="${p.producer_contact||''}"></label></div>`;
   }
 
   if(kind==='spec'){
@@ -276,11 +270,7 @@ function openEditorModal(kind,id){
     editorForm.innerHTML=`<div id="combo-list">${rows}</div><div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>`;
     editorForm.addEventListener('click',e=>{
       const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
-      if(add){
-        const list=editorForm.querySelector('#combo-list');
-        const idx=list.querySelectorAll('.combo-row').length;
-        list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}));
-      }
+      if(add){ const list=editorForm.querySelector('#combo-list'); const idx=list.querySelectorAll('.combo-row').length; list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); }
       if(del){ del.closest('.combo-row')?.remove(); }
     }, { once:false });
   }
@@ -627,7 +617,7 @@ async function renderGallery(){
   if(finals.length===0){
     const ph=document.createElement('div'); ph.className='mag-card'; ph.innerHTML=`<div class="mag-cap">暂未上传成片，请在项目中上传海报或视频</div>`; grid.appendChild(ph); return;
   }
-  for(let i=0;i<i<finals.length;i++){
+  for(let i=0;i<finals.length;i++){
     const p=finals[i];
     const a=document.createElement('a'); a.className='mag-card'; a.href=p.final_link; a.target='_blank';
     if(Math.random()<0.3) a.classList.add('mag-span2');
@@ -685,8 +675,9 @@ function renderCalendar(){
   });
 }
 
-/* 财务（沿用你现有规则） */
+/* 财务 */
 function renderFinance(){
+  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
   const rp=$('rank-partner'); rp.innerHTML='';
@@ -712,10 +703,11 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  const months=Array.from({length:12},(_,i)=>i);
+  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
+  const months=Array.from({length:12},(_,i)=>i); // 0..11
   const year=(new Date()).getFullYear();
-  const deliver=new Array(12).fill(0);
-  const receive=new Array(12).fill(0);
+  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
+  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
   projects.forEach(p=>{
     if(p.final_date){
       const d=new Date(p.final_date);
@@ -727,6 +719,7 @@ function renderFinance(){
     }
   });
 
+  // 旺季/淡季（基于交稿曲线）
   let maxM=0,minM=0;
   for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
   const tags=$('trend-tags');
@@ -735,14 +728,17 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染 */
+/* 双折线渲染（带坐标轴与月刻度） */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
+
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+
+  // 网格 & 轴
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -752,13 +748,17 @@ function drawDualTrend(container, months, deliver, receive){
     const label = val>=1e6? (val/1e6).toFixed(1)+'M' : val>=1e3? (val/1e3).toFixed(1)+'K' : Math.round(val).toString();
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
+
+  // 月份刻度
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
     xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
   });
+
   const pathDeliver = toPath(deliver);
   const pathReceive = toPath(receive);
+
   container.innerHTML = `
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <g class="grid">${grid}</g>
