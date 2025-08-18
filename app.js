@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.2 */
-const APP_VERSION = 'V1.5.2';
+/* editor-studio / app.js  v1.5.3 */
+const APP_VERSION = 'V1.5.3';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -145,7 +145,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
+/* KPI */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -160,7 +160,6 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
-  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
@@ -228,7 +227,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑） */
+/* 编辑模态与项目表渲染（原样） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -458,7 +457,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-/* 项目表 */
+/* 项目表（原样） */
 function formatProgressCell(p){
   const vers=parseNotes(p.notes).versions;
   const near=nearestMilestone(p);
@@ -572,7 +571,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：改回“靠近首帧”的自动抽帧 */
+/* 作品合集封面（原样） */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -582,7 +581,7 @@ function captureVideoAutoFrame(url){
       v.src=url;
       v.addEventListener('loadedmetadata',()=>{
         const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
-        v.currentTime = t; // 靠近首帧
+        v.currentTime = t;
       }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
@@ -627,7 +626,7 @@ async function renderGallery(){
   }
 }
 
-/* 日历：仅边框 + 多色（按项目 id 哈希） */
+/* 日历 */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -636,7 +635,7 @@ $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth(
 function colorIndexForId(id){
   let s=0; const str=String(id||'0');
   for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
-  return s % 8; // 对应 .c0 ~ .c7
+  return s % 8;
 }
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
@@ -677,7 +676,6 @@ function renderCalendar(){
 
 /* 财务 */
 function renderFinance(){
-  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
   const rp=$('rank-partner'); rp.innerHTML='';
@@ -703,11 +701,10 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
-  const months=Array.from({length:12},(_,i)=>i); // 0..11
+  const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
-  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
-  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
+  const deliver=new Array(12).fill(0);
+  const receive=new Array(12).fill(0);
   projects.forEach(p=>{
     if(p.final_date){
       const d=new Date(p.final_date);
@@ -719,7 +716,6 @@ function renderFinance(){
     }
   });
 
-  // 旺季/淡季（基于交稿曲线）
   let maxM=0,minM=0;
   for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
   const tags=$('trend-tags');
@@ -728,7 +724,6 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染（带坐标轴与月刻度） */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
@@ -738,7 +733,6 @@ function drawDualTrend(container, months, deliver, receive){
 
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
 
-  // 网格 & 轴
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -749,7 +743,6 @@ function drawDualTrend(container, months, deliver, receive){
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
 
-  // 月份刻度
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
@@ -768,7 +761,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传（保持） */
+/* 上传（原样） */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
