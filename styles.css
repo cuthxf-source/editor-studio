@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.2 */
+/* editor-studio / styles.css  v1.5.3 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,7 +20,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-/* 整体加宽 */
+
+/* 容器（保持原值） */
 .container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
 
 /* Header */
@@ -49,41 +50,28 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .kpi-yellow .kpi-num{color:var(--yellow)}
 .kpi-red .kpi-num{color:var(--red)}
 .asof{margin-top:6px}
-#view-home .asof{display:none} /* 首页不显示截至时间 */
+#view-home .asof{display:none}
 
-/* 表格（整体更宽；三列收紧到恰好容纳文本；修改内容列保持） */
+/* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-.table{width:100%;border-collapse:collapse;table-layout:fixed}
+.table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:color-mix(in oklab, var(--panel), var(--text) 3%)}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
 .table td .text-cell{white-space:normal}
 .table td.shrink{font-size:var(--fs-xs)}
 .col-upload{min-width:unset;width:1%;white-space:nowrap}
-.col-priority{min-width:140px;width:1%;white-space:nowrap}  /* 保证优先级文字完整显示 */
+.col-priority{min-width:unset;width:1%;white-space:nowrap}
 .col-pay{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页：表整体仍为 150% 宽（保持原样） */
-#view-projects .projects-table{width:150%}
-
-/* 指定列宽：
-   - 第2列（合作制片）加宽
-   - 第3列（规格）整体缩小 20%
-   - 第4列（进度）收窄，把空间让给第2列
-   - 第8列（修改内容）保持原设定 */
-#view-projects .projects-table th:nth-child(2),
-#view-projects .projects-table td:nth-child(2){ width:18% }
-
+/* 项目页：保持原有列宽规则与 150% 表宽（不改动） */
+#view-projects .projects-table{table-layout:fixed;width:150%}
 #view-projects .projects-table th:nth-child(3),
-#view-projects .projects-table td:nth-child(3){ width:16%; min-width:420px }  /* 原 20% / 520px */
-
-#view-projects .projects-table th:nth-child(4),
-#view-projects .projects-table td:nth-child(4){ width:10% }
-
+#view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
 #view-projects .projects-table th:nth-child(8),
-#view-projects .projects-table td:nth-child(8){ width:20%; min-width:320px; white-space:normal }
+#view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
-/* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
+/* 最近项目 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
 .recent .pmeta{display:flex;gap:12px;align-items:center}
 .recent .pmeta .title-wrap{display:flex;flex-direction:column;min-width:260px}
@@ -97,7 +85,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),#e8b055)}
 .prog-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
 
-/* 状态 / 优先级 / 支付状态（椭圆胶囊） */
+/* 状态 / 优先级 / 支付状态 */
 .pill{display:inline-block;border-radius:999px;border:1px solid var(--line);font-size:var(--fs-sm);padding:4px 10px}
 .pill-blue{color:#fff;background:var(--blue);border-color:var(--blue)}
 .pill-green{color:#fff;background:var(--green);border-color:var(--green)}
@@ -134,11 +122,11 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
 
-/* 修改内容缩略图（粘贴） */
+/* 修改内容缩略图 */
 .tiny-thumb{width:28px;height:18px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
 .thumb-list{display:flex;gap:6px;align-items:center}
 
-/* 日历：仅边框、无填充；更多颜色区分不同项目 */
+/* 日历 */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin:8px 0}
 .cal-grid-head span{text-align:center;font-weight:700;padding:6px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--line)}
@@ -150,7 +138,6 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .span-end{border-top-right-radius:6px;border-bottom-right-radius:6px}
 .bar-line{position:relative;display:block;margin-top:8px}
 .span-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
-/* 项目颜色（8色） */
 .span-piece.c0{border-color:#58a6ff}
 .span-piece.c1{border-color:#f778ba}
 .span-piece.c2{border-color:#8b949e}
@@ -160,22 +147,27 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .span-piece.c6{border-color:#a371f7}
 .span-piece.c7{border-color:#1f6feb}
 
-/* 作品合集：更大 + 直角 + 不规则组合 */
+/* 作品合集 */
 .mag-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(560px, 1fr));gap:18px;grid-auto-flow:dense}
 .mag-card{display:block; position:relative; background:#f6f6f6;border:1px solid var(--line); border-radius:0; overflow:hidden;}
 .mag-cover{width:100%;height:auto;display:block}
 .mag-cap{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:6px}
 .mag-span2{grid-column:span 2}
 
-/* Finance 列表：单行、字体更小、可折叠 */
+/* Finance 列表 */
 .list{display:block}
 .list.compact .list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:var(--fs-sm)}
 .list.compact .list-item strong{font-weight:700}
 .list.collapsed .list-item:nth-child(n+6){display:none}
 .btn-collapse{border-radius:999px}
 
-/* 趋势图（全年·月对比：双折线 + 轴） */
+/* 趋势图 */
 .trend{height:260px;border:1px dashed var(--line);border-radius:14px;display:block;overflow:hidden}
 .trend svg text{font-size:11px;fill:var(--muted)}
 .trend .legend{display:flex;gap:12px;align-items:center}
 .trend-tags{white-space:nowrap}
+
+/* —— 新增：项目列表“移出窗口直接显示”的样式覆盖 —— */
+/* 去掉卡片视觉 & 取消内部滚动容器 */
+#view-projects .card-plain{background:transparent;border:none;padding:0}
+#view-projects .table-wrap.plain{overflow:visible;border:none;border-radius:0;background:transparent}
