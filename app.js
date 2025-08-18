@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.5 */
-const APP_VERSION = 'V1.5.5';
+/* editor-studio / app.js  v1.5.3 */
+const APP_VERSION = 'V1.5.3';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -45,7 +45,7 @@ async function fetchProjects(){
 
 /* Notes & 优先级 & 导演备注 */
 function parseNotes(notes){
-  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',director:''};
+  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',dnote:''};
   if(!notes) return base;
   try{
     const obj=JSON.parse(notes);
@@ -56,23 +56,14 @@ function parseNotes(notes){
         changes:Array.isArray(obj.changes)?obj.changes:[],
         free:obj.free||'',
         priority:obj.priority||'P3',
-        director:obj.director||''
+        dnote:obj.dnote||''
       };
     }
   }catch(e){}
   const tags=new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3',director:''};
+  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3',dnote:''};
 }
-function stringifyNotes(o){
-  return JSON.stringify({
-    tags:Array.from(o.tags||[]),
-    versions:o.versions||{A:'v1',B:'v1',F:'v1'},
-    changes:o.changes||[],
-    free:o.free||'',
-    priority:o.priority||'P3',
-    director:o.director||''
-  });
-}
+function stringifyNotes(o){ return JSON.stringify({tags:Array.from(o.tags||[]),versions:o.versions||{A:'v1',B:'v1',F:'v1'},changes:o.changes||[],free:o.free||'',priority:o.priority||'P3',dnote:o.dnote||''}); }
 function hasTag(n,t){ return parseNotes(n).tags.has(t); }
 function getPriority(p){ return parseNotes(p.notes).priority||'P3'; }
 function priRank(code){ return ({P1:0,P2:1,P3:2,P4:3})[code] ?? 2; }
@@ -242,7 +233,7 @@ function renderKpis(){
   elMultiToggle?.addEventListener('change', ()=>{ elMulti.classList.toggle('hidden', !elMultiToggle.checked); if(elMultiToggle.checked){ ensureOneRow(); calcMulti(); } else { calcSingle(); } });
   $('quote-form').addEventListener('input', calc);
 
-  calc(); // 默认单组合
+  calc();
 })();
 
 /* 编辑模态与项目表渲染 */
@@ -280,14 +271,15 @@ function openEditorModal(kind,id){
   }
 
   if(kind==='spec'){
-    editorTitle.textContent='编辑 影片类型 & 条数 & 规格（可多组合）';
+    editorTitle.textContent='编辑 影片类型 & 条数 & 规格（仅 1 组）';
     const parsed=parseSpec(p.spec);
     const combos=parsed.json?parsed.combos:[{type:p.type||'',clips:p.clips||1,res:(parsed.combos?.[0]||{}).res||'',ratios:(parsed.combos?.[0]||{}).ratios||[]}];
-    const rows=combos.map((c,idx)=> comboRowHTML(idx,c)).join('');
+    const rows=(combos && combos.length? combos.slice(0,1):[{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}]).map((c,idx)=> comboRowHTML(idx,c)).join('');
     editorForm.innerHTML=`<div id="combo-list">${rows}</div><div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>`;
+    const addBtn=()=>{ const list=editorForm.querySelector('#combo-list'); const count=list.querySelectorAll('.combo-row').length; if(count>=1){ alert('仅允许 1 组组合'); return; } list.insertAdjacentHTML('beforeend', comboRowHTML(0,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); };
     editorForm.addEventListener('click',e=>{
       const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
-      if(add){ const list=editorForm.querySelector('#combo-list'); const idx=list.querySelectorAll('.combo-row').length; list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); }
+      if(add){ addBtn(); }
       if(del){ del.closest('.combo-row')?.remove(); }
     }, { once:false });
   }
@@ -317,7 +309,17 @@ function openEditorModal(kind,id){
     editorForm.innerHTML=`<div class="h-row"><label>总金额<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label><label>已收款<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label></div>`;
   }
 
+  if(kind==='dnote'){
+    editorTitle.textContent='导演备注';
+    const d=parseNotes(p.notes);
+    editorForm.innerHTML = `
+      <label>备注内容<textarea name="dnote" rows="6" placeholder="填写导演备注（仅自己可见）">${d.dnote||''}</textarea></label>
+      <div class="small muted" style="margin-top:6px">保存后在项目列表以“备注”按钮呈现颜色标记：有内容 → 绿色，无内容 → 蓝色。</div>
+    `;
+  }
+
   if(kind==='changes'){
+    editorTitle.textContent='修改内容';
     const d=parseNotes(p.notes);
     const st=stageInfo(p);
     const history=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts);
@@ -332,7 +334,6 @@ function openEditorModal(kind,id){
       </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
 
-    editorTitle.textContent='修改内容';
     editorForm.innerHTML = `
       <input type="hidden" name="edit_ts" value="">
       <div class="card" style="margin-bottom:10px">
@@ -360,6 +361,7 @@ function openEditorModal(kind,id){
       </div>
     `;
 
+    // 粘贴图片 → 临时文件集合
     const pasteBox=editorForm.querySelector('#chg_paste'), prev=editorForm.querySelector('#chg_preview');
     let pendingFiles=[];
     pasteBox?.addEventListener('paste',e=>{
@@ -375,6 +377,7 @@ function openEditorModal(kind,id){
     function renderPrev(){ prev.innerHTML=''; pendingFiles.forEach(f=>{ const img=document.createElement('img'); img.className='tiny-thumb'; const rd=new FileReader(); rd.onload=()=>img.src=rd.result; rd.readAsDataURL(f); prev.appendChild(img); }); }
     editorForm._pendingFiles = pendingFiles;
 
+    // 点击历史 → 回填编辑
     editorForm.addEventListener('click',e=>{
       const item = e.target.closest('.edit-change');
       if(!item) return;
@@ -389,14 +392,6 @@ function openEditorModal(kind,id){
       editorForm.querySelector('#chg_text').value = rec.text||'';
       editorForm.querySelector('input[name="edit_ts"]').value = String(rec.ts);
     });
-  }
-
-  if(kind==='director'){
-    const d=parseNotes(p.notes);
-    editorTitle.textContent='导演备注';
-    editorForm.innerHTML=`
-      <label>备注内容<textarea name="director_note" rows="6" placeholder="填写导演备注（仅内部可见）">${(d.director||'').replace(/</g,'&lt;')}</textarea></label>
-    `;
   }
 }
 
@@ -418,7 +413,8 @@ editorForm?.addEventListener('submit', async (e)=>{
       const ratios=[...row.querySelectorAll('.pill-group input[type="checkbox"]:checked')].map(i=>i.value);
       return { type, clips, res, ratios };
     }).filter(x=>x.type);
-    if(combos.length){ patch.spec=JSON.stringify({combos}); patch.type=combos[0].type; patch.clips=combos[0].clips; }
+    const one = combos.slice(0,1); // 仅 1 组
+    if(one.length){ patch.spec=JSON.stringify({combos:one}); patch.type=one[0].type; patch.clips=one[0].clips; }
     else{ patch.spec=''; patch.type=''; patch.clips=1; }
   }
 
@@ -436,6 +432,13 @@ editorForm?.addEventListener('submit', async (e)=>{
   }
 
   if(kind==='money'){ patch.quote_amount=Number(fd.get('quote_amount')||0); patch.paid_amount=Number(fd.get('paid_amount')||0); }
+
+  if(kind==='dnote'){
+    const row=projects.find(x=>String(x.id)===String(id));
+    let d=parseNotes(row?.notes||'');
+    d.dnote=(fd.get('dnote')||'').toString();
+    patch.notes = stringifyNotes(d);
+  }
 
   if(kind==='changes'){
     const row=projects.find(x=>String(x.id)===String(id));
@@ -476,12 +479,6 @@ editorForm?.addEventListener('submit', async (e)=>{
     patch.notes = stringifyNotes(d);
   }
 
-  if(kind==='director'){
-    const row=projects.find(x=>String(x.id)===String(id));
-    let d=parseNotes(row?.notes||''); d.director = (fd.get('director_note')||'').toString();
-    patch.notes = stringifyNotes(d);
-  }
-
   await supa.from('projects').update(patch).eq('id', id);
   closeEditor();
   await fetchProjects(); renderAll();
@@ -509,27 +506,26 @@ function renderRow(p){
   const d=parseNotes(p.notes);
   const last=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
   const lastText=last ? `[${last.phase}·${last.version}] ${last.text}` : '—';
-  const thumbs=last?.imgs?.length ? last.imgs.slice(0,2).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
+  const thumbs=last?.imgs?.length ? last.imgs.slice(0,4).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
   const pri=priObj(d.priority||'P3');
-
   const payClass = pay==='未收款' ? 'pill-blue' : (pay==='已收定金' ? 'pill-green' : 'pill-gold');
-  const noteClass = (d.director||'').trim() ? 'pill-yellow' : '';
-
   const upOk= !!p.poster_url || !!p.final_link;
   const upTxt = upOk ? '已上传' : '未上传';
   const upCls = upOk ? 'pill-green' : 'pill-blue';
+  const noteExists = (d.dnote||'').trim().length>0;
+  const noteCls = noteExists ? 'pill-green' : 'pill-blue';
 
   tr.innerHTML = `
     <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
-    <td><div class="cell-summary"><span class="one-line">${p.producer_name||'未填'}${p.producer_contact?` · ${p.producer_contact}`:''}</span><button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button></div></td>
-    <td><div class="cell-summary"><span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span><button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button></div></td>
-    <td><div class="cell-summary"><span class="one-line">${formatProgressCell(p)}</span><button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle one-line" data-id="${p.id}" title="点击切换优先级">${pri.k}·${pri.txt}</button></div></td>
-    <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill one-line" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
-    <td class="col-note"><div class="cell-summary"><button class="pill ${noteClass} note-pill one-line" data-id="${p.id}" title="点击填写/查看导演备注">备注</button></div></td>
-    <td><div class="cell-summary"><span class="muted one-line">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-changes"><div class="cell-summary"><span class="small one-line">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill one-line" data-id="${p.id}">${upTxt}</button></div></td>
+    <td><div class="cell-summary"><span>${p.producer_name||'未填'}</span>${p.producer_contact?`<span class="muted small">· ${p.producer_contact}</span>`:''}<button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button></div></td>
+    <td><div class="cell-summary"><span class="text-cell">${(typeSpecLines(p).join(' / '))||'—'}</span><button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button></div></td>
+    <td><div class="cell-summary"><span class="text-cell">${formatProgressCell(p)}</span><button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k}</button></div></td>
+    <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
+    <td><div class="cell-summary"><span class="muted text-cell">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-note"><div class="cell-summary"><button class="pill ${noteCls} note-pill" data-id="${p.id}">备注</button></div></td>
+    <td class="col-changes"><div class="cell-summary"><span class="small text-cell">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
+    <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill" data-id="${p.id}">${upTxt}</button></div></td>
   `;
   return tr;
 }
@@ -549,7 +545,7 @@ function bindTable(tb){
     const img=e.target.closest('.img-thumb');
     const up=e.target.closest('.upload-pill');
     const payBtn=e.target.closest('.pay-pill');
-    const noteBtn=e.target.closest('.note-pill');
+    const note=e.target.closest('.note-pill');
     if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); }
     if(pri){ const id=pri.getAttribute('data-id'); const row=projects.find(x=>String(x.id)===String(id)); if(!row) return; const d=parseNotes(row.notes); d.priority=d.priority==='P1'?'P2':d.priority==='P2'?'P3':d.priority==='P3'?'P4':'P1'; await supa.from('projects').update({notes:stringifyNotes(d)}).eq('id',id); await fetchProjects(); renderProjects(); }
     if(img){ openImgbox(img.getAttribute('data-full')); }
@@ -566,7 +562,9 @@ function bindTable(tb){
       const row=projects.find(x=> String(x.id)===String(id)); if(row){ row.pay_status=next; }
       renderProjects();
     }
-    if(noteBtn){ openEditorModal('director', noteBtn.getAttribute('data-id')); }
+    if(note){
+      openEditorModal('dnote', note.getAttribute('data-id'));
+    }
   });
 
   tb._bound = true;
@@ -605,7 +603,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：自动抽帧靠近首帧 */
+/* 作品合集：靠近首帧抽帧 */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -660,7 +658,7 @@ async function renderGallery(){
   }
 }
 
-/* 日历：仅边框 + 多色 */
+/* 日历：仅边框 + 多色（按项目 id 哈希） */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -672,9 +670,8 @@ function colorIndexForId(id){
   return s % 8;
 }
 function renderCalendar(){
-  const y=calBase.getFullYear(), m=calBase.getMonth();
+  gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
   labelEl.textContent=`${y}年 ${m+1}月`;
-  gridEl.innerHTML='';
   const first=new Date(y,m,1), start=(first.getDay()+6)%7, days=new Date(y,m+1,0).getDate();
   const dayCells=Array.from({length:days+1},()=>null);
   for(let i=0;i<42;i++){
@@ -731,11 +728,12 @@ function renderFinance(){
     .sort((a,b)=> b.days-a.days || unpaidAmt(b.p)-unpaidAmt(a.p));
   agingRows.forEach(({p,days})=>{
     const li=document.createElement('div'); li.className='list-item';
-    li.innerHTML=`<div>${p.title||'未命命'} · ${p.producer_name||'未填'}</div><strong>${moneyAbbr(unpaidAmt(p))} / ${days}天</strong>`;
+    li.innerHTML=`<div>${p.title||'未命名'} · ${p.producer_name||'未填'}</div><strong>${moneyAbbr(unpaidAmt(p))} / ${days}天</strong>`;
     aging.appendChild(li);
   });
   aging.classList.add('collapsed');
 
+  // 趋势图：全年（月对比）- 交稿 vs 收款
   const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
   const deliver=new Array(12).fill(0);
@@ -759,7 +757,7 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染（带坐标轴与月刻度） */
+/* 双折线渲染 */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
@@ -797,7 +795,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传（保持） */
+/* 上传 */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
@@ -823,16 +821,16 @@ uploadForm?.addEventListener('submit',async e=>{
   }catch(err){ console.error(err); stop(); upTip.textContent='上传失败：'+(err?.message||''); }
 });
 
-/* 折叠/展开按钮（Finance 三个榜单） */
+/* 折叠/展开按钮（兼容 fold-btn 与 btn-collapse） */
 document.addEventListener('click', e=>{
-  const btn=e.target.closest('.btn-collapse');
+  const btn = e.target.closest('.fold-btn, .btn-collapse');
   if(!btn) return;
   const id=btn.getAttribute('data-target');
   const box=$(id);
   if(!box) return;
   const expanded = box.classList.toggle('expanded');
   if(expanded){ box.classList.remove('collapsed'); btn.textContent='收起'; }
-  else { box.classList.add('collapsed'); btn.textContent='展开'; }
+  else { box.classList.add('collapsed'); btn.textContent='展开全部'; }
 });
 
 /* 导航 & 启动 */
@@ -847,7 +845,7 @@ const mNew=$('new-modal'); $('btn-new')?.addEventListener('click',()=> mNew.clas
 $('new-form')?.addEventListener('submit',async e=>{
   e.preventDefault(); const fd=new FormData(e.target); const row=Object.fromEntries(fd.entries());
   row.clips=Number(row.clips||1); row.quote_amount=Number(row.quote_amount||0); row.paid_amount=Number(row.paid_amount||0); row.deposit_amount=0;
-  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',director:''});
+  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',dnote:''});
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show'); await fetchProjects(); renderAll();
