@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.4 */
+/* editor-studio / styles.css  v1.5.5 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -54,31 +54,33 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-/* 项目页里不出现横向滚动条（一个窗口完整显示） */
-#view-projects .table-wrap{overflow-x:visible}
+#view-projects .table-wrap{overflow-x:visible} /* 项目页尽量不出现横向滚动 */
 
-.table{width:100%;border-collapse:collapse}
+.table{width:100%;border-collapse:collapse;table-layout:fixed}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
 .table thead th{background:color-mix(in oklab, var(--panel), var(--text) 3%)}
 .table th:not(:first-child), .table td:not(:first-child){font-size:14px}
 .table td .text-cell{white-space:normal}
 .table td.shrink{font-size:var(--fs-xs)}
-.col-upload{min-width:unset;width:1%;white-space:nowrap}
-.col-priority{min-width:unset;width:1%;white-space:nowrap}
-.col-pay{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页：表宽度改为 100%（不再 150%），仍使用 fixed 布局 */
-#view-projects .projects-table{table-layout:fixed;width:100%}
+/* 单行省略工具类 */
+.one-line{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 
-/* 指定列宽：第3列(规格)=16%（较原降低20%），第8列(修改内容)=20% */
+/* 列最小化：优先级 / 支付 / 上传 / 备注（胶囊最小宽） */
+.col-upload,.col-priority,.col-pay,.col-note{width:1%;white-space:nowrap}
+
+/* “项目”列也尽量收窄 + 省略号 */
+#view-projects .projects-table th:nth-child(1),
+#view-projects .projects-table td:nth-child(1){width:1%;overflow:hidden;text-overflow:ellipsis}
+
+/* 第3列(规格) 16%（较原再压缩过后保持）；允许换行 */
 #view-projects .projects-table th:nth-child(3),
 #view-projects .projects-table td:nth-child(3){width:16%;min-width:416px;white-space:normal}
-#view-projects .projects-table th:nth-child(8),
-#view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
-/* 为避免超宽，允许第1、2列换行 */
-#view-projects .projects-table td:nth-child(1),
-#view-projects .projects-table td:nth-child(2){white-space:normal}
+/* “修改内容”列：再缩小到14%，超出省略号 */
+#view-projects .projects-table th:nth-child(9),
+#view-projects .projects-table td:nth-child(9){width:14%;min-width:260px}
+#view-projects .projects-table td:nth-child(9) .one-line{white-space:nowrap}
 
 /* 最近项目 + 能量条 */
 .recent .list-item{display:grid;grid-template-columns:1fr 120px 160px 120px;gap:12px;align-items:center}
