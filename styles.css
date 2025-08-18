@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.2 */
+/* editor-studio / styles.css  v1.5.3 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,8 +20,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-/* 整体加宽 */
-.container{width:100%;max-width:1800px;margin:auto;padding:0 24px}
+
+/* 整体加宽：2300px */
+.container{width:100%;max-width:2300px;margin:auto;padding:0 24px}
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -65,10 +66,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 项目页：表整体加宽到 150%（未完成与已完成两个窗口） */
 #view-projects .projects-table{table-layout:fixed;width:150%}
-/* 指定列宽：第3列(规格)=20%，第8列(修改内容)=20%（由原 40% 缩 50%），其余自适应单行 */
-#view-projects .projects-table th:nth-child(3), 
-#view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
-#view-projects .projects-table th:nth-child(8), 
+/* 指定列宽：第3列(规格)缩小20% → 16%，第8列(修改内容)=20% */
+#view-projects .projects-table th:nth-child(3),
+#view-projects .projects-table td:nth-child(3){width:16%;min-width:416px}
+#view-projects .projects-table th:nth-child(8),
 #view-projects .projects-table td:nth-child(8){width:20%;min-width:320px;white-space:normal}
 
 /* 最近项目（信息 / 条数 / 最近节点 / 版本号） + 能量条 */
