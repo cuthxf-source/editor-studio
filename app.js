@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.3 */
-const APP_VERSION = 'V1.5.3';
+/* editor-studio / app.js  v1.5.4 */
+const APP_VERSION = 'V1.5.4';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -109,7 +109,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目（能量条直显） */
+/* 首页：最近项目 */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -145,7 +145,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
+/* KPI */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -227,7 +227,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑；修正“规格弹窗重复绑定”） */
+/* 编辑模态与项目表渲染（保持原逻辑） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -267,20 +267,11 @@ function openEditorModal(kind,id){
     const combos=parsed.json?parsed.combos:[{type:p.type||'',clips:p.clips||1,res:(parsed.combos?.[0]||{}).res||'',ratios:(parsed.combos?.[0]||{}).ratios||[]}];
     const rows=combos.map((c,idx)=> comboRowHTML(idx,c)).join('');
     editorForm.innerHTML=`<div id="combo-list">${rows}</div><div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>`;
-
-    /* 防止重复绑定：只绑定一次；每次点击仅新增一组 */
-    if(!editorForm._specBound){
-      editorForm.addEventListener('click', e=>{
-        const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
-        if(add){
-          const list=editorForm.querySelector('#combo-list');
-          const idx=list.querySelectorAll('.combo-row').length;
-          list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}));
-        }
-        if(del){ del.closest('.combo-row')?.remove(); }
-      });
-      editorForm._specBound = true;
-    }
+    editorForm.addEventListener('click',e=>{
+      const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
+      if(add){ const list=editorForm.querySelector('#combo-list'); const idx=list.querySelectorAll('.combo-row').length; list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); }
+      if(del){ del.closest('.combo-row')?.remove(); }
+    }, { once:false });
   }
 
   if(kind==='progress'){
@@ -309,7 +300,6 @@ function openEditorModal(kind,id){
   }
 
   if(kind==='changes'){
-    /* 原有“修改内容”逻辑保持不变（粘贴图片 + 历史可点编辑） */
     const d=parseNotes(p.notes);
     const st=stageInfo(p);
     const history=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts);
@@ -465,7 +455,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-/* 项目表（保持原逻辑） */
+/* 项目表 */
 function formatProgressCell(p){
   const vers=parseNotes(p.notes).versions;
   const near=nearestMilestone(p);
@@ -579,7 +569,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：改回“靠近首帧”的自动抽帧（保持不变） */
+/* 作品合集（自动抽帧靠近首帧） */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -589,7 +579,7 @@ function captureVideoAutoFrame(url){
       v.src=url;
       v.addEventListener('loadedmetadata',()=>{
         const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
-        v.currentTime = t; // 靠近首帧
+        v.currentTime = t;
       }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
@@ -634,7 +624,7 @@ async function renderGallery(){
   }
 }
 
-/* 日历：仅边框 + 多色（按项目 id 哈希） */
+/* 日历（边框风格 + 多色） */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -643,7 +633,7 @@ $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth(
 function colorIndexForId(id){
   let s=0; const str=String(id||'0');
   for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
-  return s % 8; // 对应 .c0 ~ .c7
+  return s % 8;
 }
 function renderCalendar(){
   const y=calBase.getFullYear(), m=calBase.getMonth();
@@ -683,7 +673,7 @@ function renderCalendar(){
   });
 }
 
-/* 财务（保持原有“折叠/展开”和 K/M 单位） */
+/* 财务 */
 function renderFinance(){
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
@@ -705,7 +695,7 @@ function renderFinance(){
     .sort((a,b)=> b.days-a.days || unpaidAmt(b.p)-unpaidAmt(a.p));
   agingRows.forEach(({p,days})=>{
     const li=document.createElement('div'); li.className='list-item';
-    li.innerHTML=`<div>${p.title||'未命名'} · ${p.producer_name||'未填'}</div><strong>${moneyAbbr(unpaidAmt(p))} / ${days}天</strong>`;
+    li.innerHTML=`<div>${p.title||'未命命'} · ${p.producer_name||'未填'}</div><strong>${moneyAbbr(unpaidAmt(p))} / ${days}天</strong>`;
     aging.appendChild(li);
   });
   aging.classList.add('collapsed');
@@ -766,7 +756,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传保持不变...（略，为全文一致性保留） */
+/* 上传保持不变 */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
@@ -792,9 +782,9 @@ uploadForm?.addEventListener('submit',async e=>{
   }catch(err){ console.error(err); stop(); upTip.textContent='上传失败：'+(err?.message||''); }
 });
 
-/* 折叠/展开按钮（Finance 三个榜单） */
+/* 折叠/展开按钮（注意：index.html 中按钮类为 fold-btn，若需切换可改为此类名） */
 document.addEventListener('click', e=>{
-  const btn=e.target.closest('.btn-collapse');
+  const btn=e.target.closest('.btn-collapse'); // 保持原逻辑
   if(!btn) return;
   const id=btn.getAttribute('data-target');
   const box=$(id);
