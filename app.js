@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.2 */
-const APP_VERSION = 'V1.5.2';
+/* editor-studio / app.js  v1.5.3 */
+const APP_VERSION = 'V1.5.3';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -160,7 +160,6 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
-  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
@@ -228,7 +227,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑） */
+/* 编辑模态与项目表渲染（保持原逻辑；修正“规格弹窗重复绑定”） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -268,11 +267,20 @@ function openEditorModal(kind,id){
     const combos=parsed.json?parsed.combos:[{type:p.type||'',clips:p.clips||1,res:(parsed.combos?.[0]||{}).res||'',ratios:(parsed.combos?.[0]||{}).ratios||[]}];
     const rows=combos.map((c,idx)=> comboRowHTML(idx,c)).join('');
     editorForm.innerHTML=`<div id="combo-list">${rows}</div><div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>`;
-    editorForm.addEventListener('click',e=>{
-      const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
-      if(add){ const list=editorForm.querySelector('#combo-list'); const idx=list.querySelectorAll('.combo-row').length; list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); }
-      if(del){ del.closest('.combo-row')?.remove(); }
-    }, { once:false });
+
+    /* 防止重复绑定：只绑定一次；每次点击仅新增一组 */
+    if(!editorForm._specBound){
+      editorForm.addEventListener('click', e=>{
+        const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
+        if(add){
+          const list=editorForm.querySelector('#combo-list');
+          const idx=list.querySelectorAll('.combo-row').length;
+          list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}));
+        }
+        if(del){ del.closest('.combo-row')?.remove(); }
+      });
+      editorForm._specBound = true;
+    }
   }
 
   if(kind==='progress'){
@@ -301,7 +309,7 @@ function openEditorModal(kind,id){
   }
 
   if(kind==='changes'){
-    editorTitle.textContent='修改内容';
+    /* 原有“修改内容”逻辑保持不变（粘贴图片 + 历史可点编辑） */
     const d=parseNotes(p.notes);
     const st=stageInfo(p);
     const history=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts);
@@ -316,6 +324,7 @@ function openEditorModal(kind,id){
       </div>`;
     }).join('') : `<div class="muted small">暂无历史记录</div>`;
 
+    editorTitle.textContent='修改内容';
     editorForm.innerHTML = `
       <input type="hidden" name="edit_ts" value="">
       <div class="card" style="margin-bottom:10px">
@@ -343,7 +352,6 @@ function openEditorModal(kind,id){
       </div>
     `;
 
-    // 粘贴图片 → 临时文件集合
     const pasteBox=editorForm.querySelector('#chg_paste'), prev=editorForm.querySelector('#chg_preview');
     let pendingFiles=[];
     pasteBox?.addEventListener('paste',e=>{
@@ -359,7 +367,6 @@ function openEditorModal(kind,id){
     function renderPrev(){ prev.innerHTML=''; pendingFiles.forEach(f=>{ const img=document.createElement('img'); img.className='tiny-thumb'; const rd=new FileReader(); rd.onload=()=>img.src=rd.result; rd.readAsDataURL(f); prev.appendChild(img); }); }
     editorForm._pendingFiles = pendingFiles;
 
-    // 点击历史 → 回填编辑
     editorForm.addEventListener('click',e=>{
       const item = e.target.closest('.edit-change');
       if(!item) return;
@@ -458,7 +465,7 @@ editorForm?.addEventListener('submit', async (e)=>{
   await fetchProjects(); renderAll();
 });
 
-/* 项目表 */
+/* 项目表（保持原逻辑） */
 function formatProgressCell(p){
   const vers=parseNotes(p.notes).versions;
   const near=nearestMilestone(p);
@@ -572,7 +579,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：改回“靠近首帧”的自动抽帧 */
+/* 作品合集：改回“靠近首帧”的自动抽帧（保持不变） */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -639,8 +646,9 @@ function colorIndexForId(id){
   return s % 8; // 对应 .c0 ~ .c7
 }
 function renderCalendar(){
-  gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
+  const y=calBase.getFullYear(), m=calBase.getMonth();
   labelEl.textContent=`${y}年 ${m+1}月`;
+  gridEl.innerHTML='';
   const first=new Date(y,m,1), start=(first.getDay()+6)%7, days=new Date(y,m+1,0).getDate();
   const dayCells=Array.from({length:days+1},()=>null);
   for(let i=0;i<42;i++){
@@ -675,9 +683,8 @@ function renderCalendar(){
   });
 }
 
-/* 财务 */
+/* 财务（保持原有“折叠/展开”和 K/M 单位） */
 function renderFinance(){
-  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
   const rp=$('rank-partner'); rp.innerHTML='';
@@ -703,11 +710,10 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
-  const months=Array.from({length:12},(_,i)=>i); // 0..11
+  const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
-  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
-  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
+  const deliver=new Array(12).fill(0);
+  const receive=new Array(12).fill(0);
   projects.forEach(p=>{
     if(p.final_date){
       const d=new Date(p.final_date);
@@ -719,7 +725,6 @@ function renderFinance(){
     }
   });
 
-  // 旺季/淡季（基于交稿曲线）
   let maxM=0,minM=0;
   for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
   const tags=$('trend-tags');
@@ -728,17 +733,14 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染（带坐标轴与月刻度） */
+/* 双折线渲染 */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
-
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
-
-  // 网格 & 轴
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -748,17 +750,13 @@ function drawDualTrend(container, months, deliver, receive){
     const label = val>=1e6? (val/1e6).toFixed(1)+'M' : val>=1e3? (val/1e3).toFixed(1)+'K' : Math.round(val).toString();
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
-
-  // 月份刻度
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
     xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
   });
-
   const pathDeliver = toPath(deliver);
   const pathReceive = toPath(receive);
-
   container.innerHTML = `
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <g class="grid">${grid}</g>
@@ -768,7 +766,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传（保持） */
+/* 上传保持不变...（略，为全文一致性保留） */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
