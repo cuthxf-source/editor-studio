@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.5.2 -->
+<!-- editor-studio / index.html  v1.5.3 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5.2" />
-  <link rel="stylesheet" href="styles.css?v=v1.5.2" />
+  <link rel="icon" href="icon.png?v=v1.5.3" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.3" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -222,40 +222,17 @@
     </section>
   </main>
 
-  <!-- 弹窗 -->
-  <div id="new-modal" class="modal">
-    <div class="modal-inner">
-      <div class="modal-head"><h3>新建项目</h3></div>
-      <form id="new-form" class="form">
-        <div class="grid-2"><label>项目名<input name="title" required></label><label>品牌<input name="brand"></label></div>
-        <div class="grid-3">
-          <label>类型<select name="type">
-            <option>LOOKBOOK</option><option>形象片</option><option>TVC</option>
-            <option>宣传片</option><option>纪录片</option><option>花絮</option>
-          </select></label>
-          <label>输出规格<select name="spec"><option>1080p</option><option>2k</option><option>4k</option></select></label>
-          <label>影片条数<input name="clips" type="number" min="1" value="1"></label>
-        </div>
-        <div class="grid-2"><label>已收款<input name="paid_amount" type="number" min="0" step="0.01"></label><label>总金额<input name="quote_amount" type="number" min="0" step="0.01"></label></div>
-        <div class="grid-2"><label>合作制片（姓名）<input name="producer_name"></label><label>合作制片（联系方式）<input name="producer_contact"></label></div>
-        <label class="hidden">备注<textarea name="notes" rows="3"></textarea></label>
-        <div class="modal-foot"><button type="button" class="ghost" id="new-cancel">取消</button><button type="submit">保存</button></div>
-      </form>
-    </div>
-  </div>
+  <!-- 弹窗 & Supabase 配置与脚本 -->
+  <div id="new-modal" class="modal">...</div>
+  <div id="editor-modal" class="modal">...</div>
+  <div id="quick-modal" class="modal">...</div>
+  <div id="upload-modal" class="modal">...</div>
+  <div id="imgbox" class="modal">...</div>
 
-  <div id="editor-modal" class="modal"><div class="modal-inner modal-inner-wide"><div class="modal-head"><h3 id="editor-title">编辑</h3><button id="editor-close" class="ghost">关闭</button></div><form id="editor-form" class="form"></form><div class="modal-foot"><button type="button" class="ghost" id="editor-cancel">取消</button><button type="submit" form="editor-form" class="btn">保存</button></div></div></div>
-  <div id="quick-modal" class="modal"><div class="modal-inner"><div class="modal-head"><h3 id="quick-title">项目详情</h3><button id="quick-close" class="ghost">关闭</button></div><div id="quick-body" class="form"></div><div class="modal-foot"><button id="quick-final-done" class="btn">标记 Final 完成</button></div></div></div>
-
-  <div id="upload-modal" class="modal"><div class="modal-inner"><div class="modal-head"><h3>上传海报 / 成片</h3><button id="upload-close" class="ghost">关闭</button></div><form id="upload-form" class="form" data-id=""><div class="grid-2"><label>海报图片（JPG/PNG，≤10MB）<input type="file" id="up-poster" accept="image/*"></label><label>成片视频（MP4/MOV，≤2GB）<input type="file" id="up-video" accept="video/*"></label></div><div class="upload-paste"><div class="muted small">也可把图片直接粘贴到下方作为海报：</div><textarea id="paste-box" rows="3" placeholder="在这里 ⌘V / Ctrl+V 粘贴图片"></textarea></div><div class="h-row"><div class="prog" id="up-progress" style="flex:1"><div class="prog-bar" style="width:0%"></div><span class="prog-text">0%</span></div><span id="up-tip" class="small muted"></span></div><div class="modal-foot"><button type="button" class="ghost" id="upload-cancel">取消</button><button type="submit" class="btn">开始上传</button></div></form></div></div>
-
-  <div id="imgbox" class="modal"><div class="modal-inner" style="max-width:min(96vw,1100px)"><div class="modal-head"><h3>图片预览</h3><button id="imgbox-close" class="ghost">关闭</button></div><div style="text-align:center"><img id="imgbox-img" style="max-width:100%"/></div></div></div>
-
-  <!-- Supabase -->
   <script>
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5.2" defer></script>
+  <script src="app.js?v=v1.5.3" defer></script>
 </body>
 </html>
