@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.4 */
-const APP_VERSION = 'V1.5.4';
+/* editor-studio / app.js  v1.5.3 */
+const APP_VERSION = 'V1.5.3';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -43,27 +43,18 @@ async function fetchProjects(){
   projects = data || [];
 }
 
-/* Notes & 优先级 & 导演备注 */
+/* Notes & 优先级 */
 function parseNotes(notes){
-  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',dnote:''};
+  const base={tags:new Set(),versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3'};
   if(!notes) return base;
   try{
     const obj=JSON.parse(notes);
-    if(obj){
-      return {
-        tags:new Set(Array.isArray(obj.tags)?obj.tags:[]),
-        versions:obj.versions||{A:'v1',B:'v1',F:'v1'},
-        changes:Array.isArray(obj.changes)?obj.changes:[],
-        free:obj.free||'',
-        priority:obj.priority||'P3',
-        dnote:obj.dnote||''
-      };
-    }
+    if(obj) return {tags:new Set(Array.isArray(obj.tags)?obj.tags:[]),versions:obj.versions||{A:'v1',B:'v1',F:'v1'},changes:Array.isArray(obj.changes)?obj.changes:[],free:obj.free||'',priority:obj.priority||'P3'};
   }catch(e){}
   const tags=new Set((notes.match(/#[A-Z_]+/g)||[]));
-  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3',dnote:''};
+  return {tags,versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:notes,priority:'P3'};
 }
-function stringifyNotes(o){ return JSON.stringify({tags:Array.from(o.tags||[]),versions:o.versions||{A:'v1',B:'v1',F:'v1'},changes:o.changes||[],free:o.free||'',priority:o.priority||'P3',dnote:o.dnote||''}); }
+function stringifyNotes(o){ return JSON.stringify({tags:Array.from(o.tags||[]),versions:o.versions||{A:'v1',B:'v1',F:'v1'},changes:o.changes||[],free:o.free||'',priority:o.priority||'P3'}); }
 function hasTag(n,t){ return parseNotes(n).tags.has(t); }
 function getPriority(p){ return parseNotes(p.notes).priority||'P3'; }
 function priRank(code){ return ({P1:0,P2:1,P3:2,P4:3})[code] ?? 2; }
@@ -89,8 +80,15 @@ function parseSpec(specStr){
 }
 function typeSpecLines(p){
   const parsed=parseSpec(p.spec);
-  if(parsed.json){ return parsed.combos.map(c=>`${c.type||'未填'}×${c.clips||1}${c.res?` · ${c.res}`:''}${c.ratios?.length?` · ${c.ratios.join('/')}`:''}`); }
-  const c=parsed.combos[0]||{}; const clips=p.clips?` · ${p.clips}条`:''; const type=p.type||''; const r=c.ratios?.length?` · ${c.ratios.join('/')}`:(c.ratio?` · ${c.ratio}`:''); const rr=c.res?` · ${c.res}`:''; const joined=[type,rr.replace(' · ','').trim()].filter(Boolean).join(' · '); return [(joined?joined:'—')+clips+(r||'')];
+  if(parsed.json){
+    // 多组合：每个组合独立一行（满足“第二组合换行”）
+    return parsed.combos.map(c=>`${c.type||'未填'}×${c.clips||1}${c.res?` · ${c.res}`:''}${c.ratios?.length?` · ${c.ratios.join('/')}`:''}`);
+  }
+  const c=parsed.combos[0]||{};
+  const clips=p.clips?` · ${p.clips}条`:''; const type=p.type||'';
+  const r=c.ratios?.length?` · ${c.ratios.join('/')}`:(c.ratio?` · ${c.ratio}`:''); const rr=c.res?` · ${c.res}`:'';
+  const joined=[type,rr.replace(' · ','').trim()].filter(Boolean).join(' · ');
+  return [(joined?joined:'—')+clips+(r||'')];
 }
 function totalClipsOf(p){ const parsed=parseSpec(p.spec); return parsed.json? parsed.combos.reduce((s,c)=>s+Number(c.clips||0),0) || Number(p.clips||0) || 0 : Number(p.clips||0)||0; }
 function unpaidAmt(p){ return Math.max(Number(p.quote_amount||0)-Number(p.paid_amount||0),0); }
@@ -233,10 +231,10 @@ function renderKpis(){
   elMultiToggle?.addEventListener('change', ()=>{ elMulti.classList.toggle('hidden', !elMultiToggle.checked); if(elMultiToggle.checked){ ensureOneRow(); calcMulti(); } else { calcSingle(); } });
   $('quote-form').addEventListener('input', calc);
 
-  calc();
+  calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（含导演备注） */
+/* 编辑模态与项目表渲染（保持原逻辑） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -267,19 +265,22 @@ function openEditorModal(kind,id){
 
   if(kind==='producer'){
     editorTitle.textContent='编辑 合作制片';
-    editorForm.innerHTML=`<div class="h-row"><label>合作制片（姓名）<input name="producer_name" value="${p.producer_name||''}"></label><label>合作制片（联系方式）<input name="producer_contact" value="${p.producer_contact||''}"></label></div>`;
+    editorForm.innerHTML=`<div class="h-row"><label>合作制片（姓名）<input name="producer_name" value="\${p.producer_name||''}"></label><label>合作制片（联系方式）<input name="producer_contact" value="\${p.producer_contact||''}"></label></div>`;
   }
 
   if(kind==='spec'){
-    editorTitle.textContent='编辑 影片类型 & 条数 & 规格（仅 1 组）';
+    editorTitle.textContent='编辑 影片类型 & 条数 & 规格（可多组合）';
     const parsed=parseSpec(p.spec);
     const combos=parsed.json?parsed.combos:[{type:p.type||'',clips:p.clips||1,res:(parsed.combos?.[0]||{}).res||'',ratios:(parsed.combos?.[0]||{}).ratios||[]}];
-    const rows=(combos && combos.length? combos.slice(0,1):[{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}]).map((c,idx)=> comboRowHTML(idx,c)).join('');
+    const rows=combos.map((c,idx)=> comboRowHTML(idx,c)).join('');
     editorForm.innerHTML=`<div id="combo-list">${rows}</div><div style="margin-top:10px"><button type="button" id="add-combo" class="cell-edit">新增组合</button></div>`;
-    const addBtn=()=>{ const list=editorForm.querySelector('#combo-list'); const count=list.querySelectorAll('.combo-row').length; if(count>=1){ alert('仅允许 1 组组合'); return; } list.insertAdjacentHTML('beforeend', comboRowHTML(0,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']})); };
     editorForm.addEventListener('click',e=>{
       const add=e.target.closest('#add-combo'); const del=e.target.closest('.combo-del');
-      if(add){ addBtn(); }
+      if(add){
+        const list=editorForm.querySelector('#combo-list');
+        const idx=list.querySelectorAll('.combo-row').length;
+        list.insertAdjacentHTML('beforeend', comboRowHTML(idx,{type:'LookBook',clips:1,res:'1080p',ratios:['16:9']}));
+      }
       if(del){ del.closest('.combo-row')?.remove(); }
     }, { once:false });
   }
@@ -307,15 +308,6 @@ function openEditorModal(kind,id){
   if(kind==='money'){
     editorTitle.textContent='编辑 金额';
     editorForm.innerHTML=`<div class="h-row"><label>总金额<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label><label>已收款<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label></div>`;
-  }
-
-  if(kind==='dnote'){
-    editorTitle.textContent='导演备注';
-    const d=parseNotes(p.notes);
-    editorForm.innerHTML = `
-      <label>备注内容<textarea name="dnote" rows="6" placeholder="填写导演备注（仅自己可见）">${d.dnote||''}</textarea></label>
-      <div class="small muted" style="margin-top:6px">保存后在项目列表以“备注”按钮呈现颜色标记：有内容 → 绿色，无内容 → 蓝色。</div>
-    `;
   }
 
   if(kind==='changes'){
@@ -413,8 +405,7 @@ editorForm?.addEventListener('submit', async (e)=>{
       const ratios=[...row.querySelectorAll('.pill-group input[type="checkbox"]:checked')].map(i=>i.value);
       return { type, clips, res, ratios };
     }).filter(x=>x.type);
-    const one = combos.slice(0,1); // 仅 1 组
-    if(one.length){ patch.spec=JSON.stringify({combos:one}); patch.type=one[0].type; patch.clips=one[0].clips; }
+    if(combos.length){ patch.spec=JSON.stringify({combos}); patch.type=combos[0].type; patch.clips=combos[0].clips; }
     else{ patch.spec=''; patch.type=''; patch.clips=1; }
   }
 
@@ -432,13 +423,6 @@ editorForm?.addEventListener('submit', async (e)=>{
   }
 
   if(kind==='money'){ patch.quote_amount=Number(fd.get('quote_amount')||0); patch.paid_amount=Number(fd.get('paid_amount')||0); }
-
-  if(kind==='dnote'){
-    const row=projects.find(x=>String(x.id)===String(id));
-    let d=parseNotes(row?.notes||'');
-    d.dnote=(fd.get('dnote')||'').toString();
-    patch.notes = stringifyNotes(d);
-  }
 
   if(kind==='changes'){
     const row=projects.find(x=>String(x.id)===String(id));
@@ -505,25 +489,24 @@ function renderRow(p){
   const moneyText=`${moneyAbbr(p.quote_amount)} / ${moneyAbbr(p.paid_amount)}`;
   const d=parseNotes(p.notes);
   const last=[...(d.changes||[])].sort((a,b)=>b.ts-a.ts)[0];
-  const lastText=last ? `[${last.phase}·${last.version}] ${last.text}` : '—';
+  const lastText=last ? `[${last.phase}·${last.version}] ${last.text.slice(0,42)}${last.text.length>42?'…':''}` : '—';
   const thumbs=last?.imgs?.length ? last.imgs.slice(0,4).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
   const pri=priObj(d.priority||'P3');
+
   const payClass = pay==='未收款' ? 'pill-blue' : (pay==='已收定金' ? 'pill-green' : 'pill-gold');
+
   const upOk= !!p.poster_url || !!p.final_link;
   const upTxt = upOk ? '已上传' : '未上传';
   const upCls = upOk ? 'pill-green' : 'pill-blue';
-  const noteExists = (d.dnote||'').trim().length>0;
-  const noteCls = noteExists ? 'pill-green' : 'pill-blue';
 
   tr.innerHTML = `
     <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
     <td><div class="cell-summary"><span>${p.producer_name||'未填'}</span>${p.producer_contact?`<span class="muted small">· ${p.producer_contact}</span>`:''}<button class="cell-edit edit-btn" data-kind="producer" data-id="${p.id}">编辑</button></div></td>
-    <td><div class="cell-summary"><span class="text-cell">${(typeSpecLines(p).join(' / '))||'—'}</span><button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button></div></td>
+    <td><div class="cell-summary"><span class="text-cell">${(typeSpecLines(p).join('<br>'))||'—'}</span><button class="cell-edit edit-btn" data-kind="spec" data-id="${p.id}">编辑</button></div></td>
     <td><div class="cell-summary"><span class="text-cell">${formatProgressCell(p)}</span><button class="cell-edit edit-btn" data-kind="progress" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k}</button></div></td>
+    <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k}·${pri.txt}</button></div></td>
     <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
     <td><div class="cell-summary"><span class="muted text-cell">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-note"><div class="cell-summary"><button class="pill ${noteCls} note-pill" data-id="${p.id}">备注</button></div></td>
     <td class="col-changes"><div class="cell-summary"><span class="small text-cell">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
     <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill" data-id="${p.id}">${upTxt}</button></div></td>
   `;
@@ -545,7 +528,6 @@ function bindTable(tb){
     const img=e.target.closest('.img-thumb');
     const up=e.target.closest('.upload-pill');
     const payBtn=e.target.closest('.pay-pill');
-    const note=e.target.closest('.note-pill');
     if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); }
     if(pri){ const id=pri.getAttribute('data-id'); const row=projects.find(x=>String(x.id)===String(id)); if(!row) return; const d=parseNotes(row.notes); d.priority=d.priority==='P1'?'P2':d.priority==='P2'?'P3':d.priority==='P3'?'P4':'P1'; await supa.from('projects').update({notes:stringifyNotes(d)}).eq('id',id); await fetchProjects(); renderProjects(); }
     if(img){ openImgbox(img.getAttribute('data-full')); }
@@ -561,9 +543,6 @@ function bindTable(tb){
       payBtn.classList.add(next==='未收款'?'pill-blue':(next==='已收定金'?'pill-green':'pill-gold'));
       const row=projects.find(x=> String(x.id)===String(id)); if(row){ row.pay_status=next; }
       renderProjects();
-    }
-    if(note){
-      openEditorModal('dnote', note.getAttribute('data-id'));
     }
   });
 
@@ -603,7 +582,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：靠近首帧抽帧 */
+/* 作品合集：改回“靠近首帧”的自动抽帧 */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -613,7 +592,7 @@ function captureVideoAutoFrame(url){
       v.src=url;
       v.addEventListener('loadedmetadata',()=>{
         const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
-        v.currentTime = t;
+        v.currentTime = t; // 靠近首帧
       }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
@@ -648,7 +627,7 @@ async function renderGallery(){
   if(finals.length===0){
     const ph=document.createElement('div'); ph.className='mag-card'; ph.innerHTML=`<div class="mag-cap">暂未上传成片，请在项目中上传海报或视频</div>`; grid.appendChild(ph); return;
   }
-  for(let i=0;i<finals.length;i++){
+  for(let i=0;i<i<finals.length;i++){
     const p=finals[i];
     const a=document.createElement('a'); a.className='mag-card'; a.href=p.final_link; a.target='_blank';
     if(Math.random()<0.3) a.classList.add('mag-span2');
@@ -667,7 +646,7 @@ $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth(
 function colorIndexForId(id){
   let s=0; const str=String(id||'0');
   for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
-  return s % 8;
+  return s % 8; // 对应 .c0 ~ .c7
 }
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
@@ -706,7 +685,7 @@ function renderCalendar(){
   });
 }
 
-/* 财务 */
+/* 财务（沿用你现有规则） */
 function renderFinance(){
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
@@ -733,7 +712,6 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）- 交稿 vs 收款
   const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
   const deliver=new Array(12).fill(0);
@@ -764,9 +742,7 @@ function drawDualTrend(container, months, deliver, receive){
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
-
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
-
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -776,16 +752,13 @@ function drawDualTrend(container, months, deliver, receive){
     const label = val>=1e6? (val/1e6).toFixed(1)+'M' : val>=1e3? (val/1e3).toFixed(1)+'K' : Math.round(val).toString();
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
-
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
     xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
   });
-
   const pathDeliver = toPath(deliver);
   const pathReceive = toPath(receive);
-
   container.innerHTML = `
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <g class="grid">${grid}</g>
@@ -795,7 +768,7 @@ function drawDualTrend(container, months, deliver, receive){
     </svg>`;
 }
 
-/* 上传 */
+/* 上传（保持） */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
@@ -821,16 +794,16 @@ uploadForm?.addEventListener('submit',async e=>{
   }catch(err){ console.error(err); stop(); upTip.textContent='上传失败：'+(err?.message||''); }
 });
 
-/* 折叠/展开按钮（兼容 fold-btn 与 btn-collapse） */
+/* 折叠/展开按钮（Finance 三个榜单） */
 document.addEventListener('click', e=>{
-  const btn = e.target.closest('.fold-btn, .btn-collapse');
+  const btn=e.target.closest('.btn-collapse');
   if(!btn) return;
   const id=btn.getAttribute('data-target');
   const box=$(id);
   if(!box) return;
   const expanded = box.classList.toggle('expanded');
   if(expanded){ box.classList.remove('collapsed'); btn.textContent='收起'; }
-  else { box.classList.add('collapsed'); btn.textContent='展开全部'; }
+  else { box.classList.add('collapsed'); btn.textContent='展开'; }
 });
 
 /* 导航 & 启动 */
@@ -845,7 +818,7 @@ const mNew=$('new-modal'); $('btn-new')?.addEventListener('click',()=> mNew.clas
 $('new-form')?.addEventListener('submit',async e=>{
   e.preventDefault(); const fd=new FormData(e.target); const row=Object.fromEntries(fd.entries());
   row.clips=Number(row.clips||1); row.quote_amount=Number(row.quote_amount||0); row.paid_amount=Number(row.paid_amount||0); row.deposit_amount=0;
-  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3',dnote:''});
+  row.notes=stringifyNotes({tags:[],versions:{A:'v1',B:'v1',F:'v1'},changes:[],free:'',priority:'P3'});
   const { error } = await supa.from('projects').insert(row);
   if(error){ alert(error.message); return; }
   mNew.classList.remove('show'); await fetchProjects(); renderAll();
