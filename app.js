@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.3 */
-const APP_VERSION = 'V1.5.3';
+/* editor-studio / app.js  v1.5.4 */
+const APP_VERSION = 'V1.5.4';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -236,7 +236,7 @@ function renderKpis(){
   calc();
 })();
 
-/* 编辑模态与项目表渲染 */
+/* 编辑模态与项目表渲染（含导演备注） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
