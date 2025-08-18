@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.5.4 -->
+<!-- editor-studio / index.html  v1.5.3 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5.4" />
-  <link rel="stylesheet" href="styles.css?v=v1.5.4" />
+  <link rel="icon" href="icon.png?v=v1.5.3" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.3" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -56,6 +56,7 @@
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
+      <!-- 首页不显示截至时间 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -66,7 +67,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器：横向对齐 -->
+      <!-- 报价分析器：横向对齐，保留原有选项（底部说明已去掉） -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form quote-horizontal">
@@ -115,6 +116,7 @@
             <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
+          <!-- 原底部说明已删除 -->
         </form>
       </div>
     </section>
@@ -139,7 +141,6 @@
                 <th>优先级</th>
                 <th>支付状态</th>
                 <th>总金额</th>
-                <th>导演备注</th>
                 <th class="col-changes">修改内容</th>
                 <th class="col-upload">上传</th>
               </tr>
@@ -162,7 +163,6 @@
                 <th>优先级</th>
                 <th>支付状态</th>
                 <th>总金额</th>
-                <th>导演备注</th>
                 <th class="col-changes">修改内容</th>
                 <th class="col-upload">上传</th>
               </tr>
@@ -256,6 +256,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5.4" defer></script>
+  <script src="app.js?v=v1.5.3" defer></script>
 </body>
 </html>
