@@ -1,4 +1,4 @@
-<!-- editor-studio / index.html  v1.5.4 -->
+<!-- editor-studio / index.html  v1.5.5 -->
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -9,8 +9,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light dark" />
   <title>剪辑师项目管理系统 · Life_HAN</title>
-  <link rel="icon" href="icon.png?v=v1.5.4" />
-  <link rel="stylesheet" href="styles.css?v=v1.5.4" />
+  <link rel="icon" href="icon.png?v=v1.5.5" />
+  <link rel="stylesheet" href="styles.css?v=v1.5.5" />
   <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -56,7 +56,6 @@
         <div class="card kpi-card"><div class="kpi-label">已完成片数</div><div id="kpi-done" class="kpi-num">0</div></div>
         <div class="card kpi-card"><div class="kpi-label">未完成片数</div><div id="kpi-todo" class="kpi-num">0</div></div>
       </div>
-      <!-- 首页不显示截至时间 -->
       <div id="home-asof" class="muted small asof"></div>
 
       <div class="card">
@@ -67,7 +66,7 @@
         <div id="recent-list" class="list recent"></div>
       </div>
 
-      <!-- 报价分析器：横向对齐，保留原有选项（底部说明已去掉） -->
+      <!-- 报价分析器 -->
       <div class="card">
         <div class="section-head"><h3>报价分析器</h3></div>
         <form id="quote-form" class="form quote-horizontal">
@@ -87,47 +86,31 @@
             </div>
             <div class="qh-block"><label>基础价格（可自填）<input id="qa-base" type="number" min="0" step="1" placeholder="留空用默认"></label></div>
             <div class="qh-block"><label>影片时长（秒）<input id="qa-secs" type="number" min="0" step="1" value="0"></label></div>
-
-            <div class="qh-block"><label>创意密度（%）
-              <input id="qa-creative" type="range" min="0" max="100" step="1" value="30">
-              <span id="qa-creative-val" class="muted small">30%</span>
-            </label></div>
-
-            <div class="qh-block"><label>紧急系数（%）
-              <input id="qa-urgent" type="range" min="0" max="100" step="10" value="0">
-              <span id="qa-urgent-val" class="muted small">0%</span>
-            </label></div>
-
-            <div class="qh-block"><label>修改次数
-              <input id="qa-rev" type="number" min="0" step="1" value="4">
-            </label></div>
-
-            <div class="qh-block qh-switch">
-              <label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label>
-            </div>
+            <div class="qh-block"><label>创意密度（%）<input id="qa-creative" type="range" min="0" max="100" step="1" value="30"><span id="qa-creative-val" class="muted small">30%</span></label></div>
+            <div class="qh-block"><label>紧急系数（%）<input id="qa-urgent" type="range" min="0" max="100" step="10" value="0"><span id="qa-urgent-val" class="muted small">0%</span></label></div>
+            <div class="qh-block"><label>修改次数<input id="qa-rev" type="number" min="0" step="1" value="4"></label></div>
+            <div class="qh-block qh-switch"><label class="pill"><input type="checkbox" id="qa-multi-toggle"><span>启用多组合计价</span></label></div>
           </div>
-
           <div id="qa-multi" class="hidden">
             <div id="qa-mc-list"></div>
             <div style="margin-top:10px"><button type="button" id="qa-mc-add" class="cell-edit">新增组合</button></div>
           </div>
-
           <div class="qh-result">
             <div class="price-box"><div>不含税价</div><div id="qa-net" class="price">¥0</div></div>
             <div class="price-box"><div>含税价（+6%）</div><div id="qa-gross" class="price">¥0</div></div>
           </div>
-          <!-- 原底部说明已删除 -->
         </form>
       </div>
     </section>
 
-    <!-- 项目列表：未完成 + 已完成 -->
+    <!-- 项目列表 -->
     <section id="view-projects" class="view hidden">
       <div class="section-head">
         <h2>项目列表</h2>
         <div class="toolbar"><button id="btn-new" class="btn">新建项目</button></div>
       </div>
 
+      <!-- 未完成项目：直接展示，无内滚动窗口 -->
       <div class="card">
         <div class="section-head"><h3>未完成项目</h3></div>
         <div id="projects-wrap" class="table-wrap">
@@ -150,6 +133,7 @@
         </div>
       </div>
 
+      <!-- 已完成项目：直接展示，无内滚动窗口 -->
       <div class="card">
         <div class="section-head"><h3>已完成项目（支付状态=已收尾款）</h3></div>
         <div id="completed-wrap" class="table-wrap">
@@ -256,6 +240,6 @@
     window.SUPABASE_URL = "https://lywlcsrndkturdpgvvnc.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2xjc3JuZGt0dXJkcGd2dm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwOTg1NzUsImV4cCI6MjA3MDY3NDU3NX0.z49xmAaG1ciyMbGPPamoYfiAwFTP0PfX7__K3iRRkhs";
   </script>
-  <script src="app.js?v=v1.5.4" defer></script>
+  <script src="app.js?v=v1.5.5" defer></script>
 </body>
 </html>
