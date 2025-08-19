@@ -1,4 +1,4 @@
-/* editor-studio / styles.css  v1.5.5 */
+/* editor-studio / styles.css  v1.5.6 */
 
 /* 主题（GitHub 风格） */
 :root{
@@ -20,8 +20,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .hidden{display:none!important}
 .center{display:flex;justify-content:center;align-items:center}
 .muted{color:var(--muted)} .small{font-size:var(--fs-sm);letter-spacing:var(--letter)}
-/* 容器更宽：2200px */
-.container{width:100%;max-width:2200px;margin:auto;padding:0 24px}
+
+/* 容器更宽：2300px */
+.container{width:100%;max-width:2300px;margin:auto;padding:0 24px}
 
 /* Header */
 .site-header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -53,8 +54,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 
 /* 表格 */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:24px;background:var(--panel)}
-/* 项目页两张表 —— 取消“内滚动窗口”，直接在页面展示 */
+/* 项目页两张表直接展示（无内滚动窗口） */
 #view-projects .table-wrap{overflow:visible;border:none;border-radius:0;background:transparent;padding:0}
+
 /* 表格本体 */
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
@@ -63,12 +65,16 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/va
 .table td .text-cell{white-space:normal}
 .table td.shrink{font-size:var(--fs-xs)}
 .col-upload{min-width:unset;width:1%;white-space:nowrap}
-.col-priority{min-width:unset;width:1%;white-space:nowrap}
-.col-pay{min-width:unset;width:1%;white-space:nowrap}
 
-/* 项目页：表宽改为 100%（原 150% 会迫使横向滚动） */
+/* 关键修改：优先级、支付状态两列仅按内容最小宽度显示 */
+.col-priority,.col-pay{min-width:0;width:auto;white-space:nowrap}
+#view-projects .projects-table th:nth-child(5),
+#view-projects .projects-table td:nth-child(5),
+#view-projects .projects-table th:nth-child(6),
+#view-projects .projects-table td:nth-child(6){width:0.01%}
+
+/* 项目页：表宽 100%（不产生横向滚动），指定第3/8列宽度，其余自适应 */
 #view-projects .projects-table{table-layout:fixed;width:100%}
-/* 指定列宽：第3列(规格)=20%，第8列(修改内容)=20%，其余按内容自适应 */
 #view-projects .projects-table th:nth-child(3),
 #view-projects .projects-table td:nth-child(3){width:20%;min-width:520px}
 #view-projects .projects-table th:nth-child(8),
@@ -129,7 +135,7 @@ label.pill:has(input:checked){background:var(--gold);color:#fff;border-color:var
 .tiny-thumb{width:28px;height:18px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
 .thumb-list{display:flex;gap:6px;align-items:center}
 
-/* 日历：仅边框、无填充；更多颜色区分不同项目 */
+/* 日历（仅边框无填充 + 多色） */
 .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin:8px 0}
 .cal-grid-head span{text-align:center;font-weight:700;padding:6px 0}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--line)}
