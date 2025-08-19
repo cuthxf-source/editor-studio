@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.6 */
-const APP_VERSION = 'V1.5.6';
+/* editor-studio / app.js  v1.5.5 */
+const APP_VERSION = 'V1.5.5';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -109,7 +109,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目 */
+/* 首页：最近项目（能量条直显） */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -227,7 +227,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑） */
+/* 编辑模态与项目表渲染 */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -366,7 +366,7 @@ function openEditorModal(kind,id){
       const row = projects.find(x=>String(x.id)===String(id));
       if(!row) return;
       const d2=parseNotes(row.notes);
-      const rec=(d2.changes||[]) .find(x=> String(x.ts)===String(ts));
+      const rec=(d2.changes||[]).find(x=> String(x.ts)===String(ts));
       if(!rec) return;
       editorForm.querySelector('select[name="chg_phase"]').value = rec.phase;
       editorForm.querySelector('select[name="chg_version"]').value = rec.version;
@@ -413,7 +413,7 @@ editorForm?.addEventListener('submit', async (e)=>{
 
   if(kind==='money'){ patch.quote_amount=Number(fd.get('quote_amount')||0); patch.paid_amount=Number(fd.get('paid_amount')||0); }
 
-  if(kind==='changes']){
+  if(kind==='changes'){
     const row=projects.find(x=>String(x.id)===String(id));
     let d=parseNotes(row?.notes||'');
     const phase=(fd.get('chg_phase')||'Final').toString();
@@ -652,11 +652,11 @@ function renderCalendar(){
     const vers=parseNotes(p.notes).versions||{A:'v1',B:'v1',F:'v1'};
     const A=fmt(p.a_copy), B=fmt(p.b_copy), F=fmt(p.final_date);
     const spans=[];
-    if(A && B) spans.push({k:'a',label:'Acopy',ver:vers.A,s:new Date(A),e=new Date(B.getTime()-86400000)});
-    if(B && F) spans.push({k:'b',label:'Bcopy',ver:vers.B,s:new Date(B),e=new Date(F.getTime()-86400000)});
+    if(A && B) spans.push({k:'a',label:'Acopy',ver:vers.A,s:new Date(A),e:new Date(B.getTime()-86400000)});
+    if(B && F) spans.push({k:'b',label:'Bcopy',ver:vers.B,s:new Date(B),e:new Date(F.getTime()-86400000)});
     if(F) spans.push({k:'f',label:'Final',ver:vers.F,s:new Date(F),e:new Date(F)});
     spans.forEach(sp=>{
-      const monStart=new Date(y,m,1), monEnd=new Date(y,m,days);
+      const y0=calBase.getFullYear(), m0=calBase.getMonth(), monStart=new Date(y0,m0,1), monEnd=new Date(y0,m0,new Date(y0,m0+1,0).getDate());
       let s=sp.s, e=sp.e; if(e<monStart || s>monEnd) return; if(s<monStart) s=monStart; if(e>monEnd) e=monEnd;
       const sDay=s.getDate(), eDay=e.getDate();
       for(let d=sDay; d<=eDay; d++){
@@ -668,7 +668,7 @@ function renderCalendar(){
           piece.appendChild(label);
         }
         line.appendChild(piece);
-        dayCells[d]?.appendChild(line);
+        (gridEl.querySelectorAll('.cal-cell')[((new Date(y0,m0,d)).getDay()+6)%7 + Math.floor((d+start-1)/7)*7])?.appendChild(line);
       }
     });
   });
@@ -701,7 +701,7 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）- 交稿 vs 收款
+  // 趋势图（全年，交稿 vs 收款）
   const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
   const deliver=new Array(12).fill(0);
@@ -725,7 +725,7 @@ function renderFinance(){
   drawDualTrend(document.getElementById('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染 */
+/* 双折线 */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
