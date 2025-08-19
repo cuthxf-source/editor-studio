@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.3 */
-const APP_VERSION = 'V1.5.3';
+/* editor-studio / app.js  v1.5.4 */
+const APP_VERSION = 'V1.5.4';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -109,7 +109,7 @@ function nearestMilestone(p){
   return { text:`${n.k} - ${n.date.getMonth()+1}/${n.date.getDate()}`, overdue:n.date<today, date:n.date, k:n.k };
 }
 
-/* 首页：最近项目 */
+/* 首页：最近项目（能量条直显） */
 function renderRecent(){
   const box=$('recent-list'); box.innerHTML='';
   const weighted = projects.map(p=>{
@@ -145,7 +145,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI */
+/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -160,6 +160,7 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
+  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
@@ -227,7 +228,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染 */
+/* 编辑模态与项目表渲染（保持原逻辑） */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -297,15 +298,6 @@ function openEditorModal(kind,id){
   if(kind==='money'){
     editorTitle.textContent='编辑 金额';
     editorForm.innerHTML=`<div class="h-row"><label>总金额<input name="quote_amount" type="number" min="0" step="0.01" value="${p.quote_amount||0}"></label><label>已收款<input name="paid_amount" type="number" min="0" step="0.01" value="${p.paid_amount||0}"></label></div>`;
-  }
-
-  if(kind==='note'){
-    editorTitle.textContent='导演备注';
-    const d=parseNotes(p.notes);
-    editorForm.innerHTML = `
-      <label>备注内容<textarea name="note_text" rows="6" placeholder="填写你的导演备注...">${(d.free||'')}</textarea></label>
-      <div class="muted small" style="margin-top:6px">保存后将以“备注”胶囊显示在列表中。</div>
-    `;
   }
 
   if(kind==='changes'){
@@ -422,13 +414,6 @@ editorForm?.addEventListener('submit', async (e)=>{
 
   if(kind==='money'){ patch.quote_amount=Number(fd.get('quote_amount')||0); patch.paid_amount=Number(fd.get('paid_amount')||0); }
 
-  if(kind==='note'){
-    const row=projects.find(x=>String(x.id)===String(id));
-    let d=parseNotes(row?.notes||'');
-    d.free = (fd.get('note_text')||'').toString();
-    patch.notes = stringifyNotes(d);
-  }
-
   if(kind==='changes'){
     const row=projects.find(x=>String(x.id)===String(id));
     let d=parseNotes(row?.notes||'');
@@ -497,12 +482,12 @@ function renderRow(p){
   const lastText=last ? `[${last.phase}·${last.version}] ${last.text.slice(0,42)}${last.text.length>42?'…':''}` : '—';
   const thumbs=last?.imgs?.length ? last.imgs.slice(0,4).map(u=>`<img class="tiny-thumb img-thumb" src="${u}" data-full="${u}" title="点击查看">`).join('') : '';
   const pri=priObj(d.priority||'P3');
+
   const payClass = pay==='未收款' ? 'pill-blue' : (pay==='已收定金' ? 'pill-green' : 'pill-gold');
+
   const upOk= !!p.poster_url || !!p.final_link;
   const upTxt = upOk ? '已上传' : '未上传';
   const upCls = upOk ? 'pill-green' : 'pill-blue';
-  const noteText=(d.free||'').trim();
-  const noteCls = noteText? 'pill-gold':'pill';
 
   tr.innerHTML = `
     <td contenteditable="true" data-k="title" data-id="${p.id}">${p.title||''}</td>
@@ -512,7 +497,6 @@ function renderRow(p){
     <td class="col-priority"><div class="cell-summary"><button class="pill ${pri.cls} pri-toggle" data-id="${p.id}" title="点击切换优先级">${pri.k}·${pri.txt}</button></div></td>
     <td class="col-pay"><div class="cell-summary"><button class="pill ${payClass} pay-pill" data-id="${p.id}" data-st="${pay}">${pay}</button></div></td>
     <td><div class="cell-summary"><span class="muted text-cell">${moneyText}</span><button class="cell-edit edit-btn" data-kind="money" data-id="${p.id}">编辑</button></div></td>
-    <td class="col-dirnote"><div class="cell-summary"><button class="pill ${noteCls} note-btn" data-id="${p.id}">备注</button></div></td>
     <td class="col-changes"><div class="cell-summary"><span class="small text-cell">${lastText}</span>${thumbs?`<div class="thumb-list">${thumbs}</div>`:''}<button class="cell-edit edit-btn" data-kind="changes" data-id="${p.id}">编辑</button></div></td>
     <td class="col-upload"><div class="cell-summary"><button class="pill ${upCls} upload-pill" data-id="${p.id}">${upTxt}</button></div></td>
   `;
@@ -534,7 +518,6 @@ function bindTable(tb){
     const img=e.target.closest('.img-thumb');
     const up=e.target.closest('.upload-pill');
     const payBtn=e.target.closest('.pay-pill');
-    const noteBtn=e.target.closest('.note-btn');
     if(btn){ openEditorModal(btn.getAttribute('data-kind'), btn.getAttribute('data-id')); }
     if(pri){ const id=pri.getAttribute('data-id'); const row=projects.find(x=>String(x.id)===String(id)); if(!row) return; const d=parseNotes(row.notes); d.priority=d.priority==='P1'?'P2':d.priority==='P2'?'P3':d.priority==='P3'?'P4':'P1'; await supa.from('projects').update({notes:stringifyNotes(d)}).eq('id',id); await fetchProjects(); renderProjects(); }
     if(img){ openImgbox(img.getAttribute('data-full')); }
@@ -551,13 +534,11 @@ function bindTable(tb){
       const row=projects.find(x=> String(x.id)===String(id)); if(row){ row.pay_status=next; }
       renderProjects();
     }
-    if(noteBtn){ openEditorModal('note', noteBtn.getAttribute('data-id')); }
   });
 
   tb._bound = true;
 }
 function shrinkOverflowCells(tb){
-  // 仅保留兼容逻辑；列已用 CSS 固定单行省略
   tb.querySelectorAll('td .text-cell').forEach(el=>{
     const td=el.closest('td'); if(!td) return;
     if(td.scrollWidth > td.clientWidth || el.scrollWidth > td.clientWidth){ td.classList.add('shrink'); }
@@ -591,9 +572,32 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：自动抽帧（保持） */
+/* 作品合集：改回“靠近首帧”的自动抽帧 */
 const thumbCache=new Map();
-function captureVideoAutoFrame(url){ /* 保持原实现 */ return new Promise((resolve)=>{ try{ const v=document.createElement('video'); v.crossOrigin='anonymous'; v.muted=true; v.playsInline=true; v.preload='metadata'; v.src=url; v.addEventListener('loadedmetadata',()=>{ const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1; v.currentTime = t; }, { once:true }); v.addEventListener('seeked',()=>{ try{ const canvas=document.createElement('canvas'); canvas.width=v.videoWidth||1280; canvas.height=v.videoHeight||720; const ctx=canvas.getContext('2d'); ctx.drawImage(v,0,0,canvas.width,canvas.height); const data=canvas.toDataURL('image/jpeg',0.85); resolve(data); }catch(e){ resolve(null); } }, { once:true }); v.addEventListener('error',()=> resolve(null), { once:true }); v.addEventListener('timeupdate',()=>{ resolve(null); }, { once:true }); }catch(e){ resolve(null); } }); }
+function captureVideoAutoFrame(url){
+  return new Promise((resolve)=>{
+    try{
+      const v=document.createElement('video');
+      v.crossOrigin='anonymous'; v.muted=true; v.playsInline=true; v.preload='metadata';
+      v.src=url;
+      v.addEventListener('loadedmetadata',()=>{
+        const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
+        v.currentTime = t; // 靠近首帧
+      }, { once:true });
+      v.addEventListener('seeked',()=>{
+        try{
+          const canvas=document.createElement('canvas');
+          canvas.width=v.videoWidth||1280; canvas.height=v.videoHeight||720;
+          const ctx=canvas.getContext('2d'); ctx.drawImage(v,0,0,canvas.width,canvas.height);
+          const data=canvas.toDataURL('image/jpeg',0.85);
+          resolve(data);
+        }catch(e){ resolve(null); }
+      }, { once:true });
+      v.addEventListener('error',()=> resolve(null), { once:true });
+      v.addEventListener('timeupdate',()=>{ resolve(null); }, { once:true });
+    }catch(e){ resolve(null); }
+  });
+}
 async function getCoverFor(p){
   if(p.poster_url) return p.poster_url;
   if(thumbCache.has(p.final_link)) return thumbCache.get(p.final_link);
@@ -623,13 +627,17 @@ async function renderGallery(){
   }
 }
 
-/* 日历（保持） */
+/* 日历：仅边框 + 多色（按项目 id 哈希） */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
 $('cal-prev').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()-1); renderCalendar(); });
 $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth()+1); renderCalendar(); });
-function colorIndexForId(id){ let s=0; const str=String(id||'0'); for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; } return s % 8; }
+function colorIndexForId(id){
+  let s=0; const str=String(id||'0');
+  for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
+  return s % 8; // 对应 .c0 ~ .c7
+}
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
   labelEl.textContent=`${y}年 ${m+1}月`;
@@ -649,8 +657,7 @@ function renderCalendar(){
     if(B && F) spans.push({k:'b',label:'Bcopy',ver:vers.B,s:new Date(B),e:new Date(F.getTime()-86400000)});
     if(F) spans.push({k:'f',label:'Final',ver:vers.F,s:new Date(F),e:new Date(F)});
     spans.forEach(sp=>{
-      const y0=calBase.getFullYear(), m0=calBase.getMonth(); const daysInMonth=new Date(y0,m0+1,0).getDate();
-      const monStart=new Date(y0,m0,1), monEnd=new Date(y0,m0,daysInMonth);
+      const monStart=new Date(y,m,1), monEnd=new Date(y,m,days);
       let s=sp.s, e=sp.e; if(e<monStart || s>monEnd) return; if(s<monStart) s=monStart; if(e>monEnd) e=monEnd;
       const sDay=s.getDate(), eDay=e.getDate();
       for(let d=sDay; d<=eDay; d++){
@@ -668,8 +675,9 @@ function renderCalendar(){
   });
 }
 
-/* 财务（保持） */
+/* 财务 */
 function renderFinance(){
+  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
   const rp=$('rank-partner'); rp.innerHTML='';
@@ -695,11 +703,11 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）
-  const months=Array.from({length:12},(_,i)=>i);
+  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
+  const months=Array.from({length:12},(_,i)=>i); // 0..11
   const year=(new Date()).getFullYear();
-  const deliver=new Array(12).fill(0);
-  const receive=new Array(12).fill(0);
+  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
+  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
   projects.forEach(p=>{
     if(p.final_date){
       const d=new Date(p.final_date);
@@ -711,6 +719,7 @@ function renderFinance(){
     }
   });
 
+  // 旺季/淡季（基于交稿曲线）
   let maxM=0,minM=0;
   for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
   const tags=$('trend-tags');
@@ -719,15 +728,17 @@ function renderFinance(){
   drawDualTrend($('trend'), months, deliver, receive);
 }
 
-/* 趋势图绘制（保持） */
+/* 双折线渲染（带坐标轴与月刻度） */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
+
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
 
+  // 网格 & 轴
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -738,6 +749,7 @@ function drawDualTrend(container, months, deliver, receive){
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
 
+  // 月份刻度
   let xlabels='';
   months.forEach((m,i)=>{
     const x=padL+i*xStep;
@@ -763,7 +775,7 @@ function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.va
 function closeUploadModal(){ uploadModal.classList.remove('show'); }
 uploadClose?.addEventListener('click',closeUploadModal); uploadCancel?.addEventListener('click',closeUploadModal);
 uploadModal?.addEventListener('mousedown',e=>{ if(e.target===uploadModal) closeUploadModal(); });
-pasteBox?.addEventListener('paste',e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.type?.startsWith('image/')){ const f=it.getAsFile(); if(f){ pastedPosterFile=new File([f],'pasted.png',{type:f.type||'image/png'}); upTip.textContent='已接收粘贴图片（将作为海报上传）'; } e.preventDefault(); break; } }});
+pasteBox?.addEventListener('paste',e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.type?.startsWith('image/')){ const f=it.getAsFile(); if(f){ pastedPosterFile=new File([f],'pasted.png',{type:f.type||'image/png'}); upTip.text内容='已接收粘贴图片（将作为海报上传）'; } e.preventDefault(); break; } }});
 function setProgress(p){ const pct=Math.max(0,Math.min(100,Math.round(p))); if(upBar) upBar.style.width=pct+'%'; if(upText) upText.textContent=pct+'%'; }
 function fakeProgressStart(){ let p=5; setProgress(p); const t=setInterval(()=>{ p=Math.min(95,p+Math.random()*7); setProgress(p); },300); return ()=>{ clearInterval(t); setProgress(100); }; }
 async function uploadToBucket(path,file){ const {error}=await supa.storage.from('attachments').upload(path,file,{upsert:true,contentType:file.type||undefined}); if(error) throw error; const {data}=supa.storage.from('attachments').getPublicUrl(path); return data.publicUrl; }
