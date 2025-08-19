@@ -1,5 +1,5 @@
-/* editor-studio / app.js  v1.5.4 */
-const APP_VERSION = 'V1.5.4';
+/* editor-studio / app.js  v1.5.5 */
+const APP_VERSION = 'V1.5.5';
 
 /* Supabase */
 const supa = window.supabase.createClient(
@@ -145,7 +145,7 @@ function renderRecent(){
   $('go-list')?.addEventListener('click', (e)=>{ e.stopPropagation(); showView('projects'); }, { once:true });
 }
 
-/* KPI（首页不显示 as-of；财务页也不再显示截至时间） */
+/* KPI */
 function renderKpis(){
   const total=projects.reduce((s,p)=>s+Number(p.quote_amount||0),0);
   const paid =projects.reduce((s,p)=>s+Number(p.paid_amount||0),0);
@@ -160,7 +160,6 @@ function renderKpis(){
   $('f-total').textContent=money(total);
   $('f-paid').textContent=money(paid);
   $('f-unpaid').textContent=money(unpaid);
-  // 删除 f-asof，不再渲染
   const hAsOf=$('home-asof'); if(hAsOf){ hAsOf.textContent=''; hAsOf.style.display='none'; }
 }
 
@@ -228,7 +227,7 @@ function renderKpis(){
   calc(); // 默认单组合
 })();
 
-/* 编辑模态与项目表渲染（保持原逻辑） */
+/* 编辑模态与项目表渲染 */
 const editorModal=$('editor-modal'), editorTitle=$('editor-title'), editorForm=$('editor-form');
 const editorClose=$('editor-close'), editorCancel=$('editor-cancel');
 function closeEditor(){ editorModal.classList.remove('show'); editorForm.innerHTML=''; }
@@ -572,7 +571,7 @@ function openQuickModal(id){
   qModal.classList.add('show');
 }
 
-/* 作品合集：改回“靠近首帧”的自动抽帧 */
+/* 作品合集：自动抽帧靠近首帧 */
 const thumbCache=new Map();
 function captureVideoAutoFrame(url){
   return new Promise((resolve)=>{
@@ -582,7 +581,7 @@ function captureVideoAutoFrame(url){
       v.src=url;
       v.addEventListener('loadedmetadata',()=>{
         const t = isFinite(v.duration) && v.duration>0 ? Math.min(0.1, v.duration*0.05) : 0.1;
-        v.currentTime = t; // 靠近首帧
+        v.currentTime = t;
       }, { once:true });
       v.addEventListener('seeked',()=>{
         try{
@@ -627,7 +626,7 @@ async function renderGallery(){
   }
 }
 
-/* 日历：仅边框 + 多色（按项目 id 哈希） */
+/* 日历 */
 const gridEl  = $('cal-grid');
 const labelEl = $('cal-label');
 let calBase=new Date(); calBase.setDate(1);
@@ -636,7 +635,7 @@ $('cal-next').addEventListener('click', ()=>{ calBase.setMonth(calBase.getMonth(
 function colorIndexForId(id){
   let s=0; const str=String(id||'0');
   for(let i=0;i<str.length;i++){ s=(s*31 + str.charCodeAt(i)) >>> 0; }
-  return s % 8; // 对应 .c0 ~ .c7
+  return s % 8;
 }
 function renderCalendar(){
   gridEl.innerHTML=''; const y=calBase.getFullYear(), m=calBase.getMonth();
@@ -657,7 +656,7 @@ function renderCalendar(){
     if(B && F) spans.push({k:'b',label:'Bcopy',ver:vers.B,s:new Date(B),e:new Date(F.getTime()-86400000)});
     if(F) spans.push({k:'f',label:'Final',ver:vers.F,s:new Date(F),e:new Date(F)});
     spans.forEach(sp=>{
-      const monStart=new Date(y,m,1), monEnd=new Date(y,m,days);
+      const y0=calBase.getFullYear(), m0=calBase.getMonth(), monStart=new Date(y0,m0,1), monEnd=new Date(y0,m0,new Date(y0,m0+1,0).getDate());
       let s=sp.s, e=sp.e; if(e<monStart || s>monEnd) return; if(s<monStart) s=monStart; if(e>monEnd) e=monEnd;
       const sDay=s.getDate(), eDay=e.getDate();
       for(let d=sDay; d<=eDay; d++){
@@ -669,7 +668,7 @@ function renderCalendar(){
           piece.appendChild(label);
         }
         line.appendChild(piece);
-        dayCells[d]?.appendChild(line);
+        (gridEl.querySelectorAll('.cal-cell')[((new Date(y0,m0,d)).getDay()+6)%7 + Math.floor((d+start-1)/7)*7])?.appendChild(line);
       }
     });
   });
@@ -677,7 +676,6 @@ function renderCalendar(){
 
 /* 财务 */
 function renderFinance(){
-  // 排行：最多先显示 5 个，其余折叠；金额 K/M
   const byPartner=new Map();
   projects.forEach(p=>{ const k=p.producer_name||'未填'; byPartner.set(k,(byPartner.get(k)||0)+Number(p.paid_amount||0)); });
   const rp=$('rank-partner'); rp.innerHTML='';
@@ -703,11 +701,11 @@ function renderFinance(){
   });
   aging.classList.add('collapsed');
 
-  // 趋势图：全年（月对比）- 交稿 vs 收款（以可得字段近似：final_date vs updated_at）
-  const months=Array.from({length:12},(_,i)=>i); // 0..11
+  // 趋势图（全年，交稿 vs 收款）
+  const months=Array.from({length:12},(_,i)=>i);
   const year=(new Date()).getFullYear();
-  const deliver=new Array(12).fill(0); // 交稿：按 final_date 汇总 quote_amount
-  const receive=new Array(12).fill(0); // 收款：按 updated_at 汇总 paid_amount（近似）
+  const deliver=new Array(12).fill(0);
+  const receive=new Array(12).fill(0);
   projects.forEach(p=>{
     if(p.final_date){
       const d=new Date(p.final_date);
@@ -719,26 +717,23 @@ function renderFinance(){
     }
   });
 
-  // 旺季/淡季（基于交稿曲线）
   let maxM=0,minM=0;
   for(let i=1;i<12;i++){ if(deliver[i]>deliver[maxM]) maxM=i; if(deliver[i]<deliver[minM]) minM=i; }
-  const tags=$('trend-tags');
+  const tags=document.getElementById('season-tags');
   tags.textContent = `旺季：${maxM+1}月 ｜ 淡季：${minM+1}月`;
 
-  drawDualTrend($('trend'), months, deliver, receive);
+  drawDualTrend(document.getElementById('trend'), months, deliver, receive);
 }
 
-/* 双折线渲染（带坐标轴与月刻度） */
+/* 双折线 */
 function drawDualTrend(container, months, deliver, receive){
   container.innerHTML='';
   const w=container.clientWidth||900, h=container.clientHeight||260, padL=42, padR=10, padT=10, padB=26;
   const maxVal=Math.max(1, ...deliver, ...receive);
   const xStep=(w-padL-padR)/Math.max(months.length-1,1);
   const yOf=v => (h-padB) - (v/maxVal)*(h-padT-padB);
-
   const toPath = arr => arr.map((v,i)=>`${i?'L':'M'}${(padL+i*xStep).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
 
-  // 网格 & 轴
   const ticks=5;
   let grid='';
   for(let i=0;i<=ticks;i++){
@@ -749,33 +744,26 @@ function drawDualTrend(container, months, deliver, receive){
     grid += `<text x="${(padL-6).toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="end">${label}</text>`;
   }
 
-  // 月份刻度
   let xlabels='';
-  months.forEach((m,i)=>{
-    const x=padL+i*xStep;
-    xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`;
-  });
-
-  const pathDeliver = toPath(deliver);
-  const pathReceive = toPath(receive);
+  months.forEach((m,i)=>{ const x=padL+i*xStep; xlabels += `<text x="${x.toFixed(1)}" y="${(h-6).toFixed(1)}" text-anchor="middle">${m+1}</text>`; });
 
   container.innerHTML = `
     <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <g class="grid">${grid}</g>
-      <path d="${pathDeliver}" fill="none" stroke="#d29922" stroke-width="2"/>
-      <path d="${pathReceive}" fill="none" stroke="#2f81f7" stroke-width="2"/>
+      <path d="${toPath(deliver)}" fill="none" stroke="#d29922" stroke-width="2"/>
+      <path d="${toPath(receive)}" fill="none" stroke="#2f81f7" stroke-width="2"/>
       <g class="xlabels">${xlabels}</g>
     </svg>`;
 }
 
-/* 上传（保持） */
+/* 上传 */
 const uploadModal=$('upload-modal'), uploadForm=$('upload-form'), uploadClose=$('upload-close'), uploadCancel=$('upload-cancel'), upPoster=$('up-poster'), upVideo=$('up-video'), pasteBox=$('paste-box'), upProg=$('up-progress'), upBar=upProg?.querySelector('.prog-bar'), upText=upProg?.querySelector('.prog-text'), upTip=$('up-tip');
 let pastedPosterFile=null;
 function openUploadModal(id){ uploadForm.setAttribute('data-id',id); upPoster.value=''; upVideo.value=''; pastedPosterFile=null; setProgress(0); upTip.textContent=''; uploadModal.classList.add('show'); }
 function closeUploadModal(){ uploadModal.classList.remove('show'); }
 uploadClose?.addEventListener('click',closeUploadModal); uploadCancel?.addEventListener('click',closeUploadModal);
 uploadModal?.addEventListener('mousedown',e=>{ if(e.target===uploadModal) closeUploadModal(); });
-pasteBox?.addEventListener('paste',e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.type?.startsWith('image/')){ const f=it.getAsFile(); if(f){ pastedPosterFile=new File([f],'pasted.png',{type:f.type||'image/png'}); upTip.text内容='已接收粘贴图片（将作为海报上传）'; } e.preventDefault(); break; } }});
+pasteBox?.addEventListener('paste',e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.type?.startsWith('image/')){ const f=it.getAsFile(); if(f){ pastedPosterFile=new File([f],'pasted.png',{type:f.type||'image/png'}); upTip.textContent='已接收粘贴图片（将作为海报上传）'; } e.preventDefault(); break; } }});
 function setProgress(p){ const pct=Math.max(0,Math.min(100,Math.round(p))); if(upBar) upBar.style.width=pct+'%'; if(upText) upText.textContent=pct+'%'; }
 function fakeProgressStart(){ let p=5; setProgress(p); const t=setInterval(()=>{ p=Math.min(95,p+Math.random()*7); setProgress(p); },300); return ()=>{ clearInterval(t); setProgress(100); }; }
 async function uploadToBucket(path,file){ const {error}=await supa.storage.from('attachments').upload(path,file,{upsert:true,contentType:file.type||undefined}); if(error) throw error; const {data}=supa.storage.from('attachments').getPublicUrl(path); return data.publicUrl; }
